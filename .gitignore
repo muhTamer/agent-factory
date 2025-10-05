@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# venv
+.venv/
+
+# VSCode
+.vscode/
+
+# local config
+.env
+.env.*
+
+# data
+data/
+*.csv
+*.parquet
+
+# pytest cache
+.pytest_cache/
