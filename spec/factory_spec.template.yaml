@@ -1,0 +1,10 @@
+meta:
+  vertical: fintech
+  version: 0.0.1
+agents: ["router","planner","faq_agent","complaint_agent","compliance_guard","qa_evaluator"]
+tools: ["ticket.create","kyc.verify","refund.apply","notify.send"]
+knowledge:
+  - path: data/BankFAQs.csv
+    as: faq_index
+policies:
+  - path: policies/policy_pack.yaml

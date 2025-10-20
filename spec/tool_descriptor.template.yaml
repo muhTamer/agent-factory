@@ -1,0 +1,16 @@
+tool_id: refund.apply
+version: "0.1.0"
+method: POST
+endpoint: "/refund.apply"
+schema:
+  input:
+    ticket_id: string
+    amount: number
+    reason: string
+  output:
+    status: string
+    refund_id: string?
+policies:
+  preconditions: ["kyc_verified", "amount <= policy.refund_limit"]
+idempotency_key: ticket_id
+supports_dry_run: true

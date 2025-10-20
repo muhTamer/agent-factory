@@ -1,0 +1,15 @@
+{
+  "faq": {
+    "held_out": 50,
+    "target_accuracy": 0.9
+  },
+  "complaint": {
+    "cases": 10,
+    "max_tool_calls_median": 4
+  },
+  "guardrails": {
+    "adversarial": 100,
+    "target_block_rate": 0.99,
+    "max_false_block": 0.01
+  }
+}

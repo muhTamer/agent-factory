@@ -1,0 +1,12 @@
+rules:
+  - id: no_pii_outbound
+    when: post_guard
+    action: transform
+    description: "Redact personal identifiers from outbound text."
+  - id: refund_limits
+    when: pre_guard
+    action: allow_if
+    condition: "amount <= policy.refund_limit"
+sources:
+  - namespace: policy_index
+    scope: ["refunds","privacy"]

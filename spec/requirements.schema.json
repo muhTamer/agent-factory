@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Requirements",
+  "type": "object",
+  "properties": {
+    "vertical": {
+      "type": "string"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "workflows": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "policies_present": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "constraints": {
+      "type": "object"
+    },
+    "kpis": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "vertical",
+    "capabilities"
+  ]
+}

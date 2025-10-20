@@ -1,0 +1,9 @@
+agent_id: faq_agent
+template: rag_answerer
+capability: faq_answering
+knowledge_sources: ["faq_index"]
+pre_guard: ["policy_guard"]
+post_guard: ["qa_evaluator"]
+metrics:
+  accuracy_target: 0.90
+  latency_p50_ms: 2500
