@@ -47,6 +47,7 @@ pre-commit run --all-files
 ## 4) Run the dev server
 
 ```powershell
+.\.venv\Scripts\Activate
 uvicorn app.main:app --reload
 ```
 
