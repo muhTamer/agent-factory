@@ -1,0 +1,93 @@
+# spec/base_policy_pack.yaml
+# Baseline guardrails that are always active, even if user provides no policy docs.
+
+meta:
+  policy_pack: base
+  version: 1.0
+  description: Baseline safety and quality rules for customer-service MAS.
+
+rules:
+
+  # 1) PII protection (outbound)
+  - id: prevent_pii_leak
+    when: post_guard
+    action: transform
+    transform: redact_pii              # phone, email, card#, acct#, address (pattern-based)
+    severity: high
+    rationale: "Protect customer data in all channels."
+
+  # 2) Sensitive actions require explicit entitlement (tool safety net)
+  - id: block_sensitive_actions_without_entitlement
+    when: pre_guard
+    action: deny_if
+    condition: "tool.name in ['refund.apply','account.close','kyc.override'] and not context.entitled"
+    severity: high
+    rationale: "Never execute high-risk tools without entitlement flags."
+
+  # 3) Profanity / harassment filter (tone control)
+  - id: tone_control
+    when: post_guard
+    action: transform
+    transform: normalize_tone          # softens harsh phrases, keeps content
+    severity: medium
+    rationale: "Maintain professional, non-escalatory tone."
+
+  # 4) Output length cap (runaway response guard)
+  - id: limit_output_size
+    when: pre_guard
+    action: limit
+    value: 1800                        # max tokens/characters (implementation-defined)
+    severity: low
+    rationale: "Avoid overly long or resource-heavy responses."
+
+  # 5) Citation discipline for RAG answers
+  - id: require_citations_for_factual_answers
+    when: post_guard
+    action: enforce_if
+    condition: "agent.role == 'faq_agent' and response.contains_facts"
+    enforce: "response.must_include_citations == true"
+    severity: medium
+    rationale: "Customer-facing facts must include sources."
+
+  # 6) Low-confidence refusal (hallucination guard)
+  - id: refuse_on_low_confidence
+    when: post_guard
+    action: transform
+    transform: refuse_if_low_confidence
+    params:
+      threshold: 0.35                   # model-agnostic confidence heuristic
+      message: "I’m not fully confident. May I escalate or check with a human?"
+    severity: high
+    rationale: "Prefer safe refusal over confident wrong answers."
+
+  # 7) Tool-call rate limiter (DOS/self-loop protection)
+  - id: tool_rate_limit
+    when: pre_guard
+    action: deny_if
+    condition: "metrics.tool_calls_last_minute > 20"
+    severity: high
+    rationale: "Prevent runaway tool loops and backend overload."
+
+  # 8) Channel-safe redactions (don’t leak internals)
+  - id: strip_system_internals
+    when: post_guard
+    action: transform
+    transform: remove_internal_notes     # strips stack traces, prompts, keys, IDs
+    severity: high
+    rationale: "Never expose internal prompts, IDs, or secrets."
+
+sources:
+  - type: builtin
+    name: base_regexes
+    description: "PII patterns, profanity lexicon, internal markers"
+defaults:
+  enabled: true
+  enforce_order: ["pre_guard", "agent", "post_guard", "qa"]  # placement in runtime spine
+  merge_strategy: "append"   # when user adds extra packs, rules append by default
+
+toggles:
+  # Admin can flip these without editing the file (e.g., via Factory UI)
+  refuse_on_low_confidence: true
+  require_citations_for_factual_answers: true
+  tone_control: true
+  pii_redaction: true

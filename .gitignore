@@ -24,3 +24,12 @@ data/
 
 # pytest cache
 .pytest_cache/
+
+# Environment & secrets
+.env
+.env.*
+!env.example
+# Local configs / keys
+*.key
+*.pem
+
