@@ -1,0 +1,5 @@
+rules:
+  - id: refund_eligibility
+    description: Refunds allowed within 30 days.
+  - id: partial_refund
+    description: Refund percentage may vary.

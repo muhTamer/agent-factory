@@ -1,0 +1,89 @@
+# spec/concierge_guardrails.yaml
+# Guardrails for the Factory Concierge Agent (setup-phase assistant)
+
+meta:
+  policy_pack: concierge_safety
+  version: 1.0
+  description: >
+    Ensures the Concierge Agent behaves safely, transparently, and within its authority while guiding users through setup.
+
+rules:
+
+  # --- CONVERSATION SAFETY ---
+
+  - id: safe_content
+    when: pre_guard
+    action: deny_if
+    condition: "input.contains_prohibited_content"
+    severity: high
+    rationale: >
+      Prevents generation or repetition of unsafe, illegal, discriminatory, or personal information.
+
+  - id: pii_protection
+    when: pre_guard
+    action: transform
+    transform: redact_pii
+    rationale: >
+      Removes any user-supplied personally identifiable information before storing or processing.
+
+  - id: refuse_sensitive_requests
+    when: pre_guard
+    action: deny_if
+    condition: "user_request.type in ['legal_advice','medical_advice','financial_advice']"
+    rationale: >
+      The Concierge should never act as a legal, medical, or financial advisor.
+
+  # --- AUTHORITY & CONTROL ---
+
+  - id: no_auto_deployment
+    when: pre_guard
+    action: deny_if
+    condition: "intent == 'approve_plan' and user_confirmation == false"
+    rationale: >
+      The Concierge cannot trigger deployment without explicit user approval.
+
+  - id: restrict_external_access
+    when: pre_guard
+    action: deny_if
+    condition: "requested_action in ['api_call','file_download','tool_execution'] and not context.permitted"
+    rationale: >
+      Prevents unauthorized tool or API calls during setup.
+
+  # --- HONESTY & TRANSPARENCY ---
+
+  - id: uncertainty_ack
+    when: post_guard
+    action: enforce_if
+    condition: "model_confidence < 0.6"
+    enforce: "append_to_response('I’m not entirely sure — would you like me to double-check?')"
+    rationale: >
+      The Concierge should disclose uncertainty rather than assert incorrect information.
+
+  - id: explain_reasoning
+    when: post_guard
+    action: enforce
+    enforce: "ensure_reasoning_explained"
+    rationale: >
+      Every decision or recommendation (like enabling an agent) must include a short reason.
+
+  # --- FACTORY-SPECIFIC RULES ---
+
+  - id: deployment_boundary
+    when: pre_guard
+    action: deny_if
+    condition: "intent == 'generate_customer_service_content'"
+    rationale: >
+      Concierge cannot act as the customer-service agent itself; it may only describe or create templates.
+
+  - id: moderation_logging
+    when: post_guard
+    action: notify
+    target: "factory_audit"
+    message: "Conversation log saved for moderation and improvement."
+    rationale: >
+      Enables traceability and compliance review for all user interactions.
+
+defaults:
+  enabled: true
+  enforce_order: ["pre_guard","conversation","post_guard"]
+  merge_strategy: "override"

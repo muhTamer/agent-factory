@@ -12,3 +12,10 @@ pre-commit==4.0.1
 
 # LLM client for DUA
 openai>=1.40.0
+
+# Core runtime
+jsonschema>=4.0.0
+
+# LLM + YAML + testing deps (if not already there)
+PyYAML>=6.0
+pytest>=8.0.0
