@@ -19,3 +19,6 @@ jsonschema>=4.0.0
 # LLM + YAML + testing deps (if not already there)
 PyYAML>=6.0
 pytest>=8.0.0
+
+streamlit>=1.37.0
+
