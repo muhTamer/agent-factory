@@ -20,7 +20,7 @@ import yaml
 
 
 class InferCapabilities:
-    def __init__(self, vertical: str, data_dir: str, llm_client=None):
+    def __init__(self, vertical: str, data_dir: str, llm_client=None, model: str | None = None):
         """
         Args:
             vertical: user-selected domain (e.g., 'retail', 'fintech', 'telco', 'general_service')
@@ -30,6 +30,7 @@ class InferCapabilities:
         self.vertical = vertical.lower()
         self.data_dir = Path(data_dir)
         self.llm_client = llm_client
+        self.model = model  # NEW
         self.docs = self._list_files()
         self.capabilities = ["faq", "complaint", "guardrails", "qa"]
 
@@ -129,19 +130,17 @@ class InferCapabilities:
     # 5. LLM-assisted assessment
     # -----------------------------
     def _llm_assess(self, cap: str) -> Dict[str, Any]:
-        """
-        Ask LLM if the currently uploaded docs are sufficient for capability 'cap'.
-        Uses privacy-preserving sampling.
-        """
         try:
             samples = self._prepare_samples(cap)
-            self._audit_samples(cap, samples)
+            self._audit_samples(cap, samples)  # keep audit trail
             messages = [
                 {"role": "system", "content": self._system_prompt()},
                 {"role": "user", "content": self._user_prompt(cap, samples)},
             ]
+            # pass-through to your real client
             result = self.llm_client.chat_json(
-                messages=messages, model=os.getenv("AZURE_OPENAI_DEPLOYMENT") or "gpt-4o-mini"
+                messages=messages,
+                model=self.model or os.getenv("AZURE_OPENAI_DEPLOYMENT") or "gpt-4o-mini",
             )
             return self._normalize_llm_result(cap, result)
         except Exception as e:
@@ -276,7 +275,10 @@ class InferCapabilities:
         if not samples:
             return
 
-        audit_path = self.data_dir / "samples_audit.json"
+        audit_dir = self.data_dir / ".factory"  # NEW hidden folder
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        audit_path = audit_dir / "samples_audit.json"
+
         record = {
             "timestamp": datetime.utcnow().isoformat(),
             "vertical": self.vertical,
@@ -302,31 +304,100 @@ class InferCapabilities:
     # -----------------------------
     def _system_prompt(self) -> str:
         return (
-            "You are a capability sufficiency evaluator for an AI Agent Factory. "
-            "Return JSON with keys {capability, status, confidence, docs_detected, docs_missing, why}. "
-            "Do not include or reproduce input text. Do not infer personal data."
+            "You are a capability sufficiency evaluator for an AI Agent Factory.\n"
+            "Return STRICT JSON only (no prose). Fields: {capability, status, confidence, docs_detected, docs_missing, why}.\n"
+            "status MUST be exactly one of: 'ready', 'partial', 'missing_docs'.\n"
+            "docs_detected and docs_missing MUST be JSON arrays (use [] if none). Do NOT use 0, null, or strings.\n"
+            "Do not reproduce input text; do not include PII. Keep 'why' under 30 words."
         )
 
     def _user_prompt(self, cap: str, samples: List[Dict[str, str]]) -> str:
         doc_section = "\n\n".join([f"--- {s['filename']} ---\n{s['sample_text']}" for s in samples])
-        return f"Vertical: {self.vertical}\nCapability: {cap}\nDocuments:\n{doc_section}"
+        return (
+            f"Vertical: {self.vertical}\nCapability: {cap}\nDocuments:\n{doc_section}\n\n"
+            "Choose status ONLY from: ready | partial | missing_docs."
+        )
 
     # -----------------------------
     # 8. Helper: normalize LLM output
     # -----------------------------
     def _normalize_llm_result(self, cap: str, result: dict) -> dict:
-        """Ensure structure conforms to expected schema."""
-        if not isinstance(result, dict) or not self._validate_llm_output(result):
+        """
+        Harden LLM output:
+        - map status synonyms to our enum
+        - coerce docs_* to arrays
+        - clip confidence to [0,1]
+        - default missing fields
+        - validate; else fallback to heuristic
+        """
+        # 1) guard
+        if not isinstance(result, dict):
             return self._heuristic_assess(cap)
 
+        # 2) normalize status (handle common synonyms & alt fields)
+        status_synonyms = {
+            "insufficient": "missing_docs",
+            "not_ready": "missing_docs",
+            "missing": "missing_docs",
+            "unknown": "missing_docs",
+            "no": "missing_docs",
+            "partially": "partial",
+            "partially_ready": "partial",
+            "partial_ready": "partial",
+            "ok": "ready",
+            "sufficient": "ready",
+            "ready_now": "ready",
+            "ready": "ready",
+        }
+        raw_status = (result.get("status") or "").strip().lower()
+        if not raw_status:
+            alt = (result.get("sufficiency") or result.get("verdict") or "").strip().lower()
+            raw_status = alt
+        if raw_status in status_synonyms:
+            result["status"] = status_synonyms[raw_status]
+
+        # 3) coerce list-typed fields (docs_detected/docs_missing) to arrays of strings
+        def _as_list(v):
+            if v is None:
+                return []
+            if isinstance(v, list):
+                return [str(x) for x in v]
+            if isinstance(v, str):
+                return [v] if v.strip() else []
+            if isinstance(v, (int, float, bool)):
+                return [] if not v else [str(v)]
+            return []
+
+        result["docs_detected"] = _as_list(result.get("docs_detected"))
+        result["docs_missing"] = _as_list(result.get("docs_missing"))
+
+        # 4) confidence: coerce to float & clip to [0,1]
+        try:
+            conf = float(result.get("confidence", 0.5))
+        except (TypeError, ValueError):
+            conf = 0.5
+        conf = max(0.0, min(1.0, conf))
+        result["confidence"] = conf
+
+        # 5) default capability & why
+        if not result.get("capability"):
+            result["capability"] = cap
+        if not isinstance(result.get("why"), str) or not result["why"].strip():
+            result["why"] = "LLM-assessed sufficiency."
+
+        # 6) validate; fallback if invalid
+        if not self._validate_llm_output(result):
+            return self._heuristic_assess(cap)
+
+        # 7) final normalized shape
         return {
             "id": cap,
             "status": result["status"],
-            "confidence": float(result.get("confidence", 0.5)),
-            "docs_detected": result.get("docs_detected", []),
-            "docs_missing": result.get("docs_missing", []),
+            "confidence": result["confidence"],
+            "docs_detected": result["docs_detected"],
+            "docs_missing": result["docs_missing"],
             "always_included": False,
-            "why": result.get("why", "LLM-assessed sufficiency."),
+            "why": result["why"],
         }
 
     # -----------------------------

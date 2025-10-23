@@ -11,11 +11,12 @@ from app.concierge.planner_interface import PlannerInterface
 
 
 class ConciergeAgent:
-    def __init__(self, vertical: str, data_dir: str, llm_client=None):
+    def __init__(self, vertical: str, data_dir: str, llm_client=None, model: str | None = None):
         self.vertical = vertical
         self.data_dir = Path(data_dir)
         self.llm_client = llm_client
         self.state: Dict[str, Any] = {"last_plan": None, "awaiting_confirmation": False}
+        self.model = model
 
     # -----------------------------
     # Public entry point
@@ -27,7 +28,11 @@ class ConciergeAgent:
         event_type = event.get("type")
         action = event.get("action")
         cap = event.get("capability")
+        use_llm = event.get("use_llm", True)
+        model = event.get("model") or self.model
 
+        if event_type in {"init", "upload_docs", "rerun_infer"}:
+            return self._run_infer(use_llm=use_llm, model=model)
         if event_type in {"init", "upload_docs", "rerun_infer"}:
             return self._run_infer()
 
@@ -45,11 +50,12 @@ class ConciergeAgent:
     # -----------------------------
     # Analyze current state
     # -----------------------------
-    def _run_infer(self) -> Dict[str, Any]:
-        planner = PlannerInterface(self.vertical, str(self.data_dir), llm_client=self.llm_client)
-        plan = planner.generate_plan_preview(use_llm=True)
+    def _run_infer(self, use_llm: bool = True, model: str | None = None) -> Dict[str, Any]:
+        planner = PlannerInterface(
+            self.vertical, str(self.data_dir), llm_client=self.llm_client, model=model
+        )
+        plan = planner.generate_plan_preview(use_llm=use_llm)
         self.state["last_plan"] = plan
-
         text_summary = self._textual_summary(plan)
         return {"type": "factory_plan_preview", "text": text_summary, "plan": plan}
 

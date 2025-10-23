@@ -10,17 +10,21 @@ class PlannerInterface:
     Produces structured plan previews for the Concierge to present to the user.
     """
 
-    def __init__(self, vertical: str, data_dir: str, llm_client=None):
+    def __init__(self, vertical: str, data_dir: str, llm_client=None, model: str | None = None):
         self.vertical = vertical
         self.data_dir = Path(data_dir)
         self.llm_client = llm_client
+        self.model = model
 
     def generate_plan_preview(self, use_llm: bool = True) -> Dict[str, Any]:
         """
         Generates a structured capability plan + UI metadata for Concierge.
         """
         infer = InferCapabilities(
-            vertical=self.vertical, data_dir=str(self.data_dir), llm_client=self.llm_client
+            vertical=self.vertical,
+            data_dir=str(self.data_dir),
+            llm_client=self.llm_client,
+            model=self.model,
         )
         result = infer.infer(use_llm=use_llm)
         return self._format_for_ui(result)
