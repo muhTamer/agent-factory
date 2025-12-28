@@ -1,0 +1,13 @@
+id: complaint
+capabilities:
+- complaint
+description: Auto-generated blueprint for 'complaint' in fintech.
+entrypoint: app.shared.fsm.build_agent
+inputs:
+- policy.yaml
+- sop.md
+output:
+  eligibility: string
+  steps: list
+  ticket: object
+version: '1.0'

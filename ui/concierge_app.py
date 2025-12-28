@@ -6,7 +6,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 from pathlib import Path
-import tempfile
 from app.concierge.concierge_agent import ConciergeAgent
 import app.llm_client as llm_client
 
@@ -56,7 +55,8 @@ uploaded_files = st.file_uploader(
 )
 
 # Create temporary working directory
-work_dir = Path(tempfile.mkdtemp())
+work_dir = Path(".workspace")
+work_dir.mkdir(exist_ok=True)
 for f in uploaded_files:
     content = f.read()
     (work_dir / f.name).write_bytes(content)
@@ -140,8 +140,16 @@ elif generate:
 
 elif approve:
     res = agent.handle_event({"type": "user_action", "action": "approve_deploy_dry"})
-    st.success(res["text"])
-    st.json(res["deployment_request"])
+    if res.get("type") == "decision_result":
+        st.success(res["text"])
+        dep = res["deployment_request"]
+        st.write("### ✅ Deployment Spec")
+        st.write(f"**Spec path:** `{dep['spec_path']}`")
+        st.write("**Run the runtime locally:**")
+        st.code(dep["uvicorn_command"], language="bash")
+        st.caption("Then open http://127.0.0.1:8088/health")
+    else:
+        st.warning(res.get("text") or "Could not generate deployment spec.")
 
 else:
     st.info("Upload your files and click **Analyze Documents** to get started.")

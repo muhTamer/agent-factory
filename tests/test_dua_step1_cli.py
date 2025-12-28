@@ -42,7 +42,7 @@ def test_cli_with_llm_advisory(tmp_path, monkeypatch, capsys):
             "--vertical",
             "fintech",
             "--model",
-            "gpt-4o-mini",
+            "gpt-5-mini",
         ],
     )
 

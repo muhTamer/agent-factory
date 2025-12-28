@@ -1,0 +1,311 @@
+{
+  "version": "1.0",
+  "vertical": "fintech",
+  "modes": {
+    "dry_run": true
+  },
+  "paths": {
+    "base_dir": "C:\\Users\\mozaki\\OneDrive\\CBS\\Thesis\\agent-factory\\.workspace",
+    "policy_pack": "spec/base_policy_pack.yaml"
+  },
+  "agents": [
+    {
+      "id": "guardrails",
+      "type": "guardrails",
+      "config": "spec/base_policy_pack.yaml"
+    },
+    {
+      "id": "faq_knowledge_rag",
+      "type": "autogen",
+      "blueprint": "knowledge_rag",
+      "status": "ready",
+      "inputs": {
+        "docs": [
+          "BankFAQs.csv",
+          "<UPLOAD:cleaned_faq_entries>",
+          "<UPLOAD:complete_product_specifications>",
+          "<UPLOAD:regulatory_and_disclosure_documents>",
+          "<UPLOAD:contact_and_operational_details>"
+        ]
+      },
+      "blueprint_meta": {
+        "agent_kind": "knowledge_rag",
+        "description": "Customer-facing FAQ retrieval and answer-synthesis agent for banking products. Uses available FAQ CSV and supplemental product and regulatory documents to ground answers and cite sources when possible.",
+        "capabilities": [
+          "semantic search over FAQs and product docs",
+          "answer synthesis with citation to source docs",
+          "detects when policy or product info is missing and recommends escalation",
+          "identifies PII in user queries and requests verification before disclosing account-specific info"
+        ],
+        "tools": [],
+        "vertical": "fintech"
+      }
+    },
+    {
+      "id": "complaint_workflow",
+      "type": "autogen",
+      "blueprint": "workflow_runner",
+      "status": "ready",
+      "inputs": {
+        "workflow_spec": {
+          "id": "complaint_handling_fsm_v1",
+          "description": "FSM to intake, verify, classify, and resolve customer complaints with escalation and ticketing integration.",
+          "engine": "fsm",
+          "slots": {
+            "complaint_id": {
+              "type": "string",
+              "required": true,
+              "description": "Internal or external complaint identifier"
+            },
+            "customer_id": {
+              "type": "string",
+              "required": true,
+              "description": "Customer identifier to lookup account and verification"
+            },
+            "customer_verified": {
+              "type": "boolean",
+              "required": false,
+              "description": "Set to true if identity verification passed"
+            },
+            "urgent": {
+              "type": "boolean",
+              "required": false,
+              "description": "Whether the complaint is marked urgent"
+            },
+            "preferred_resolution": {
+              "type": "string",
+              "required": false,
+              "description": "Customer's requested outcome (refund, replacement, explanation, etc.)"
+            },
+            "policy_doc_path": {
+              "type": "string",
+              "required": false,
+              "description": "Path to complaint-handling policy document (placeholder allowed)"
+            }
+          },
+          "states": {
+            "start": {
+              "description": "Begin complaint intake and capture initial details.",
+              "on": {
+                "submit": "verify_identity"
+              },
+              "on_enter": "Collect complaint metadata and preferred_resolution."
+            },
+            "verify_identity": {
+              "description": "Verify customer's identity before discussing account specifics.",
+              "on": {
+                "verified": "classify",
+                "failed_verification": "escalate_to_human"
+              },
+              "on_enter": "Request verification and call verify_identity tool.",
+              "action": "verify_identity"
+            },
+            "classify": {
+              "description": "Classify complaint type (billing, fraud, service, product, other).",
+              "on": {
+                "classification_done": "attempt_resolution",
+                "unable_to_classify": "escalate_to_human"
+              },
+              "on_enter": "Use available data and lookup_customer to classify complaint.",
+              "action": "lookup_customer"
+            },
+            "attempt_resolution": {
+              "description": "Attempt automated resolution based on policy and classification.",
+              "on": {
+                "resolved": "close",
+                "needs_refund": "process_refund",
+                "not_resolved": "create_ticket",
+                "policy_missing": "escalate_to_human"
+              },
+              "on_enter": "Apply resolution templates; consult policy_doc_path if provided.",
+              "action": "apply_resolution_templates"
+            },
+            "process_refund": {
+              "description": "Initiate refund if allowed by policy and requested.",
+              "on": {
+                "refund_initiated": "close",
+                "refund_failed": "escalate_to_human"
+              },
+              "on_enter": "Call initiate_refund tool with necessary parameters.",
+              "action": "initiate_refund"
+            },
+            "create_ticket": {
+              "description": "Create an internal ticket for cases that require manual handling.",
+              "on": {
+                "ticket_created": "close",
+                "ticket_creation_failed": "escalate_to_human"
+              },
+              "on_enter": "Call create_ticket tool to log the complaint and include recommended actions.",
+              "action": "create_ticket"
+            },
+            "escalate_to_human": {
+              "description": "Escalate to a human agent when automated handling is insufficient or verification fails.",
+              "on": {},
+              "on_enter": [
+                "Notify human queue and call handoff_to_human tool.",
+                "Include context, classification, actions attempted, and policy gaps."
+              ],
+              "action": "handoff_to_human",
+              "terminal": true
+            },
+            "close": {
+              "description": "Close the complaint workflow after successful automated or ticketed handling.",
+              "on": {},
+              "on_enter": [
+                "Send closure message to customer with resolution details or ticket reference.",
+                "Update internal systems as needed."
+              ],
+              "action": "update_ticket",
+              "terminal": true
+            }
+          },
+          "initial_state": "start"
+        }
+      },
+      "blueprint_meta": {
+        "agent_kind": "workflow_runner",
+        "description": "Complaint intake and resolution orchestrator. Finite-state workflow that verifies identity, classifies complaint type, attempts automated resolution (including refunds where policy allows), creates tickets, and escalates to human agents when needed or policy is missing.",
+        "capabilities": [
+          "guided complaint intake",
+          "automated identity verification via verify_identity tool",
+          "classification of complaint types and selection of resolution path",
+          "initiates refunds and creates tickets using platform tools when policy permits",
+          "escalates to human when verification fails, policy missing, or resolution fails"
+        ],
+        "tools": [],
+        "vertical": "fintech"
+      }
+    },
+    {
+      "id": "qa_workflow",
+      "type": "autogen",
+      "blueprint": "workflow_runner",
+      "status": "ready",
+      "inputs": {
+        "workflow_spec": {
+          "id": "qa_evaluator_fsm_v1",
+          "description": "FSM to evaluate, score, and report on agent responses for monitoring and QA.",
+          "engine": "fsm",
+          "slots": {
+            "sample_response_id": {
+              "type": "string",
+              "required": true,
+              "description": "Identifier for the response sample being evaluated"
+            },
+            "agent_response": {
+              "type": "string",
+              "required": true,
+              "description": "The agent's full response text"
+            },
+            "ground_truth": {
+              "type": "string",
+              "required": false,
+              "description": "Reference/ground truth text if available"
+            },
+            "policy_doc_path": {
+              "type": "string",
+              "required": false,
+              "description": "Path to policy document to check compliance against (use placeholder if missing)"
+            },
+            "evaluator_threshold": {
+              "type": "number",
+              "required": false,
+              "description": "Score threshold below which the response should be flagged"
+            }
+          },
+          "states": {
+            "start": {
+              "description": "Begin QA evaluation, validate inputs.",
+              "on": {
+                "evaluate": "analyze"
+              },
+              "on_enter": "Validate sample_response_id and agent_response."
+            },
+            "analyze": {
+              "description": "Run factuality, citation, and tone checks against available docs.",
+              "on": {
+                "analysis_complete": "score",
+                "missing_policy": "flag_policy_gap"
+              },
+              "on_enter": "Compare agent_response to ground_truth and policy_doc_path where available.",
+              "action": "perform_factual_and_tone_checks"
+            },
+            "score": {
+              "description": "Compute QA score and determine if escalation or ticketing is needed.",
+              "on": {
+                "score_ok": "report",
+                "score_low": "create_monitoring_ticket"
+              },
+              "on_enter": "Aggregate metrics into a numeric score."
+            },
+            "flag_policy_gap": {
+              "description": "Flag missing policy or documentation needed to validate responses.",
+              "on": {
+                "noted": "report"
+              },
+              "on_enter": "Record missing policy_doc_path in report and recommend upload of policies.",
+              "action": "note_missing_policy"
+            },
+            "create_monitoring_ticket": {
+              "description": "Create a ticket for QA team for low-scoring or repeated failures.",
+              "on": {
+                "ticket_created": "report",
+                "ticket_failed": "report"
+              },
+              "on_enter": "Call create_ticket tool with QA report and sample context.",
+              "action": "create_ticket"
+            },
+            "report": {
+              "description": "Emit structured QA report to monitoring dashboard and storage.",
+              "on": {},
+              "on_enter": "Store QA record, optionally notify stakeholders if required.",
+              "terminal": true
+            }
+          },
+          "initial_state": "start"
+        }
+      },
+      "blueprint_meta": {
+        "agent_kind": "workflow_runner",
+        "description": "Quality evaluator that runs post-response checks: factuality vs. supplied docs, tone and compliance checks, and scoring. Produces structured QA reports and triggers monitoring alerts or retraining tickets.",
+        "capabilities": [
+          "evaluate agent responses for factual accuracy against supplied documents",
+          "check compliance with tone and policy requirements",
+          "assign QA scores and produce structured reports",
+          "create tickets for repeated failures or systemic issues"
+        ],
+        "tools": [],
+        "vertical": "fintech"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "ticketing",
+      "type": "dummy",
+      "base_url": null
+    }
+  ],
+  "plan_preview": {
+    "missing_docs": [
+      "<UPLOAD:cleaned_faq_entries_without_placeholders>",
+      "<UPLOAD:complete_product_specifications>",
+      "<UPLOAD:regulatory_and_disclosure_documents>",
+      "<UPLOAD:contact_and_operational_details>",
+      "<UPLOAD:complaint_handling_policy>",
+      "<UPLOAD:escalation_matrix_and_slas>",
+      "<UPLOAD:regulatory_compliance_guidelines>",
+      "<UPLOAD:annotated_complaint_dataset>",
+      "<UPLOAD:response_templates_canned_replies>",
+      "<UPLOAD:ownership_and_contact_points>",
+      "<UPLOAD:monitoring_and_qa_guidelines>"
+    ],
+    "warnings": [
+      "FAQ agent has only a noisy BankFAQs.csv detected. Provide cleaned FAQ entries and product/regulatory docs to improve answer grounding and reduce hallucination risk.",
+      "Complaint handler workflow will function but lacks complaint policy and SLA documents; automated resolutions (refunds, chargebacks) may be restricted and will escalate to humans when policy is missing.",
+      "Guardrails (runtime policy pack) are not emitted as an agent blueprint here; ensure the runtime includes the base_policy_pack.yaml to enforce safety constraints (PII, escalation rules).",
+      "QA evaluator requires policy and sample/annotated datasets to produce high-quality monitoring; consider uploading monitoring_and_qa_guidelines and annotated complaint dataset."
+    ],
+    "rationale": "We produced three executable blueprints that align with the existing factory plan: a knowledge_rag FAQ agent for document-grounded answers; a workflow_runner complaint handler implementing an explicit FSM to safely verify, classify, attempt automated resolution (using available tools by name), create tickets, and escalate; and a workflow_runner QA evaluator for structured post-response checks and monitoring. Knowledge agents reference placeholders for missing documents so the factory can be provisioned immediately while awaiting uploads. The complaint and QA agents are workflows because they must orchestrate conditional, stateful steps and call platform tools (verify_identity, create_ticket, initiate_refund, handoff_to_human) during runtime. We omitted guardrails as requested (they belong to the runtime spine) and aggregated all missing document placeholders to guide the next uploads that will materially improve automation and reduce escalations."
+  }
+}

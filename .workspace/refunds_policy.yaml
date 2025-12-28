@@ -1,0 +1,52 @@
+# data/refunds_policy.yaml
+# Example refund policy document used by the Agent Factory POC
+
+metadata:
+  policy_name: Refunds Policy
+  version: 1.0
+  domain: fintech
+  last_updated: 2025-01-10
+  owner: Customer Service Department
+
+description: >
+  This policy defines the eligibility, limits, and process for handling customer refund requests
+  across all banking and digital wallet products. It ensures compliance with AML and KYC regulations
+  and provides consistent customer experience.
+
+rules:
+  - id: refund_eligibility_basic
+    title: Basic Refund Eligibility
+    when: pre_guard
+    condition: >
+      customer_account_verified == true and
+      transaction_age_days <= 90
+    action: allow
+    explanation: Refunds are eligible within 90 days for verified customers.
+
+  - id: refund_amount_limit
+    title: Refund Amount Limit
+    when: pre_guard
+    condition: refund_amount <= 5000
+    action: allow
+    explanation: Refunds above $5000 require supervisor approval.
+
+  - id: refund_privacy_protection
+    title: PII Protection
+    when: post_guard
+    action: transform
+    transform: redact_pii
+    explanation: Redact personal identifiers before sharing refund case details.
+
+  - id: refund_rejection_rule
+    title: Non-Eligible Transactions
+    when: pre_guard
+    condition: >
+      transaction_type in ["fraud", "chargeback"] and
+      investigation_status != "resolved"
+    action: deny
+    explanation: Refund requests under investigation cannot be approved until resolved.
+
+references:
+  - regulation: AML/KYC
+  - standard: PSD2 (EU)
+  - company_policy: Privacy Policy 2024

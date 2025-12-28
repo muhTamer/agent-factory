@@ -140,7 +140,7 @@ class InferCapabilities:
             # pass-through to your real client
             result = self.llm_client.chat_json(
                 messages=messages,
-                model=self.model or os.getenv("AZURE_OPENAI_DEPLOYMENT") or "gpt-4o-mini",
+                model=self.model or os.getenv("AZURE_OPENAI_DEPLOYMENT") or "gpt-5-mini",
             )
             return self._normalize_llm_result(cap, result)
         except Exception as e:

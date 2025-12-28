@@ -1,0 +1,25 @@
+id: workflow_runner
+version: "1.0"
+description: "Generic workflow agent builder. Executes an LLM-generated workflow_spec via the workflow engine."
+capabilities:
+  - workflow_runner
+entrypoint: app.shared.workflow.build_agent
+inputs:
+  workflow_spec:
+    type: object
+    required: true
+  docs:
+    type: array
+    items: string
+    required: false
+  policies:
+    type: array
+    items: string
+    required: false
+  tools:
+    type: array
+    items: string
+    required: false
+outputs:
+  agent_py: generated/<agent_id>/agent.py
+  workflow_spec: generated/<agent_id>/workflow_spec.json

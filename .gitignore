@@ -33,3 +33,6 @@ data/
 *.key
 *.pem
 
+# Ignore generated artifacts
+generated/
+

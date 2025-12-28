@@ -36,7 +36,7 @@ def chat_json(messages, model=None, temperature=1.0):
     Returns a Python dict.
     """
     client = get_client()
-    deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT") or model or "gpt-4o-mini"
+    deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT") or model or "gpt-5-mini"
 
     response = client.chat.completions.create(
         model=deployment,

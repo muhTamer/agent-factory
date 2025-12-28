@@ -1,0 +1,13 @@
+id: knowledge_rag
+version: "1.0"
+description: "Generic knowledge agent builder (RAG). Uses uploaded documents to answer questions."
+capabilities:
+  - knowledge_rag
+entrypoint: app.shared.rag.build_agent
+inputs:
+  docs:
+    type: array
+    items: string
+    required: true
+outputs:
+  agent_py: generated/<agent_id>/agent.py

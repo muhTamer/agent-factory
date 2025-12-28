@@ -1,0 +1,265 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "workflow_spec.schema.json",
+    "title": "WorkflowSpec",
+    "description": "Executable FSM workflow specification for workflow_runner agents",
+    "type": "object",
+    "required": [
+        "id",
+        "description",
+        "engine",
+        "slots",
+        "states",
+        "initial_state"
+    ],
+    "properties": {
+        "id": {
+            "type": "string",
+            "minLength": 1
+        },
+        "description": {
+            "type": "string",
+            "minLength": 1
+        },
+        "engine": {
+            "type": "string",
+            "enum": [
+                "fsm"
+            ]
+        },
+        "slots": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+                "type": "object",
+                "required": [
+                    "type",
+                    "required",
+                    "description"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "string",
+                            "boolean",
+                            "integer",
+                            "number"
+                        ]
+                    },
+                    "required": {
+                        "type": "boolean"
+                    },
+                    "description": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        "states": {
+            "description": "Workflow states. Supports both array and object (LLM-friendly) forms.",
+            "oneOf": [
+                {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "on_enter": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                ]
+                            },
+                            "transitions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": [
+                                        "event",
+                                        "target"
+                                    ],
+                                    "properties": {
+                                        "event": {
+                                            "type": "string",
+                                            "minLength": 1
+                                        },
+                                        "target": {
+                                            "type": "string",
+                                            "minLength": 1
+                                        }
+                                    },
+                                    "additionalProperties": true
+                                }
+                            },
+                            "terminal": {
+                                "type": "boolean"
+                            }
+                        },
+                        "additionalProperties": true,
+                        "allOf": [
+                            {
+                                "anyOf": [
+                                    {
+                                        "required": [
+                                            "transitions"
+                                        ]
+                                    },
+                                    {
+                                        "properties": {
+                                            "terminal": {
+                                                "const": true
+                                            }
+                                        },
+                                        "required": [
+                                            "terminal"
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    "type": "object",
+                    "minProperties": 1,
+                    "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string"
+                            },
+                            "on": {
+                                "description": "Event → next_state mapping",
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "string",
+                                    "minLength": 1
+                                }
+                            },
+                            "transitions": {
+                                "description": "Alternative transitions list format",
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": [
+                                        "event",
+                                        "next_state"
+                                    ],
+                                    "properties": {
+                                        "event": {
+                                            "type": "string",
+                                            "minLength": 1
+                                        },
+                                        "next_state": {
+                                            "type": "string",
+                                            "minLength": 1
+                                        }
+                                    },
+                                    "additionalProperties": true
+                                }
+                            },
+                            "on_enter": {
+                                "description": "Entry actions",
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                ]
+                            },
+                            "action": {
+                                "description": "Single shorthand action (e.g. call:create_ticket)",
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "actions": {
+                                "description": "Optional list of actions",
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                }
+                            },
+                            "type": {
+                                "description": "Optional terminal marker (e.g. 'final')",
+                                "type": "string"
+                            },
+                            "terminal": {
+                                "type": "boolean"
+                            }
+                        },
+                        "additionalProperties": true,
+                        "allOf": [
+                            {
+                                "anyOf": [
+                                    {
+                                        "required": [
+                                            "on"
+                                        ]
+                                    },
+                                    {
+                                        "required": [
+                                            "transitions"
+                                        ]
+                                    },
+                                    {
+                                        "properties": {
+                                            "terminal": {
+                                                "const": true
+                                            }
+                                        },
+                                        "required": [
+                                            "terminal"
+                                        ]
+                                    },
+                                    {
+                                        "properties": {
+                                            "type": {
+                                                "enum": [
+                                                    "final",
+                                                    "terminal"
+                                                ]
+                                            }
+                                        },
+                                        "required": [
+                                            "type"
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        "initial_state": {
+            "type": "string",
+            "minLength": 1
+        }
+    },
+    "additionalProperties": false
+}

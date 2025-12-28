@@ -1,0 +1,14 @@
+id: faq
+capabilities:
+- faq
+description: Auto-generated blueprint for 'faq' in fintech.
+entrypoint: app.shared.rag.build_agent
+inputs:
+- csv
+- md
+- txt
+output:
+  answer: string
+  citations: list
+  score: float
+version: '1.0'

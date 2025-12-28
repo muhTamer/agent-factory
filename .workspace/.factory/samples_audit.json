@@ -1,0 +1,806 @@
+[
+  {
+    "timestamp": "2025-11-10T14:44:42.668462",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Do I have to pay any margin money - my own funding ([PERSON] [PERSON] Education), [PERSON] upto Rs. $X,XXX lacs - Nil, For loans above Rs. $X,XXX lacs - $X,XXX%, loans What is the maximum amount I can borrow with an M&N [PERSON]-owned [PERSON], You can get an additional loan on your existing M&N [PERSON] loan if you have a clear repayment track record of $X,XXX months or more, till the extent of your existing loan amount at an attractive rate of interest., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-10T14:44:52.611143",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How is the value topped up, GiftPlus cards are non reloadable in nature and hence cannot be topped up., cards What happens if premiums are not paid, If you have not paid your premium by the expiry of the grace period, you will have following options: to revive the Policy within a period of $X,XXX years from the date of discontinuance, or to completely withdraw from the Policy without any risk cover, or to convert the policy into paid-up policy (available on discontinuance after completion of the $X,XXX policy years) If you do not communicate to us on the above options, the following treatment will be applicable Discontinuance before completion of $X,XXX years from commencement of the policy: [PERSON] less applicable charges will be moved to \u00e2\u20ac\u02dc[PERSON] Fund (DPF)\u00e2\u20ac\u2122.The proceeds from DPF will be paid out upon the completion of the lock-in period. Discontinuance on and after completion of the $X,XXX years from commencement of the policy : [PERSON] will be paid out to you. You have the option to revive a discontinued policy within two consecutive years from the date of discontinuance of the policy, subject to payment of all due & unpaid premiums and our underwriting policy, insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-13T09:53:14.311014",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Can a [PERSON] be linked to two different [PERSON] for the Sweep-in, A [PERSON] can only be linked to one savings account for the Sweep-in facility., accounts Whom should I contact if my card is lost or stolen, Immediately report the loss of your M&N Bank ForexPlus [PERSON] by calling M&N [PERSON] Banking. You will not be liable for transactions on your [PERSON] (if any) from the moment your report is registered with the bank., cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-13T09:53:25.859020",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Can I use my [PERSON] to pay online, Currently your [PERSON] can be used to make purchases from online merchants who have the Verified by Visa/ MasterCard SecureCode certification displayed on their web site. Learn more about using your Debit card for making online purchases here., cards Why do I need [PERSON], Medical emergencies come un-announced. Cost of healthcare can be enormous. In the absence of health insurance, this expense has to be borne out of pocket. This has an adverse impact on the financial situation of the family. World over long term illnesses are known to be the reason behind a family\u00e2\u20ac\u2122s slide down the social ladder. [PERSON] cover provides the much needed financial assistance and will ensure that you access healthcare facilities when you need them the most without worrying about the medical expenses., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-13T09:59:12.776399",
+    "vertical": "retail",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What if I forget my ATM PIN, You can call the M&N bank PhoneBanking to request for re-issuance of PIN or place a request through Prepaid NetBanking. A new PIN will be sent across to your registered mailing address held on record with the bank., cards What is the maximum value for which the Card can be used, There is no limit imposed on the usage of ISIC ForexPlus Card. Customers can withdraw/utilise any amount, upto the value loaded on the card at any ATM/POS. However, there are some ATMs service providers which have put in per day / per transaction limit towards cash dispense which cannot be changed by the Bank. In such cases the cardholder might need to do multiple transactions if he wants to withdraw any amount higher than that allowed in one transaction., cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-13T09:59:25.641848",
+    "vertical": "retail",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What are domiciliary hospitalisation expenses under the [PERSON] policy, Domiciliary hospitalisation means medical treatment for a period exceeding $X,XXX days for such illness, disease or injury which in the normal course would require care and treatment at a hospital/nursing home but is actually taken while confined at home in India, but only under the following circumstances: The condition of the patient is such that he/she cannot be taken to the hospital/nursing home The patient cannot be taken to the hospital/nursing home as a result of lack of accommodation therein View more, insurance What is the time taken to realize outstation cheques, The indicative time taken for the realization of out-station cheques is given below: Cheques drawn where M&N Bank has a branch, credit will be given on receipt of clear funds in: Main metro locations (Mumbai, Chennai, Kolkata, [PERSON]): $X,XXX working days Metro centers and state capitals (other than those of [PERSON] states and Sikkim): Maximum period of $X,XXX working days. In all other centers where we have branches: maximum period of $X,XXX working days. Cheques drawn on non-branch locations where we have a tie-up with correspondent bank, credit will be given on receipt of clear funds: Within a maximum period of $X,XXX working days Cheques drawn on non-branch locations where we do not have a tie-up with correspondent bank, credit will be given on receipt of clear funds: Within a maximum p"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-13T10:15:22.644396",
+    "vertical": "retail",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How many bank and depository accounts can I link to a trading account, You can link up to five M&N [PERSON] Bank accounts and five M&N [PERSON] accounts to your trading account., investments What is the general documentation requirement to open an [PERSON] Account, The following documents are required: Account opening form for non-individuals to be completed and signed by all authorized signatories Registration proof with any state regulatory authorities Certificate of Registration with the [PERSON] Commissioner (for charitable trusts) [PERSON] registration u/s $X,XXXA for entities as specified in RBI circular [PERSON] of the [PERSON] / Bye-laws / MOA/ [PERSON] of address of the [PERSON] Copy of the Resolution from Board of Trustees / governing body defining who is going to be the authorized signatory in the account / authorizing the opening and conduct of the account Proof of appointment of present Trustees/ governing body members in case they are not listed in the [PERSON] / bye-laws / constitutional document PAN Card / Form $X,XXX as may be applicable FCRA declaration for receipt / non-receipt of foreign contribution into the account [PERSON] declaration (only for Trusts) Proof of identity and photographs of all trustees authorised to operate the account View more, accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-13T10:15:39.446697",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Do I need to have an M&N Bank account to purchase M&N [PERSON] Currency ForexPlus [PERSON], No, you don't need to have an account with M&N Bank to purchase the M&N [PERSON] Currency ForexPlus [PERSON]. You can just walk into any of our M&N bank branches in India and purchase it over the counter., cards How do I utilize this amount, This amount is made available in your [PERSON]. You can withdraw it through the regular modes i.e. ATM, Cheques, online transfers., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-13T10:15:41.883184",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How much loan can I avail of [PERSON], You can avail of a loan from Rs $X,XXX/- to Rs $X,XXX,$X,XXX/- depending on your income, repayment capacity and respective location product cap., loans How would you utilise my funds, Your funds will be invested into Equity and Debt instruments as per the [PERSON] Ratio defined by the company. This is to provide you with maximum returns from market upside, as well as protect your capital from any downfall., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-13T10:15:49.457323",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Can I use the DCC/ MCC option at the time of transaction, Whenever ForexPlus cardholder opts for DCC/MCC option on DCC/MCC enabled POS/ATM terminals, his/her transaction passes through cross currency transactions twice. It is not advisable for a ForexPlus cardholder to opt for DCC/MCC while using ForexPlus Platinum card for making payments. Please note that every cross currency transaction attracts currency conversion charges at applicable rates. Apart from this, the cardholder will also get penalised due to fluctuation in currency conversion rate., cards I am not a technology Start-up. Can I still open SmartUp [PERSON], Yes you can. This product caters to all start-ups with an innovative business idea., accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-13T10:15:55.994138",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What will be done with the post dated cheques if I request to change the mode of repayment/account for my loan, [PERSON] Cheques(PDCs)/[PERSON] submitted towards loan repayment that have not been encashed, will be defaced and retained by the Bank. In case, you wish to have your old [PERSON] Cheques(PDCs)/ [PERSON] to be returned to you, kindly lodge a request at the [PERSON] [PERSON] or through PhoneBanking or write us an email at www.M&N bank.com/services within $X,XXX days from the date of application of change in repayment instructions. In case, we do not hear from you within the stipulated period, the defaced cheques will be destroyed., loans What is RTGS, RTGS is the [PERSON] [PERSON] which is used for the transfer of amounts of Rs. $X,XXX,$X,XXX or more from one bank account to another bank account (any bank located anywhere in India if attached with an Internet system) at very minimal charges. The amount is credited into the beneficiary's account in real time. For amounts less than Rs. $X,XXX,$X,XXX we use NEFT( [PERSON] [PERSON])., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T12:38:01.392590",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Do I need to pay additional amount over and above Cash withdrawal Charges levied by the M&N Bank for ATM transaction, In certain countries ATM Service providers are authorized to charge surcharge/convenience fees from the cardholders for accessing the ATM to withdraw money. These charges are levied by the ATM service provider over and above the charges levied by the M&N Bank, and M&N Bank bank has no control over the charges as these charges are not levied by the bank.These charges are normally displayed to the customer during the transaction and the customer has the option to either proceed with the transaction or abort if the charges are not acceptable to the customer., cards Who can trade in derivatives with an M&N [PERSON] Account, Trading in Derivatives will be available only to those customers who have submitted their financial documents or Income proof and signed the necessary agreements., investments"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T12:38:13.777667",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What are the medical reports that need to be submitted to avail of [PERSON], For any insured with an adverse history of: [PERSON] PP and Fasting ECG Report with tracing [PERSON] report USG [PERSON] Any insured with any of these needs a doctor\u00e2\u20ac\u2122s certificate with all details of past ailments and present medication, if any and a doctor\u00e2\u20ac\u2122s certificate stating the insured is fit to travel. View more, insurance What is the minimum premium that I need to pay in order to take an M&N [PERSON] Policy, M&N [PERSON] low ticket size which makes it affordable for customers from all income segments. The minimum premiums have been outlined below : Frequency of [PERSON] [PERSON] [PERSON] [PERSON] [PERSON]. $X,XXX No limit$X,XXX Half-[PERSON]. $X,XXX [PERSON]. $X,XXX [PERSON]. $X,XXX $X,XXXThe minimum premium amounts are exclusive of applicable service tax and education cess. $X,XXXThe acceptance of any case is subject to Board approved underwriting policy. $X,XXXIf you opt for the monthly premium frequency, three months premiums in advance on the date of commencement of policy shall be accepted, as a prerequisite to allow monthly mode of premium payment., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T12:48:37.823150",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What should I do in the case of a void transaction for NRO [PERSON], Just fax us a copy of the void transaction slip. You can also send it to or submit the same at your nearest M&N Bank branch. For PhoneBanking numbers [PERSON]., cards Are there any tax benefits available, The premiums paid by you are eligible for tax benefits under Section $X,XXXCCC of the [PERSON] Act, $X,XXX$X,XXX. Up to $X,XXX/$X,XXXrd of the policy proceeds can be taken as tax-free commuted value, as prescribed under Sec $X,XXX ($X,XXXA) of the [PERSON] Act, $X,XXX$X,XXX., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T12:48:47.607674",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: I have other sources of income. Do I still need to plan for retirement, Diversification of income source is good. However, as you get older, you might not be able to work the way you can now. The other sources of income might not turn out to be as successful as they are today. Hence, it is prudent to plan for your retirement through a pension plan., insurance How can I cancel my [PERSON] Card, To cancel your ForexPlus [PERSON], we request you visit our your nearest M&N Bank branch and place a request towards cancellation the of the card. Your request will be processed within one working day of us receiving the request and the available balance on the card will be refunded back to your account. Incase you do not have an account with us then a demand draft shall be issued for the respective refund amount. There are no charges towards the cancellation of a ForexPlus [PERSON]. However, currency conversion tax as applicable from time to time will be deducted at the time of providing credit to you. Kindly visit the following URL to access information for the complete address and contact details of our Branches and PhoneBanking centers:, cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T19:43:39.496636",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What is the maximum loan amount I can get for studies abroad, To study abroad, the maximum loan amount you can get is up to Rs. $X,XXX lakhs., loans What happens if I don't use my savings account for a very long time, The account becomes dormant if there are no customer initiated transactions (excludes system generated transactions like credit interest, debit interest), in the account for a continuous period of two years. If the account status is 'Dormant', transactions through [PERSON] Channels like ATM, NetBanking, PhoneBanking are not be allowed by the Bank., accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T19:43:55.232910",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Is a nomination facility available for lockers, Yes, a nomination facility is available to Individuals /Joint hirers of [PERSON] Lockers., accounts What transactions are included as a part of the [PERSON] Transactions limit for a month, The following transactions together comprise part of the [PERSON] [PERSON]: Cheques deposited into the account in other cities (in local clearing / within Bank) Inter-city payable-at-par cheques issued. Inter-city account to account funds transfers ([PERSON] & Collections) within M&N [PERSON]. View more, accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T19:44:09.864738",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What is the validity of the ISIC M&N Bank ForexPlus Card, The ISIC ForexPlus card shall be valid for period for $X,XXXyear., cards [PERSON] [PERSON] Account can I make payments to my suppliers at M&N [PERSON] through [PERSON] Book, Yes. When you open an account, you will be issued an at-par cheque book, which is payable at M&N Bank branches., accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T19:44:20.913133",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How do I obtain a NOC from the bank if my [PERSON] is mutilated and I wish to apply for a duplicate [PERSON] book for a vehicle under finance with M&N Bank, You may obtain the NOC for a duplicate [PERSON] book for the said purpose by visiting any of our [PERSON] [PERSON] and submitting the following documents: Request form for applying for the required NOC. Self attested copy of the [PERSON] book, duly self attested by you, along with the [PERSON] Certificate book for validation. Applicable fee of Rs. $X,XXX//- vide a cheque/payorder/demand draft favouring M&N [PERSON] [PERSON] No. << >>. In case a bearer submits the request on your behalf, a bearer authorisation along with KYC documents(self attested copy and original for validation) of the bearer, i.e. Identity and [PERSON] like PAN Card, [PERSON], [PERSON] or [PERSON] will also need to be provided. View more, loans Can I repay my loan earlier than the due date, Yes you can repay your loan at any time during the loan tenure. However prepayment is not permitted within $X,XXX months from loan disbursal date. For charge details, Click here, loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T20:19:06.660815",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Are there any transactions for which this Card should not be used, Yes, your Regalia ForexPlus Card should not be used towards temporary charge blocks - e.g. paying deposits at hotels, hiring of cars etc. In case you have paid these deposits using Regalia ForexPlus Card and the hotel/car rental agency etc. settles the transaction for an amount lesser than the amount blocked or you make final payment through any different mode, the balance amount will get credited into your account only after $X,XXX days from the transaction date. Note: [PERSON] reserves the right to charge the Card holder for any unauthorized amounts., cards How can I get my address changed in my loan account, In order to change your address in our records, we request you to visit the [PERSON] [PERSON] and submit the following documents: Request form for [PERSON]. [PERSON] copy of your revised address proof along with the original address proof for validation. In case a bearer submits the request on your behalf, a bearer authorisation along with KYC documents(self attested copy and original for validation) of the bearer,i.e. Identity and [PERSON] like PAN Card, [PERSON], [PERSON] or [PERSON] will also need to be provided., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T20:19:20.586268",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Can I access my account by telephone to conduct routine daily transactions, Yes you can. You can use PhoneBanking to perform the following operations: - Access your account details - Request account statements - [PERSON] Deposit related queries - Inquire about interest and FX rates - Request a cash delivery or pick-up - Order a new cheque book, accounts Where can I shop with Verified by Visa, You can shop at participating online stores that have the Verified by Visa/ MasterCard SecureCode mark., security"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T20:31:18.480014",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What is an injury or injuries, Injury or injuries means any physical, external or accidental bodily injury occurring suddenly in time and resulting solely and independently of any other cause or any physical defect or infirmity existing before the period of insurance., insurance What are the available plans under the [PERSON] policy, You can choose to be insured for any of the following amounts: Rs. $X,XXX,$X,XXX, Rs. $X,XXX,$X,XXX, Rs.$X,XXX,$X,XXX or Rs. $X,XXX,$X,XXX., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T20:31:32.019368",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What information do I need to provide when using the RTGS funds transfer service, When using RTGS [PERSON], there are a few essential details to provide: Amount to be remitted Account number from where the funds will be debited Name of the beneficiary bank, and the name of the beneficiary customer Account number of the beneficiary customer Sender to receiver information, if there is one The IFSC code of the receiving branch View more, fundstransfer What will be done with the post dated cheques if I request to change the mode of repayment/account for my loan, [PERSON] Cheques(PDCs)/[PERSON] submitted towards loan repayment that have not been encashed, will be defaced and retained by the Bank. In case, you wish to have your old [PERSON] Cheques(PDCs)/ [PERSON] to be returned to you, kindly lodge a request at the [PERSON] [PERSON] or through PhoneBanking or write us an email at www.M&N bank.com/services within $X,XXX days from the date of application of change in repayment instructions. In case, we do not hear from you within the stipulated period, the defaced cheques will be destroyed., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T21:04:28.293356",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What is the time taken to realize outstation cheques, The indicative time taken for the realization of out-station cheques is given below: Cheques drawn where M&N Bank has a branch, credit will be given on receipt of clear funds in: Main metro locations (Mumbai, Chennai, Kolkata, [PERSON]): $X,XXX working days Metro centers and state capitals (other than those of [PERSON] states and Sikkim): Maximum period of $X,XXX working days. In all other centers where we have branches: maximum period of $X,XXX working days. Cheques drawn on non-branch locations where we have a tie-up with correspondent bank, credit will be given on receipt of clear funds: Within a maximum period of $X,XXX working days Cheques drawn on non-branch locations where we do not have a tie-up with correspondent bank, credit will be given on receipt of clear funds: Within a maximum period of $X,XXX working days For more details on the outstation cheque collection policy, click hereFor other queries, [PERSON], accounts How soon can I get a FoodPlus card, FoodPlus card is a personalized VISA Card and the TAT for receiving a personalized card is $X,XXX working days., cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T21:04:39.030358",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How do I choose from options available under this plan, At policy inception, based on your child\u00e2\u20ac\u2122s future needs you can choose one of the three available [PERSON] Options. These options are: a) Aspiration: if you choose this option, you will receive a lump sum payout the end of your policy term. You can use this money to fund your child\u00e2\u20ac\u2122s marriage or any other large expense.b) Academia: if you choose this option, you will receive guaranteed payouts during the last $X,XXX policy years. The first guaranteed payout shall be higher than subsequent guaranteed payouts. You can use these payouts to fund your child\u00e2\u20ac\u2122s college education in future.c) Career:if you choose this option, you will receive guaranteed payouts during the last $X,XXX policy years. The last guaranteed payout shall be higher than previous guaranteed payouts. You can use these payouts to fund your child\u00e2\u20ac\u2122s schooling or college expenses in future. Also at policy inception, based on the level of protection you need for your child\u00e2\u20ac\u2122s financial planning, you can choose one of the two Death benefit options. These options are: a) Classic: in case of unfortunate demise of life assured during the policy term, the nominee receives [PERSON] benefit + accrued [PERSON] + accrued Bonuses, if any. After the payment of death benefit, the policy terminates.b) [PERSON]:in case of unfortunate demise of life assured during the policy term, the nominee receives [PERSON] benefit. All f"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T21:16:02.804549",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What are the age limits for this plan, The age limits for this plan include: [PERSON] Age $X,XXX years [PERSON] Age $X,XXX years [PERSON] Age $X,XXX years [PERSON] Age $X,XXX years, insurance Where can I use my EasyShop [PERSON] Card, Just look for the VISA logo when shopping, and if using an ATM check for the VISA/PLUS logo., cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T21:16:11.988180",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How do I make a claim under the [PERSON] Plan - [PERSON] policy, You can make a claim by calling our toll-free number [PHONE] (MTNL or BSNL) or [PHONE] ([PERSON]) or [PHONE] (Local/STD charges apply). We will then assist you with the submission of the required documents and the process will be completed within $X,XXX working days, once all the required documents are submitted., insurance What is the difference between fixed benefit health insurance plans and reimbursement health insurance plans, Fixed benefit plans cover the risk associated with a rare critical illness and provide predetermined sum insured upon diagnosis of few covered conditions. Payment under fixed benefit plans is usually made upon diagnosis and is not linked to the medical expense that the life insured may incur for treatment of such condition. Such plans help one to compensate for loss of income that arises due to long period of treatment and recuperation that may be required. Such policies pay the benefits only once and then the cover ceases. Reimbursement plans provide for reimbursement of actual medical expenses incurred in a hospital. These medical expenses could range from low amounts incurred in treatment of common ailments like malaria or dengue to significant expenses incurred in treatment of critical illnesses. Such policies do not cease on payment of claim once and continue to pay the claims every year subject to continuous renewals. View more, insuran"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T21:25:46.519874",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: [PERSON] I extend my M&N [PERSON] Travel insurance surakshapolicy, Please send a request mail to [email protected] for extension of policy along with health declaration attached to it. You will receive a response from us with the detailed procedure and the additional premium amount., insurance What is SI, SI stands for [PERSON]. It is one of the modes you can use to repay a loan, wherein your M&N Bank account is directly debited for the EMI amounts, based on your specific instructions in the form of the [PERSON] Mandate., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-24T21:25:54.661166",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Is my overdraft limit fixed, This will completely depend on the market rate of the securities that you have pledged. Of course, we will value your portfolio periodically to determine your overdraft limit. You can increase your overdraft limit by pledging more shares/securities , or decrease it by withdrawing them \u00e2\u20ac\u201c that's completely up to you., loans What is the minimum premium that I need to pay in order to take an M&N [PERSON] Policy, M&N [PERSON] low ticket size which makes it affordable for customers from all income segments. The minimum premiums have been outlined below : Frequency of [PERSON] [PERSON] [PERSON] [PERSON] [PERSON]. $X,XXX No limit$X,XXX Half-[PERSON]. $X,XXX [PERSON]. $X,XXX [PERSON]. $X,XXX $X,XXXThe minimum premium amounts are exclusive of applicable service tax and education cess. $X,XXXThe acceptance of any case is subject to Board approved underwriting policy. $X,XXXIf you opt for the monthly premium frequency, three months premiums in advance on the date of commencement of policy shall be accepted, as a prerequisite to allow monthly mode of premium payment., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-25T10:31:04.936635",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How much foreign exchange can I retain after the foreign trip , After returning from the overseas trip, you are required to surrender unspent foreign exchange held by you within $X,XXX days of return. You can retain foreign exchange up to USD $X,XXX (or equivalent) for future use after returning back to India., cards What is [PERSON] Kendra, [PERSON] [PERSON] addresses your queries pertaining to Two-[PERSON]. Contact our [PERSON] Kendra on [PHONE] between $X,XXX:$X,XXX AM and $X,XXX:$X,XXX PM from Monday to Friday, and $X,XXX:$X,XXX AM and $X,XXX:$X,XXX PM on Saturday. Alternatively you can also contact our PhoneBanking number for customer support. *[PERSON], loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-25T10:31:21.239755",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What is the time frame to report [PERSON] transaction dispute, Transaction dispute needs to be reported in writing within $X,XXX days from the transaction date., cards What is so special about this product, M&N Life APP has benefits such as: [PERSON] of $X,XXX% - $X,XXX% - APP is a unit linked plan that provides you the upside of the equity markets. However, to protect you from the market downfall, you have the [PERSON] Benefit of $X,XXX% -$X,XXX%, depending on the [PERSON] Term and [PERSON] combination. This means that your capital is completely protected from any downside [PERSON] \u00e2\u20ac\u201c As a Loyalty benefit, [PERSON] would be added to the fund value every alternate year starting from the end of $X,XXXth policy year. These additions will be equivalent to $X,XXX% of average fund value for the immediate preceding two years, subject to the policy being in force and all premiums paid till date. Early start to boost your corpus \u00e2\u20ac\u201c With APP you can start your retirement planning as early as $X,XXX years. The earlier you start, you would gain from the power of compounding and be able to build a bigger corpus before your retirement Lower vesting age limits \u00e2\u20ac\u201c The minimum vesting age of APP is $X,XXX years, this would help you to plan for early retirement, insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-25T11:10:50.383814",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Reissuance of ATM/[PERSON] PIN, For reissuance of your ATM / Debit PIN, please choose any of the following modes: A. Through NetBanking - Click on Debit card. [PERSON] [PERSON] the card number. Click on continue Select the Reason for [PERSON] the mailing address and confirm. Click on \u00e2\u20ac\u02dcTerms and conditions\u00e2\u20ac\u2122 and confirm B. [PERSON] - Please download [PERSON] [PERSON] Form should be duly filled and signed by all [PERSON]/s Submit the duly filled [PERSON] at the nearest [PERSON] receipt of Form and successful verification, the new ATM/[PERSON] PIN will be sent to your mailing address To verify your mailing address in our records, please log into NetBanking (Go to \u00e2\u20ac\u0153My [PERSON]) C. Through PhoneBanking - Validate your [PERSON] Number (TIN) View more, accounts What should I do if my [PERSON] is not working, If there is a technical problem because of which your card is not working, we request you to contact us on our [PERSON] center or branch and hotlist/block the said card. Please make a request to issue a new card for your account which will be free of cost and should be delivered to you in $X,XXX working days time once issued. For more details on PhoneBanking numbers and their timings, click here. For a comprehensive list of branches, click here. View more, cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-25T11:11:02.381122",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How long will it take for me to get a [PERSON], Once you submit your application form and supporting documents, we shall give approval within $X,XXX working days provided everything is in order. All loan approvals are at the sole discretion of the bank., loans How can I check the balance on my M&N Bank ISIC ForexPlus [PERSON], You can check the balance on ISIC ForexPlus Chip card with the help of NetBanking facility. You will need to use the card number as user ID & IPIN issued to you as part of the card kit to login to NetBanking facility. Alternately, you can also contact our PhoneBanking services to check the balance on your ISIC ForexPlus [PERSON]., cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-25T11:13:15.683348",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Can I load Forex card by making payment in Cash, No, Forex card can not be loaded against payment of cash. In case existing bank customer need to load his/her forex card by making payment in Cash then, the customer need to deposit cash in his/her account and then issue cheque or debit instruction to load the card., cards What is the procedure to add / cancel / modify a nominee in my locker, You will need to fill up the following forms and submit it to your locker branch. The forms are available in the Forms centre section of our website.- For addition of a nominee: Form SL$X,XXX (sole hirer) / SL$X,XXXA (joint hirer)- For cancellation of nomination: Form SL$X,XXX- For change of nomination: Form SL$X,XXX (sole hirer) / SL$X,XXXA (joint hirer)The branch will assist you after the form has been submitted by you. For more details, [PERSON]., accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-25T11:13:26.572635",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What happens if premiums are not paid, In case the Policyholder has not paid the premium by the expiry of the grace period, he/she will have the following options: to revive the Policy within a period of $X,XXX years from the date of discontinuance, or to completely withdraw from the Policy without any risk cover, or to convert the policy into paid-up policy (available only on discontinuance after completion of the $X,XXX policy years) If you do not communicate to us on the above options, the following treatment will be applicable Discontinuance before completion of $X,XXX years from commencement of the policy: [PERSON] less applicable charges will be moved to \u00e2\u20ac\u02dc[PERSON] Fund (DPF)\u00e2\u20ac\u2122.The proceeds from DPF will be paid out upon the completion of the lock-in period. Discontinuance on and after completion of the $X,XXX years from commencement of the policy: [PERSON] will be paid out to you. You have the option to revive a discontinued policy within two consecutive years from the date of discontinuance of the policy, subject to payment of all due & unpaid premiums and our underwriting policy., insurance What will be done with the post dated cheques if I request to change the mode of repayment/account for my loan, [PERSON] Cheques(PDCs)/[PERSON] submitted towards loan repayment that have not been encashed, will be defaced and retained by the Bank. In case, you wish to have your old [PERSON] Cheques(PDCs)/ [PERSON] to be returned to you,"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-25T11:13:34.081230",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What currencies are available, There are three currencies offered: Euro (EUR) [PERSON] (GBP) US Dollar (USD), cards Are there extra charges NRO [PERSON], There are absolutely no transaction charges when using your card at a merchant location. Just remember that at petrol pumps and railways you will be charged as per industry practice., cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-11-25T11:13:44.453086",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How does this card work, Your M&N Bank ForexPlus card will be activated with the required AUD / AED / CAD / CHF/ Euro / GBP / JPY / SGD and USD within $X,XXX hours from the bank getting the clear funds from you. Once actived, the card can be used at any international location for making payments at POS terminals or to withdraw cash at ATMs. (Usage of the card is not allowed in India, Nepal and Bhutan.) M&N Bank ForexPlus card works just like any Debit / [PERSON] for making payments at [PERSON] that have an electronic terminal. The transaction amount is deducted from available balance on the ForexPlus card. M&N Bank ForexPlus card is accepted at all [PERSON] displaying the Visa / Mastercard symbol. The card can be used to withdraw cash at all Visa / Mastercard ATMs worldwide. Irrespective of the currency loaded on the card, the cash will be dispensed based on the currencies supported at the ATMs. Please ensure that you remember the PIN given to you with the card pack, the PIN is unique for every card and cannot be changed at any domestic or international ATM. View more, cards Which are the currencies that can be loaded on the card, There are $X,XXX currencies offered which can be loaded on the card: [PERSON] (AUD) Dirhams (AED) [PERSON] (CAD) Euro (EUR) [PERSON] (JPY) [PERSON] (SGD) [PERSON] (GBP) [PERSON] (CHF) US Dollar (USD) [PERSON] (SEK) HongKong Dollar (HKD) [PERSON] (THB) [PERSON] Rand (ZAR) [PERSON] (OMR) [PERSON] Dollar (NZD)"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T18:20:48.863666",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Where I can earn \u00e2\u20ac\u02dcThanks Again\u00e2\u20ac\u2122 [PERSON], You can earn reward points on merchants registered with \u00e2\u20ac\u02dcThanks Again\u00e2\u20ac\u2122 reward program, located in & around airports, cards How will the [PERSON] happen for this plan, The payout will depend upon the plan benefit(s) chosen. [PERSON] [PERSON] (DHCB) $X,XXX. In case of hospitalization, due to any injury, sickness or disease, you will receive $X,XXX% of [PERSON] as DHCB if admitted in Non ICU room and $X,XXX% of [PERSON] if admitted in ICU room. $X,XXX. The benefit will be payable as a lump sum amount after the completion of each continuous hospitalization for more than $X,XXX hours as a result of injury, sickness or disease. The benefit amount payable will be calculated as mentioned below: [PERSON] [PERSON] * (Number of Days admitted - $X,XXX) $X,XXX. [PERSON] [PERSON] will be payable for a maximum of $X,XXX days per year in case the [PERSON] is admitted in Non ICU room and Twice the [PERSON] [PERSON] will be payable for a maximum of $X,XXX days per year if admitted in ICU room. $X,XXX. [PERSON] [PERSON] will be payable subject to a maximum of $X,XXX and $X,XXX days if admitted in Non ICU and ICU rooms respectively, during the entire policy term. $X,XXX. The ICU and non ICU benefits will be independent of each other and subject to their respective limits $X,XXX. There is a waiting period of $X,XXX days from the date of commencement or reinstatement of the cover. Waiting period will not b"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T18:21:02.972070",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Will TDS be charged on the gross interest earned or the net interest earned, TDS ([PERSON] at Source) is charged if, in a financial year, the gross interest earned on your fixed deposits held with the bank exceeds Rs. $X,XXX, $X,XXX., accounts What should I do in case I am unable to access my Company's [PERSON] through [PERSON], If you are unable to access your company account, it may be because you have entered an incorrect [PERSON] Number (Cust ID) to log into your NetBanking Account. While opening Accounts of Companies, separate Customer IDs are created in name of the Company as well as each of the [PERSON](ies). The latter is distinct and has to be used to access NetBanking for the Company's Account. However, we regret our inability to disclose the appropriate Customer ID on an unsecure e-mail and request you to contact our nearest Branch or PhoneBanking Center for this. For more details, [PERSON], accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T18:33:44.896729",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What are the documents required for opening a [PERSON] of a partnership firm, Following documents are required for opening a [PERSON] of a partnership firm: [PERSON] [PERSON] establishing proof of existence - Certificate of Registration under any Statute/Act or professional bodies - [PERSON] issued by Registrar of Firms - [PERSON] License or Certificate of Registration issued by State/[PERSON] authority (validity would include the grace period for renewal as mentioned in the certificate) - PAN Card in the name of the firm; - Self-signed cheque issued from the firm\u00e2\u20ac\u2122s account from a PSU/private sector/foreign bank along with a bank statement not older than four months Documents for establishing proof of address - Landline telephone bill/electricity bill of public and approved private operators in the State. (Bills not to be older than $X,XXX months from the date of account opening) - [PERSON] Deed i.e. title deeds of the property in the name of the firm duly stamped and registered - Latest property tax or water tax paid receipt/bill raised in the name of the firm - TAN [PERSON] in the name of the firm - Existing bank account statement or passbook of a PSU/private sector/foreign bank - Statement not older than $X,XXX months from the date of account opening to be accepted Documents for establishing photo identity of authorised partners/signatories View more, accounts What are the documents required for opening a [PERSON] of a partnersh"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T18:33:59.752942",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Can my Sweep-in facility have multiple deposits, You can definitely link more than one deposit to the Sweep-in facility. When you link more than one deposit to the facility, then the first deposit to be used will be the deposit which you opened last., accounts Will the loan be disbursed in favour of the Institute/college/university ([PERSON] [PERSON] Education), Yes. The tuition and hostel fees (if any) will be disbursed directly to the educational institute as per the schedule and structure of fees given by them., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T18:44:34.439676",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What is the difference between Life and Return of Premium options, In addition to the benefits under [PERSON], upon survival of the [PERSON] till the end of the Policy term, Total premiums paid till date will be returned back as maturity benefit, insurance What is the [PERSON] under the plan, The plan offers guaranteed additions (GA) as a percentage of sum assured accrued for each completed policy year payable at maturity. Policy term (Yrs) GA as % of [PERSON] $X,XXX to $X,XXX years $X,XXX% $X,XXX to $X,XXX years $X,XXX% On your survival, at end of the policy term, you will receive a lump sum benefit as the aggregate of: [PERSON] [PERSON] [PERSON] [PERSON] benefit as percentage of [PERSON] as per term chosen is as follows: Policy term [PHONE] Maturity benefit as percentage of [PERSON] $X,XXX% $X,XXX% $X,XXX% $X,XXX% $X,XXX% $X,XXX% $X,XXX% $X,XXX% $X,XXX% $X,XXX% $X,XXX%, insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T18:44:46.952549",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What is the [PERSON], [PERSON] Option the Fund value is paid in periodical installments over a period which may extend up to $X,XXX years. The value of installment payable on the date specified shall be subject to investment risk i.e. the NAV may go up or down depending upon the performance of the funds chosen by you. Your money will remain invested in the funds chosen by you and is subject to the same investment risks as during the policy term. During the Settlement period, the risk cover will cease, [PERSON] Charge will continue to be deducted and no other charges shall be levied. Partial withdrawals and switches shall not be allowed during this period. Complete withdrawal may be allowed at any time during this period without levying any charge. At the end of this $X,XXX-year period, the balance units will be redeemed at the then prevailing unit price and the fund value will be paid to you., insurance Can I pre-pay the entire loan amount, Yes, you will have to pay a pre-payment fee of $X,XXX% if you pay your entire loan before $X,XXX months from the date of disbursement. You will have to pay a pre-payment fee of $X,XXX % if you pay your loan after $X,XXX months from the date of disbursement., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T18:55:49.895042",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Is employment confirmation mandatory for me to open a [PERSON] [PERSON] Account - Salary, To ensure that you are an employee of the company a confirmation of employment is necessary., accounts How many members can be included under the [PERSON] of the [PERSON] for [PERSON], You can include your spouse and up to $X,XXX children under the [PERSON]., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T18:56:02.109272",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Is it possible to withdraw the amount blocked for IPO applications through ASBA, No. The blocked amount cannot be withdrawn. However, the same will lie in your operative [PERSON] till the allotment and will earn interest as per Account terms applicable., investments Can an individual open a [PERSON], Yes. Documentation will be that of an individual, i.e. identity proof and address proof.Click here for documentation required for opening individual a [PERSON]., accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T19:32:02.182559",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What are the benefits, With M&N Bank's Sweep-in facility, you gain the high interest rates that come with a [PERSON], along with the liquidity of a [PERSON]. To benefit, you just need a Savings or Current account. [PERSON]-In facility links the deposits you choose, and whenever there are insufficient funds in your Account to clear a cheque, we will break units of the deposit to clear the cheque. Here's an example of how it works: Let's say you have a Sweep-In facility on your [PERSON] with a linked [PERSON] of Rs$X,XXX/-. If you have just issued a cheque for Rs. $X,XXX$X,XXX/-, but the balance in that [PERSON] is Rs. $X,XXX$X,XXX/-, M&N Bank will mark a lien on the [PERSON] to the extent of Rs. $X,XXX$X,XXX/- ($X,XXX$X,XXX/- less $X,XXX$X,XXX/-) and clear the cheque. View more, accounts What is the policy term available under the plan, [PERSON] of $X,XXX to $X,XXX years is available under the plan., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T19:32:15.818262",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What are the call charges for offline customers of an M&N [PERSON] Account, [PERSON] \u00e2\u20ac\u02dcN Trade facility is free of charge. Customer can place orders over the phone multiple times., investments What are the age limits for this plan, The age limits for this plan include: [PERSON] Age $X,XXX years [PERSON] Age $X,XXX years [PERSON] Age $X,XXX years [PERSON] Age $X,XXX years, insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T19:45:45.092889",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Is emergency financial assistance provided under [PERSON], A financial emergency is a situation where the insured loses all or a substantial amount of his/her travel funds due to theft, robbery, mugging or dacoity. Under this benefit the insured is provided with [PERSON] Assistance up to the limit stated in the Policy. This assistance is provided by the company through a service provider., insurance Can I get finance for insurance and registration, No. The ex-showroom price is considered which does not cover insurance and registration charges., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T19:45:57.914939",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What are the conditions on revival, All the outstanding premiums and interest on the outstanding premiums and applicable taxes. Charge of Rs $X,XXX shall be levied for processing the revival. The revival period shall be of two years as specified by the current regulations., insurance What is NEFT, [PERSON] [PERSON] Transfer (NEFT) system is a nation-wide funds transfer system to facilitate transfer of funds from any bank branch to any other bank branch., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T19:52:14.310660",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Can the plan be offered under limited underwriting, The plan can be applied for by filing in the [PERSON] Questionnaire (SMQ), which may not require you to go for medicals subject to prevailing underwriting conditions., insurance How do I enable [PERSON] on my M&N [PERSON] [PERSON], Please find below the steps to enable [PERSON] for you M&N [PERSON] [PERSON]: Steps to [PERSON] Usage on [PERSON]: Log on to NetBanking Click on Cards tab and go to [PERSON] menu Click on [PERSON] '[PERSON] / [PERSON]' Select the option 'Card to be enabled for International and Domestic/ Use' Steps to [PERSON] [PERSON] on [PERSON] Log on to NetBanking Click on Cards tab and go to [PERSON] menu Click on [PERSON] '[PERSON] Limit' Set your daily international limit, cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-17T19:52:30.150974",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Can I transfer currency on my Card from one wallet to other, You can transfer balance of one currency wallet to other currency wallets depending on your need using the NetBanking facility. Currency conversion charges as decided by the Bank from time to time would be applicable for such transfers and would be communicated to you at the time of transfer., cards What is the rate of interest I will earn on the balance in my [PERSON], Interest on a [PERSON] is paid at $X,XXX% p.a. on a daily end of day balance, w.e.f. May $X,XXX, $X,XXX$X,XXX., accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-23T11:57:46.782898",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Do I need a co-applicant for a [PERSON] Loan, No, but if your income does not meet our credit criteria then you may be required to have a co-applicant., loans Can I open a joint account with a non-senior citizen for [PERSON] Deposit, You can, as long as the first account holder is a senior citizen., accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-23T11:57:57.789906",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Whether the EEFC balances can be covered against exchange risk, Yes, the EEFC account balances can be hedged., accounts Do I need to visit branch to receive my $X,XXX [PERSON] [PERSON] Deposit proceeds on maturity, Customer is not required to visit the branch , FD proceeds will be credited to customers account on maturity as per instructions., accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-23T12:06:45.339069",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What is the M&N [PERSON] MulticurrencyForexPlus card, M&N [PERSON] Multicurrency ForexPluscard is an embedded chip based prepaid forex card introduced in partnership with VISA/MasterCard International. It is the first card to offer you the option of carrying upto $X,XXX currencies simultaneously in a single card in a convenient and secure way. This card gives you the freedom to shop anywhere in the world and provides access to the currency of your destination at competitive market rates. It can be used at all VISA/MasterCard affiliated ATMs and merchant establishments worldwide. This card cannot be used for payments in India, Nepal or Bhutan., cards What is the Death-Benefit under the plan, On death of the life assured, provided all due premiums are paid, the company would pay the higher of the following [PERSON] $X,XXX times annualised premium $X,XXX% of the premiums* paid (Premiums are excluding any taxes paid on the premium or any extra premiums) plus accrued bonuses, if any, to the nominee., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-23T12:07:00.423561",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What is the validity of the offers, The offers has a validity of Minimum $X,XXX months and maximum of $X,XXX months., cards How do I top up the value a card, Loading and reloading is as per the corporate instructions. It is not possible for cardholders to request a reload., cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-23T12:29:34.915773",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How do I obtain a duplicate NOC/Form $X,XXX for a vehicle loan that has been closed and fully repaid, You may obtain a duplicate NOC/Form $X,XXX for your vehicle by visiting any of our the [PERSON] [PERSON] and submit the following documents: Request form for Duplicate NOC/Form $X,XXX. Self attested copy of the [PERSON] book, duly self attested by you, along with the [PERSON] Certificate book for validation. Applicable fee of Rs. $X,XXX/- vide a cheque/payorder/demand draft favouring \u00e2\u20ac\u0153M&N [PERSON] [PERSON] No. << >>. In case a bearer submits the request on your behalf, a bearer authorisation along with KYC documents(self attested copy and original for validation) of the bearer,i.e. Identity and [PERSON] like PAN Card, [PERSON], [PERSON] or [PERSON] will also need to be provided. Please note that the [PERSON] NOC/Form $X,XXX will not be issued if any of the following conditions apply: Copy of RC Book is not submitted The same vehicle is encumbered to the Bank for any other loan facility Any notice from a competent authority restraining the Bank from release of hypothecation If there are any existing over dues, direct or otherwise, in your name View more, loans Can I save tax by investing in this policy, Premiums paid by an individual or HUF under this plan are eligible for tax benefits under Section $X,XXXC of the [PERSON] Act, $X,XXX$X,XXX, subject to the conditions/ limits specified therein. [PERSON] $X,XXX ($X,XXXD) of the [PERSO"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-23T12:29:44.917576",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Are there any transactions for which this Card should not be used, Yes, your Regalia ForexPlus Card should not be used towards temporary charge blocks - e.g. paying deposits at hotels, hiring of cars etc. In case you have paid these deposits using Regalia ForexPlus Card and the hotel/car rental agency etc. settles the transaction for an amount lesser than the amount blocked or you make final payment through any different mode, the balance amount will get credited into your account only after $X,XXX days from the transaction date. Note: [PERSON] reserves the right to charge the Card holder for any unauthorized amounts., cards How should I apply for a duplicate NOC/ closure letter, ([PERSON] [PERSON])We request you to visit our nearest [PERSON] Branch along with a written request for a duplicate [PERSON] Certificate (NOC) and your photo identity proof., loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T11:30:39.405898",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How much of foreign exchange earnings can be credited into an EEFC account, $X,XXX% foreign exchange earnings can be credited to the EEFC account subject to the condition that the sum total of the accruals in the account during a calendar month should be converted into rupees on or before the last day of the succeeding calendar month after adjusting for utilisation of the balances for approved purposes or forward commitments. Refer to the RBI circular on below link. Note: In accordance with [PERSON] of India's circular no. A. P. (DIR Series) [PERSON]. $X,XXX dated $X,XXXst of July $X,XXX$X,XXX, the balances outstanding in all EEFC / [PERSON] Account (DDA) and RFC (D) accounts as on last day of a Current month, shall be converted into Rupees by the Bank on the last working day of the succeeding month, if such balance is not utilised by the account holder before the last day of succeeding month. Such mandatory conversion by the bank on the last working day of the succeeding month will be done at the prevailing TT buying card rate. In case, customer has booked [PERSON]/s for conversion of balances in these accounts at a future date which is falling beyond the last day of the succeeding month, such contracted amount shall be deducted from the eligible amount for the mandatory conversion. In case customer has any payment to be made in future from these accounts beyond the last day of the succeeding month then bank should be duly informed "
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T11:30:51.874072",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How should I apply for a duplicate NOC/ closure letter, ([PERSON] [PERSON])We request you to visit our nearest [PERSON] Branch along with a written request for a duplicate [PERSON] Certificate (NOC) and your photo identity proof., loans What do I need to submit to place an IPO/NCD order with my M&N [PERSON] Account, Once you are registered with M&N securities, you can successfully place an IPO/NCD order online or Call \u00e2\u20ac\u02dcN trade. No filling of any form or any documentation is required for a registered customer., investments"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T11:41:46.018955",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How do I report such service/merchant related transaction dispute incurred using my [PERSON] transaction, We strongly recommended that for all service related disputes, the [PERSON] must first attempt to contact the merchant to resolve the dispute which enables prompt resolution. Considering all attempts have been made to resolve dispute with the merchant, you may call PhoneBanking team for raising exact nature of dispute and send relevant supporting document with respect to failed / disputed transactions with complete transaction(s) details to [email protected] ] OR submit the same at your nearest M&N Bank branch., cards How to open a [PERSON], [PERSON] can now be booked through NetBanking. Following are the steps for booking your [PERSON] online: Access your NetBanking account with your Customer ID and IPIN (NetBanking Password) [PERSON] [PERSON] option under the [PERSON] menu from the Menu bar located on the left hand side of the web page Select the desired values from the Drop-down lists Once complete, click on Continue and Confirm the details entered, accounts"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T11:41:56.730339",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: While trying to register I am getting error message Card already enrolled , what should I do, Your card is already registered for Verified by Visa / MasterCard SecureCode, you don't have to re-register your card. In case you don't remember your password, please click on forgot password on the Netsafe login page or on the secure page while transacting and you can reset your password., security Are there any special discounts available under the [PERSON] policy, The policy provides a family discount of $X,XXX%, if $X,XXX or more family members are covered under a single policy on an individual sum insured basis., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T11:56:58.502720",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How do I obtain a NOC from the bank for fitting an LPG/CNG kit on my vehicle under finance with M&N Bank, You may obtain the NOC for fitting an LPG/CNG kit on your registered vehicle under finance with us by visiting any of our [PERSON] [PERSON] and submitting the following documents: Request form for LPG/CNG NOC. Self attested copy of the [PERSON] book, duly self attested by you, along with the [PERSON] Certificate book for validation. Applicable fee of Rs. $X,XXX//- vide a cheque/payorder/demand draft favouring M&N [PERSON] [PERSON] No. << >>. In case a bearer submits the request on your behalf, a bearer authorisation along with KYC documents(self attested copy and original for validation) of the bearer, i.e. Identity and [PERSON] like PAN Card, [PERSON], [PERSON] or [PERSON] will also need to be provided., loans Where do I get this card, ForexPlus card is available over the counter at M&N Bank branches. You simply need to walk into our branch with required documentation and walk out with ForexPlus card. The card will get activated within $X,XXX hours from realization of funds. Alternatively, the customer can apply for card through NetBanking login also.In case the customer applies the card through NetBanking the card will be delivered to the customer within $X,XXX working days. This facility is available at select locations only., cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T11:57:07.922235",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: What is [PERSON] Protection feature, Under this feature, you have the option to increase the basic [PERSON] without underwriting on any of the below specified events in the life of the [PERSON] $X,XXXstMarriage: $X,XXX% of [PERSON] subject to a maximum of Rs. $X,XXX lakhs Birth of $X,XXXst child: $X,XXX% of [PERSON] subject to a maximum of Rs. $X,XXX lakhs Birth of $X,XXXnd child: $X,XXX% of [PERSON] subject to a maximum of Rs. $X,XXX lakhs This feature is available under all plan options, insurance Will I be able to Transfer money to Food plus card from my account or from any other account, [PERSON] card is a corporate card, any instruction with regards to load / reload and BT in the card can be done only on the basis of [PERSON] to the Bank. [PERSON] requests cannot be Processed., cards"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T12:15:54.779970",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Can I load GiftPlus card by making payment in Cash, No, GiftPlus card cannot be loaded against payment of cash. GiftPlus card can be loaded by way of a Direct debit to your M&N Bank account, local cheque drawn on M&N Bank or demand draft, cards What is the [PERSON] under the plan, On maturity, the policy holder will receive the sum assured plus accrued bonuses on full payment of premiums due throughout the premium paying term., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T12:16:09.911078",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Does customer need to log-in to every [PERSON] Limited page for earning [PERSON], Yes. Customer needs to log-in to earn times points for activities done on any website., cards What is meant by [PERSON] Expense, [PERSON] Expenses are all the hospitalisation expenses incurred by the donor for the donation of an organ (excluding the cost of the organ) to the insured during the course of an organ transplant., insurance"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T14:14:27.903220",
+    "vertical": "fintech",
+    "capability": "faq",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: How long will it take for my Personal loan to be processed, Once you submit your application form and the required documents as per Bank's criteria, you can expect our approval and disbursal within $X,XXX working days, provided everything is in order. All loan approvals are at the sole discretion of the bank., loans What is [PERSON] Kendra, [PERSON] [PERSON] addresses your queries pertaining to Two-[PERSON]. Contact our [PERSON] Kendra on [PHONE] between $X,XXX:$X,XXX AM and $X,XXX:$X,XXX PM from Monday to Friday, and $X,XXX:$X,XXX AM and $X,XXX:$X,XXX PM on Saturday. Alternatively you can also contact our PhoneBanking number for customer support. *[PERSON], loans"
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T14:14:37.560594",
+    "vertical": "fintech",
+    "capability": "complaint",
+    "num_samples": 1,
+    "samples": [
+      {
+        "filename": "BankFAQs.csv",
+        "sample_text": "Headers: Question, Answer, Class Examples: Whom should I contact if my card is lost or stolen, Immediately report the loss of your M&N Bank ForexPlus Card by calling M&N Bank PhoneBanking. You will not be liable for transactions on your [PERSON] (if any) from the moment your report is registered with the bank. Alternately you can hotlist the card with the help of Prepaid NetBanking facility., cards What is an [PERSON], [PERSON] refer to insurance plans which aim to offer you income/ pension after retirement when you may not have any other adequate source of income., insurance"
+      }
+    ]
+  }
+]

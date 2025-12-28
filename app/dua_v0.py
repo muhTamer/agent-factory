@@ -67,7 +67,7 @@ def detect_signals_llm(filenames: list[str]) -> dict:
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        model="gpt-4o-mini",  # or read from env / args
+        model="gpt-5-mini",  # or read from env / args
     )
 
 
@@ -199,7 +199,7 @@ def main() -> None:
     parser.add_argument(
         "--model",
         type=str,
-        default=os.getenv("AZURE_OPENAI_DEPLOYMENT") or "gpt-4o-mini",
+        default=os.getenv("AZURE_OPENAI_DEPLOYMENT") or "gpt-5-mini",
         help="LLM deployment/model for advisory classification",
     )
     parser.add_argument("--spec", type=str, default="./spec", help="Path to spec folder (schemas)")

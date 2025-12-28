@@ -8,6 +8,7 @@ Concierge Agent
 from pathlib import Path
 from typing import Dict, Any
 from app.concierge.planner_interface import PlannerInterface
+from app.deploy.spec_builder import build_factory_spec
 
 
 class ConciergeAgent:
@@ -104,12 +105,36 @@ class ConciergeAgent:
     def _approve_deploy(self, action: str) -> Dict[str, Any]:
         mode = "dry" if "dry" in action else "live"
 
-        # Deployment boundary enforced
+        # 1) ensure we have a plan
+        plan = self.state.get("last_plan")
+        if not plan:
+            return {
+                "type": "text",
+                "text": "Please analyze documents first, then approve deployment.",
+            }
+
+        # 2) build runtime spec (auto-creates missing blueprints)
+        build_factory_spec(
+            plan=plan,
+            data_dir=str(self.data_dir),
+            dry_run=(mode == "dry"),
+            llm_client=self.llm_client,  # enables LLM blueprint creation
+        )
+
+        spec_path = self.data_dir / ".factory" / "factory_spec.json"
+        # 3) return deployment info for the UI
+        uvicorn_cmd = "uvicorn app.runtime.service:app --reload --port 8088"
+
         return {
             "type": "decision_result",
-            "text": f"Deployment request registered in {mode.upper()} mode. "
-            f"Guardrails and QA will always be active.",
-            "deployment_request": self._build_deploy_spec(mode),
+            "text": f"Deployment spec generated ({mode.upper()}).",
+            "deployment_request": {
+                "vertical": self.vertical,
+                "mode": mode,
+                "agents": [a["id"] for a in plan["agents"]],
+                "spec_path": str(spec_path),
+                "uvicorn_command": uvicorn_cmd,
+            },
         }
 
     # -----------------------------

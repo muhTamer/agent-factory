@@ -1,0 +1,17 @@
+id: tool_operator
+agent_kind: utility
+description: >
+  Generic tool execution agent. Receives tool calls from other agents
+  and executes them using configured adapters (ticketing, refunds, CRM, etc).
+
+capabilities:
+  - tool_execution
+  - system_actions
+
+entrypoint: app.shared.tool_operator.build_agent
+
+inputs:
+  tools:
+    type: list
+    required: true
+    description: Tool definitions or adapters available to the system
