@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from app.llm_client import chat_json
 
-DEFAULT_MODEL = "gpt-5o-mini"
+DEFAULT_MODEL = "gpt-5-mini"
 
 
 @dataclass
@@ -73,7 +73,7 @@ def map_query_to_event_and_slots(
             {"role": "user", "content": str(user)},
         ],
         model=model,
-        temperature=1.0,  # keep default supported value for gpt-5o-mini
+        temperature=1.0,  # keep default supported value for gpt-5-mini
     )
 
     event = raw.get("event", None)

@@ -243,44 +243,256 @@ def synthesize_answer(query: str, hits: List[Tuple[float, CorpusItem]]) -> Dict[
 # ---------------------------
 def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
     """
-    Simple, robust FAQ RAG-style agent generator.
+    FAQ RAG-style agent generator (dependency-free, but can use LLM for schema mapping).
 
-    - Writes config.yaml with docs list.
-    - Generated agent loads docs at runtime.
-    - Answers questions by naive string similarity over (question, answer) pairs.
-    - Exposes rich metadata for LLM router.
+    What it does:
+      - Writes config.yaml with docs list
+      - For each CSV:
+          * Uses SchemaMapper to map columns -> question/answer
+            - ALWAYS runs LLM mapping if available, and compares to heuristics
+          * Extracts (q,a) pairs into a normalized faqs.json beside the agent
+      - Generated agent loads faqs.json (not raw CSV) and builds TF-IDF index
+      - Answers questions with TF-IDF cosine similarity + relevance gate
+      - Exposes metadata for router
     """
+    import json
+    import textwrap
+    import csv
+    from pathlib import Path
+
+    from app.ingest.schema_mapper import SchemaMapper
+
     gen_dir.mkdir(parents=True, exist_ok=True)
 
+    # ---------------------------
+    # inputs
+    # ---------------------------
     docs = inputs.get("docs") or []
     if isinstance(docs, str):
         docs = [docs]
 
-    cfg = {
-        "id": agent_id,
-        "docs": docs,
-    }
+    # Write config for runtime inspection/debugging
+    cfg = {"id": agent_id, "docs": docs}
     (gen_dir / "config.yaml").write_text(
         yaml.safe_dump(cfg, sort_keys=False),
         encoding="utf-8",
     )
 
-    header = f"# Auto-generated FAQ RAG agent ({agent_id})\n"
+    # ---------------------------
+    # LLM adapter (optional)
+    # ---------------------------
+    llm_adapter = None
+    try:
+        # Your app/llm_client.py exposes chat_json(messages, model, temperature)
+        from app.llm_client import chat_json
 
+        class _LLMAdapter:
+            def chat_json(self, messages, model=None, temperature=1.0):
+                # IMPORTANT: do NOT set temperature=0.0 (some models reject it)
+                return chat_json(messages=messages, model=model, temperature=temperature)
+
+        llm_adapter = _LLMAdapter()
+    except Exception:
+        llm_adapter = None
+
+    mapper = SchemaMapper(
+        llm_client=llm_adapter,
+        model="gpt-5o-mini",  # your requirement
+        allow_llm=True,
+        allow_samples_to_llm=True,  # privacy: sends only tiny sanitized samples
+        sample_rows_for_llm=2,
+        max_sample_chars=120,
+    )
+
+    # ---------------------------
+    # Normalize FAQ pairs into faqs.json
+    # ---------------------------
+    faqs: List[Dict[str, Any]] = []
+    mapping_debug: List[Dict[str, Any]] = []
+
+    def _read_csv_sample(path: Path, max_rows: int = 20) -> Tuple[List[str], List[Dict[str, str]]]:
+        try:
+            with path.open("r", encoding="utf-8", errors="ignore", newline="") as f:
+                reader = csv.DictReader(f)
+                headers = list(reader.fieldnames or [])
+                rows: List[Dict[str, str]] = []
+                for i, row in enumerate(reader):
+                    if i >= max_rows:
+                        break
+                    # keep only string-ish values
+                    rows.append({k: (row.get(k) or "") for k in headers})
+                return headers, rows
+        except Exception:
+            return [], []
+
+    def _extract_qas(path: Path, q_col: str, a_col: str) -> List[Tuple[str, str]]:
+        out: List[Tuple[str, str]] = []
+        try:
+            with path.open("r", encoding="utf-8", errors="ignore", newline="") as f:
+                reader = csv.DictReader(f)
+                if not reader.fieldnames:
+                    return out
+                for row in reader:
+                    q = (row.get(q_col) or "").strip()
+                    a = (row.get(a_col) or "").strip()
+                    if q and a:
+                        out.append((q, a))
+        except Exception:
+            return out
+        return out
+
+    for d in docs:
+        p = Path(d)
+        if not p.exists() or not p.is_file():
+            continue
+
+        if p.suffix.lower() != ".csv":
+            # For now we only normalize CSV Q/A into faqs.json.
+            # (MD/YAML can be handled later as "kb chunks" blueprint if you want.)
+            continue
+
+        headers, sample_rows = _read_csv_sample(p, max_rows=25)
+        if len(headers) < 2:
+            mapping_debug.append(
+                {
+                    "file": p.name,
+                    "status": "skipped",
+                    "reason": "csv_missing_headers",
+                }
+            )
+            continue
+
+        res = mapper.map_columns(headers=headers, sample_rows=sample_rows)
+        if not res:
+            mapping_debug.append(
+                {
+                    "file": p.name,
+                    "status": "failed",
+                    "reason": "no_mapping_found",
+                    "headers": headers,
+                }
+            )
+            continue
+
+        q_col = res.question_col
+        a_col = res.answer_col
+
+        mapping_debug.append(
+            {
+                "file": p.name,
+                "status": "mapped",
+                "question_col": q_col,
+                "answer_col": a_col,
+                "confidence": res.confidence,
+                "used_llm": res.used_llm,
+                "reasoning": res.reasoning,
+            }
+        )
+
+        pairs = _extract_qas(p, q_col=q_col, a_col=a_col)
+        for q, a in pairs:
+            faqs.append(
+                {
+                    "q": q,
+                    "a": a,
+                    "source": p.name,
+                }
+            )
+
+    # Write normalized data + mapping debug
+    (gen_dir / "faqs.json").write_text(
+        json.dumps(faqs, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (gen_dir / "mapping_debug.json").write_text(
+        json.dumps(mapping_debug, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    # ---------------------------
+    # Generate agent.py (loads faqs.json, TF-IDF retrieval)
+    # ---------------------------
+    header = f"# Auto-generated FAQ RAG agent ({agent_id})\n"
     body = textwrap.dedent(
-        '''\
+        """\
 from __future__ import annotations
 from typing import Dict, Any, List, Tuple
 from pathlib import Path
-import csv, json, math, yaml
+import json, math, re, yaml
 from app.runtime.interfaces import IAgent
 
+_WORD = re.compile(r"[A-Za-z0-9]+")
+
+def _tok(s: str) -> List[str]:
+    return [t.lower() for t in _WORD.findall(s or "")]
+
+def _build_tfidf(items: List[str]):
+    df = {}
+    docs_tokens = []
+    for text in items:
+        toks = list(dict.fromkeys(_tok(text)))
+        docs_tokens.append(toks)
+        for t in toks:
+            df[t] = df.get(t, 0) + 1
+
+    N = max(1, len(items))
+    idf = {t: math.log((N + 1) / (df_t + 1)) + 1.0 for t, df_t in df.items()}
+
+    vecs = []
+    for text in items:
+        tf = {}
+        for t in _tok(text):
+            tf[t] = tf.get(t, 0) + 1
+        vec = {}
+        norm = 0.0
+        for t, f in tf.items():
+            w = (1 + math.log(f)) * idf.get(t, 0.0)
+            vec[t] = w
+            norm += w * w
+        norm = math.sqrt(max(1e-9, norm))
+        for t in list(vec.keys()):
+            vec[t] /= norm
+        vecs.append(vec)
+
+    return idf, vecs
+
+def _vec_query(query: str, idf: Dict[str, float]) -> Dict[str, float]:
+    tf = {}
+    for t in _tok(query):
+        tf[t] = tf.get(t, 0) + 1
+    vec = {}
+    norm = 0.0
+    for t, f in tf.items():
+        w = (1 + math.log(f)) * idf.get(t, 0.0)
+        vec[t] = w
+        norm += w * w
+    norm = math.sqrt(max(1e-9, norm))
+    for t in list(vec.keys()):
+        vec[t] /= norm
+    return vec
+
+def _cosine(a: Dict[str, float], b: Dict[str, float]) -> float:
+    if not a or not b:
+        return 0.0
+    if len(a) > len(b):
+        a, b = b, a
+    s = 0.0
+    for t, w in a.items():
+        w2 = b.get(t)
+        if w2 is not None:
+            s += w * w2
+    return float(max(0.0, min(1.0, s)))
 
 class Agent(IAgent):
     def __init__(self) -> None:
         self.ready = False
         self.cfg: Dict[str, Any] | None = None
-        self.faqs: List[Tuple[str, str]] = []  # (question, answer)
+
+        # normalized faqs: list[dict(q,a,source)]
+        self.faqs: List[Dict[str, Any]] = []
+
+        # search index over combined Q+A
+        self._idf: Dict[str, float] = {}
+        self._vecs: List[Dict[str, float]] = []
+        self._texts: List[str] = []  # aligned to faqs
 
     def _load_config(self) -> None:
         cfg_path = Path(__file__).parent / "config.yaml"
@@ -293,85 +505,79 @@ class Agent(IAgent):
             if "docs" not in self.cfg:
                 self.cfg["docs"] = []
 
-    def _load_faqs_from_csv(self, path: Path) -> None:
-        if not path.exists():
+    def _load_faqs(self) -> None:
+        data_path = Path(__file__).parent / "faqs.json"
+        if not data_path.exists():
+            self.faqs = []
             return
         try:
-            with path.open("r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                # try common column names
-                q_cols = ["question", "Question", "Q"]
-                a_cols = ["answer", "Answer", "A"]
-                for row in reader:
-                    q = None
-                    a = None
-                    for qc in q_cols:
-                        if qc in row and row[qc]:
-                            q = row[qc].strip()
-                            break
-                    for ac in a_cols:
-                        if ac in row and row[ac]:
-                            a = row[ac].strip()
-                            break
-                    if q and a:
-                        self.faqs.append((q, a))
+            self.faqs = json.loads(data_path.read_text(encoding="utf-8")) or []
+            if not isinstance(self.faqs, list):
+                self.faqs = []
         except Exception:
-            # ignore bad CSV
+            self.faqs = []
+
+    def _build_index(self) -> None:
+        self._texts = []
+        for it in self.faqs:
+            q = str(it.get("q", "")).strip()
+            a = str(it.get("a", "")).strip()
+            if q and a:
+                self._texts.append("Q: " + q + " A: " + a)
+
+        if not self._texts:
+            self._idf, self._vecs = {}, []
             return
 
-    def _load_faqs(self) -> None:
-        docs = self.cfg.get("docs", []) if self.cfg else []
-        for d in docs:
-            p = Path(d)
-            if p.suffix.lower() == ".csv":
-                self._load_faqs_from_csv(p)
-            # Here we could add logic for .md, .txt, etc.
+        self._idf, self._vecs = _build_tfidf(self._texts)
 
     def load(self, spec: Dict[str, Any]) -> None:
         self._load_config()
         self._load_faqs()
+        self._build_index()
         self.ready = True
 
-    def _similarity(self, q: str, cand: str) -> float:
-        """
-        Very naive similarity: Jaccard over lowercased word sets.
-        Enough for POC and deterministic.
-        """
-        qs = set(q.lower().split())
-        cs = set(cand.lower().split())
-        if not qs or not cs:
-            return 0.0
-        inter = len(qs & cs)
-        union = len(qs | cs)
-        return inter / union if union else 0.0
-
-    def _search(self, query: str) -> Dict[str, Any]:
-        if not self.faqs:
+    def _search(self, query: str, top_k: int = 5) -> Dict[str, Any]:
+        if not self._texts or not self._vecs:
             return {"answer": "I don’t have that yet.", "score": 0.0, "citations": []}
 
-        best_q = None
-        best_a = None
-        best_score = 0.0
-        for q, a in self.faqs:
-            s = self._similarity(query, q)
-            if s > best_score:
-                best_score = s
-                best_q = q
-                best_a = a
+        qv = _vec_query(query, self._idf)
+        scored = []
+        for i, dv in enumerate(self._vecs):
+            s = _cosine(qv, dv)
+            scored.append((s, i))
+        scored.sort(reverse=True, key=lambda x: x[0])
 
-        if best_score <= 0.0 or best_a is None:
-            return {"answer": "I don’t have that yet.", "score": 0.0, "citations": []}
+        best_score, best_i = scored[0]
+
+        # Relevance gate (tunable)
+        if best_score < 0.12:
+            return {
+                "answer": "I couldn’t find that in the provided documents.",
+                "score": float(best_score),
+                "citations": [],
+            }
+
+        hits = []
+        for s, i in scored[:top_k]:
+            it = self.faqs[i]
+            hits.append({
+                "score": float(s),
+                "question": str(it.get("q","")),
+                "answer": str(it.get("a","")),
+                "source": str(it.get("source","")),
+            })
 
         return {
-            "answer": best_a,
-            "score": float(best_score),
-            "citations": [{"question": best_q}] if best_q else [],
+            "answer": hits[0]["answer"],
+            "score": float(hits[0]["score"]),
+            "citations": [{"question": h["question"], "source": h["source"]} for h in hits[:3]],
         }
 
     def handle(self, request: Dict[str, Any]) -> Dict[str, Any]:
         text = (request.get("text") or request.get("query") or "").strip()
         if not text:
-            return {"answer": "Please provide a question.", "score": 0.0, "citations": []}
+            return {"intent": "faq", "answer": "Please provide a question.", "score": 0.0, "citations": []}
 
         res = self._search(text)
         return {
@@ -386,21 +592,15 @@ class Agent(IAgent):
             "id": "__AGENT_ID__",
             "type": "faq_rag",
             "ready": self.ready,
-            "description": (
-                "Answers customer FAQs using retrieval-augmented generation-style lookup "
-                "over uploaded FAQ and policy-like CSV documents."
-            ),
-            "capabilities": [
-                "faq_answering",
-                "policy_lookup",
-                "knowledge_base_search",
-            ],
+            "description": "Answers customer FAQs using TF-IDF retrieval over normalized FAQ pairs extracted from uploaded documents.",
+            "capabilities": ["faq_answering", "policy_lookup", "knowledge_base_search"],
             "vertical": "generic_customer_service",
             "docs": len(self.faqs),
         }
-'''
+"""
     )
 
     agent_src = header + body.replace("__AGENT_ID__", agent_id)
     (gen_dir / "agent.py").write_text(agent_src, encoding="utf-8")
+
     return gen_dir

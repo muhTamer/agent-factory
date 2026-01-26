@@ -15,147 +15,180 @@
       "config": "spec/base_policy_pack.yaml"
     },
     {
-      "id": "faq_knowledge_rag",
+      "id": "kb_rag",
       "type": "autogen",
       "blueprint": "knowledge_rag",
       "status": "ready",
       "inputs": {
         "docs": [
-          "BankFAQs.csv",
-          "<UPLOAD:cleaned_faq_entries>",
-          "<UPLOAD:complete_product_specifications>",
-          "<UPLOAD:regulatory_and_disclosure_documents>",
-          "<UPLOAD:contact_and_operational_details>"
+          "C:\\Users\\mozaki\\OneDrive\\CBS\\Thesis\\agent-factory\\.workspace\\BankFAQs.csv",
+          "C:\\Users\\mozaki\\OneDrive\\CBS\\Thesis\\agent-factory\\.workspace\\refunds_policy.yaml"
         ]
       },
       "blueprint_meta": {
         "agent_kind": "knowledge_rag",
-        "description": "Customer-facing FAQ retrieval and answer-synthesis agent for banking products. Uses available FAQ CSV and supplemental product and regulatory documents to ground answers and cite sources when possible.",
+        "description": "Retrieval-augmented generation agent that answers customer-facing banking questions using the Bank FAQs and consults the refunds policy for refund/compliance questions. Provides citations to the source documents when policy assertions are made and flags regulated cases for workflow handoff.",
         "capabilities": [
-          "semantic search over FAQs and product docs",
-          "answer synthesis with citation to source docs",
-          "detects when policy or product info is missing and recommends escalation",
-          "identifies PII in user queries and requests verification before disclosing account-specific info"
+          "answer_customer_faqs",
+          "cite_source_documents",
+          "detect_refund_or_regulated_intent",
+          "summarize_policy_clauses",
+          "handoff_to_refund_workflow"
         ],
         "tools": [],
         "vertical": "fintech"
       }
     },
     {
-      "id": "complaint_workflow",
+      "id": "refunds_workflow",
       "type": "autogen",
       "blueprint": "workflow_runner",
       "status": "ready",
       "inputs": {
         "workflow_spec": {
-          "id": "complaint_handling_fsm_v1",
-          "description": "FSM to intake, verify, classify, and resolve customer complaints with escalation and ticketing integration.",
+          "id": "refunds_fsm_v1",
+          "description": "FSM to handle customer refund requests including eligibility checks, info collection, identity verification, refund execution, and escalation.",
           "engine": "fsm",
           "slots": {
-            "complaint_id": {
-              "type": "string",
-              "required": true,
-              "description": "Internal or external complaint identifier"
-            },
             "customer_id": {
               "type": "string",
               "required": true,
-              "description": "Customer identifier to lookup account and verification"
+              "description": "Unique customer identifier used to look up accounts and KYC status."
             },
-            "customer_verified": {
-              "type": "boolean",
-              "required": false,
-              "description": "Set to true if identity verification passed"
+            "transaction_id": {
+              "type": "string",
+              "required": true,
+              "description": "Identifier of the transaction for which a refund is requested."
             },
-            "urgent": {
-              "type": "boolean",
-              "required": false,
-              "description": "Whether the complaint is marked urgent"
+            "amount": {
+              "type": "number",
+              "required": true,
+              "description": "Monetary amount requested for refund."
             },
-            "preferred_resolution": {
+            "currency": {
               "type": "string",
               "required": false,
-              "description": "Customer's requested outcome (refund, replacement, explanation, etc.)"
+              "description": "Currency of the refund amount (optional if implicit)."
             },
-            "policy_doc_path": {
+            "reason": {
+              "type": "string",
+              "required": true,
+              "description": "Customer-provided reason for the refund request."
+            },
+            "evidence_provided": {
+              "type": "boolean",
+              "required": false,
+              "description": "Whether customer attached supporting evidence (receipts, screenshots)."
+            },
+            "supervisor_approval": {
+              "type": "boolean",
+              "required": false,
+              "description": "Whether a supervisor has approved the refund (set by escalation)."
+            },
+            "eligibility": {
               "type": "string",
               "required": false,
-              "description": "Path to complaint-handling policy document (placeholder allowed)"
+              "description": "Determined eligibility status: 'eligible' or 'ineligible'."
             }
           },
           "states": {
             "start": {
-              "description": "Begin complaint intake and capture initial details.",
+              "description": "Entry point for a refund request.",
+              "on_enter": "Receive refund request and validate presence of required slots (customer_id, transaction_id, amount, reason).",
               "on": {
-                "submit": "verify_identity"
+                "evaluate": "check_eligibility",
+                "cancel": "cancel"
               },
-              "on_enter": "Collect complaint metadata and preferred_resolution."
+              "terminal": false
+            },
+            "check_eligibility": {
+              "description": "Assess refund eligibility using refunds_policy.yaml and transaction/customer data.",
+              "on_enter": "Evaluate policy rules (eligibility windows, limits, AML/KYC constraints) and set 'eligibility' slot to 'eligible' or 'ineligible'.",
+              "action": "evaluate_refund_policy",
+              "on": {
+                "eligible": "gather_info",
+                "ineligible": "deny_refund",
+                "needs_escalation": "escalate_supervisor"
+              },
+              "terminal": false
+            },
+            "gather_info": {
+              "description": "Request or validate any missing customer information or evidence needed to process the refund.",
+              "on_enter": "Ask customer for missing documents or clarifications; use Bank FAQs for common guidance on acceptable documents.",
+              "action": "collect_customer_info",
+              "on": {
+                "info_provided": "verify_identity",
+                "info_missing": "create_ticket",
+                "cancel": "cancel"
+              },
+              "terminal": false
             },
             "verify_identity": {
-              "description": "Verify customer's identity before discussing account specifics.",
+              "description": "Run identity verification checks per KYC/AML requirements.",
+              "on_enter": "Invoke identity verification tool to confirm customer identity and KYC status.",
+              "action": "verify_identity",
               "on": {
-                "verified": "classify",
-                "failed_verification": "escalate_to_human"
+                "verified": "process_refund",
+                "fraud_suspected": "escalate_fraud",
+                "unverified": "escalate_supervisor"
               },
-              "on_enter": "Request verification and call verify_identity tool.",
-              "action": "verify_identity"
-            },
-            "classify": {
-              "description": "Classify complaint type (billing, fraud, service, product, other).",
-              "on": {
-                "classification_done": "attempt_resolution",
-                "unable_to_classify": "escalate_to_human"
-              },
-              "on_enter": "Use available data and lookup_customer to classify complaint.",
-              "action": "lookup_customer"
-            },
-            "attempt_resolution": {
-              "description": "Attempt automated resolution based on policy and classification.",
-              "on": {
-                "resolved": "close",
-                "needs_refund": "process_refund",
-                "not_resolved": "create_ticket",
-                "policy_missing": "escalate_to_human"
-              },
-              "on_enter": "Apply resolution templates; consult policy_doc_path if provided.",
-              "action": "apply_resolution_templates"
+              "terminal": false
             },
             "process_refund": {
-              "description": "Initiate refund if allowed by policy and requested.",
+              "description": "Attempt to execute the refund through the payments system.",
+              "on_enter": "Call payment tool to initiate refund and capture response (success/failure).",
+              "action": "initiate_refund",
               "on": {
-                "refund_initiated": "close",
-                "refund_failed": "escalate_to_human"
+                "processed": "complete",
+                "failed": "create_ticket"
               },
-              "on_enter": "Call initiate_refund tool with necessary parameters.",
-              "action": "initiate_refund"
+              "terminal": false
             },
-            "create_ticket": {
-              "description": "Create an internal ticket for cases that require manual handling.",
+            "escalate_supervisor": {
+              "description": "Escalate the case to a supervisor for manual approval when policy requires it or verification fails.",
+              "on_enter": "Create a supervisor escalation ticket including all evidence and policy rationale.",
+              "action": "create_ticket",
               "on": {
-                "ticket_created": "close",
-                "ticket_creation_failed": "escalate_to_human"
+                "escalated": "await_supervisor_decision"
               },
-              "on_enter": "Call create_ticket tool to log the complaint and include recommended actions.",
-              "action": "create_ticket"
+              "terminal": false
             },
-            "escalate_to_human": {
-              "description": "Escalate to a human agent when automated handling is insufficient or verification fails.",
-              "on": {},
-              "on_enter": [
-                "Notify human queue and call handoff_to_human tool.",
-                "Include context, classification, actions attempted, and policy gaps."
-              ],
-              "action": "handoff_to_human",
+            "await_supervisor_decision": {
+              "description": "Wait for supervisor decision and proceed based on approval or rejection.",
+              "on_enter": "Pause workflow until supervisor updates 'supervisor_approval' slot.",
+              "on": {
+                "approved": "process_refund",
+                "rejected": "deny_refund"
+              },
+              "terminal": false
+            },
+            "escalate_fraud": {
+              "description": "Flag suspected fraud and open a high-priority investigation ticket.",
+              "on_enter": "Open fraud investigation ticket and notify fraud operations team; do not initiate refund.",
+              "action": "create_ticket",
               "terminal": true
             },
-            "close": {
-              "description": "Close the complaint workflow after successful automated or ticketed handling.",
-              "on": {},
-              "on_enter": [
-                "Send closure message to customer with resolution details or ticket reference.",
-                "Update internal systems as needed."
-              ],
-              "action": "update_ticket",
+            "create_ticket": {
+              "description": "Create a manual-handling ticket (CRM) for failed operations or missing info.",
+              "on_enter": "Open ticket with context, attach evidence and assign to appropriate queue for manual resolution.",
+              "action": "create_ticket",
+              "terminal": true
+            },
+            "deny_refund": {
+              "description": "Deny the refund request and inform the customer with policy rationale.",
+              "on_enter": "Send denial notification to customer citing relevant policy clauses and next steps (if any).",
+              "action": "notify_customer",
+              "terminal": true
+            },
+            "complete": {
+              "description": "Refund successfully completed and customer notified.",
+              "on_enter": "Record completion, include transaction confirmation, and notify customer.",
+              "action": "notify_customer",
+              "terminal": true
+            },
+            "cancel": {
+              "description": "Workflow cancelled by customer or system.",
+              "on_enter": "Record cancellation and notify customer.",
               "terminal": true
             }
           },
@@ -164,101 +197,167 @@
       },
       "blueprint_meta": {
         "agent_kind": "workflow_runner",
-        "description": "Complaint intake and resolution orchestrator. Finite-state workflow that verifies identity, classifies complaint type, attempts automated resolution (including refunds where policy allows), creates tickets, and escalates to human agents when needed or policy is missing.",
+        "description": "Finite-state workflow that orchestrates refund requests: assesses eligibility per refunds_policy.yaml, collects required customer information (guided by Bank FAQs), performs identity verification, initiates refunds when eligible, and escalates to supervisors or manual handling when required by policy or verification results.",
         "capabilities": [
-          "guided complaint intake",
-          "automated identity verification via verify_identity tool",
-          "classification of complaint types and selection of resolution path",
-          "initiates refunds and creates tickets using platform tools when policy permits",
-          "escalates to human when verification fails, policy missing, or resolution fails"
+          "evaluate_refund_eligibility",
+          "collect_required_customer_info",
+          "coordinate_identity_verification",
+          "initiate_refund_execution",
+          "create_escalation_ticket",
+          "record_workflow_decision"
         ],
         "tools": [],
         "vertical": "fintech"
       }
     },
     {
-      "id": "qa_workflow",
+      "id": "verify_identity_operator",
+      "type": "autogen",
+      "blueprint": "tool_operator",
+      "status": "ready",
+      "inputs": {
+        "tool": "verify_identity"
+      },
+      "blueprint_meta": {
+        "agent_kind": "tool_operator",
+        "description": "Operator agent that uses the 'verify_identity' tool to perform KYC identity checks and return verification outcomes used by workflows.",
+        "capabilities": [
+          "perform_identity_checks",
+          "return_verification_result",
+          "flag_suspected_fraud",
+          "log_verification_outcome"
+        ],
+        "tools": [],
+        "vertical": "fintech"
+      }
+    },
+    {
+      "id": "initiate_refund_operator",
+      "type": "autogen",
+      "blueprint": "tool_operator",
+      "status": "ready",
+      "inputs": {
+        "tool": "initiate_refund"
+      },
+      "blueprint_meta": {
+        "agent_kind": "tool_operator",
+        "description": "Operator agent that uses the 'initiate_refund' tool to execute refund payments and report success/failure and payment transaction identifiers.",
+        "capabilities": [
+          "execute_refund_payment",
+          "validate_payment_response",
+          "return_payment_transaction_id",
+          "report_refund_failure_reasons"
+        ],
+        "tools": [],
+        "vertical": "fintech"
+      }
+    },
+    {
+      "id": "create_ticket_operator",
+      "type": "autogen",
+      "blueprint": "tool_operator",
+      "status": "ready",
+      "inputs": {
+        "tool": "create_ticket"
+      },
+      "blueprint_meta": {
+        "agent_kind": "tool_operator",
+        "description": "Operator agent that uses the 'create_ticket' tool to open CRM tickets for escalations, fraud investigations, and manual refund handling.",
+        "capabilities": [
+          "open_crm_ticket",
+          "attach_evidence_to_ticket",
+          "assign_ticket_to_queue",
+          "return_ticket_identifier"
+        ],
+        "tools": [],
+        "vertical": "fintech"
+      }
+    },
+    {
+      "id": "lookup_customer_operator",
+      "type": "autogen",
+      "blueprint": "tool_operator",
+      "status": "ready",
+      "inputs": {
+        "tool": "lookup_customer"
+      },
+      "blueprint_meta": {
+        "agent_kind": "tool_operator",
+        "description": "Operator agent that uses the 'lookup_customer' tool to fetch customer profiles, account status and recent transactions to support eligibility evaluation.",
+        "capabilities": [
+          "fetch_customer_profile",
+          "retrieve_account_status",
+          "list_recent_transactions",
+          "return_customer_attributes"
+        ],
+        "tools": [],
+        "vertical": "fintech"
+      }
+    },
+    {
+      "id": "request_router",
       "type": "autogen",
       "blueprint": "workflow_runner",
       "status": "ready",
       "inputs": {
         "workflow_spec": {
-          "id": "qa_evaluator_fsm_v1",
-          "description": "FSM to evaluate, score, and report on agent responses for monitoring and QA.",
+          "id": "request_router_fsm_v1",
+          "description": "Classify incoming messages and route to the correct subsystem (KB RAG, Refunds Workflow, or human queue).",
           "engine": "fsm",
           "slots": {
-            "sample_response_id": {
+            "incoming_text": {
               "type": "string",
               "required": true,
-              "description": "Identifier for the response sample being evaluated"
+              "description": "Raw customer message to classify."
             },
-            "agent_response": {
-              "type": "string",
-              "required": true,
-              "description": "The agent's full response text"
-            },
-            "ground_truth": {
+            "detected_intent": {
               "type": "string",
               "required": false,
-              "description": "Reference/ground truth text if available"
+              "description": "Intent classification result: 'faq', 'refund', 'escalation', or 'other'."
             },
-            "policy_doc_path": {
-              "type": "string",
-              "required": false,
-              "description": "Path to policy document to check compliance against (use placeholder if missing)"
-            },
-            "evaluator_threshold": {
+            "confidence": {
               "type": "number",
               "required": false,
-              "description": "Score threshold below which the response should be flagged"
+              "description": "Confidence score for the classification (0-1)."
             }
           },
           "states": {
             "start": {
-              "description": "Begin QA evaluation, validate inputs.",
+              "description": "Receive incoming customer message.",
+              "on_enter": "Accept message and proceed to classification.",
               "on": {
-                "evaluate": "analyze"
+                "classify": "classify_intent"
               },
-              "on_enter": "Validate sample_response_id and agent_response."
+              "terminal": false
             },
-            "analyze": {
-              "description": "Run factuality, citation, and tone checks against available docs.",
+            "classify_intent": {
+              "description": "Use lightweight rules and KB signals to classify message intent.",
+              "on_enter": "Determine detected_intent using keywords, BankFAQs signals, and refunds policy indicators; set 'detected_intent' and 'confidence'.",
+              "action": "classify_request",
               "on": {
-                "analysis_complete": "score",
-                "missing_policy": "flag_policy_gap"
+                "faq": "route_to_kb",
+                "refund": "route_to_refund_workflow",
+                "escalation": "route_to_human",
+                "other": "route_to_human"
               },
-              "on_enter": "Compare agent_response to ground_truth and policy_doc_path where available.",
-              "action": "perform_factual_and_tone_checks"
+              "terminal": false
             },
-            "score": {
-              "description": "Compute QA score and determine if escalation or ticketing is needed.",
-              "on": {
-                "score_ok": "report",
-                "score_low": "create_monitoring_ticket"
-              },
-              "on_enter": "Aggregate metrics into a numeric score."
+            "route_to_kb": {
+              "description": "Forward FAQ-type requests to the KB RAG agent.",
+              "on_enter": "Invoke kb_rag to answer the customer or return suggested articles.",
+              "action": "route:kb_rag",
+              "terminal": true
             },
-            "flag_policy_gap": {
-              "description": "Flag missing policy or documentation needed to validate responses.",
-              "on": {
-                "noted": "report"
-              },
-              "on_enter": "Record missing policy_doc_path in report and recommend upload of policies.",
-              "action": "note_missing_policy"
+            "route_to_refund_workflow": {
+              "description": "Forward refund requests to the refunds workflow for full processing.",
+              "on_enter": "Initiate refunds_workflow with extracted slots (customer_id, transaction_id, amount, reason) where available.",
+              "action": "route:refunds_workflow",
+              "terminal": true
             },
-            "create_monitoring_ticket": {
-              "description": "Create a ticket for QA team for low-scoring or repeated failures.",
-              "on": {
-                "ticket_created": "report",
-                "ticket_failed": "report"
-              },
-              "on_enter": "Call create_ticket tool with QA report and sample context.",
-              "action": "create_ticket"
-            },
-            "report": {
-              "description": "Emit structured QA report to monitoring dashboard and storage.",
-              "on": {},
-              "on_enter": "Store QA record, optionally notify stakeholders if required.",
+            "route_to_human": {
+              "description": "Route ambiguous or escalation requests to the human support queue.",
+              "on_enter": "Create a human-handling ticket or handoff to human agent.",
+              "action": "route:human_queue",
               "terminal": true
             }
           },
@@ -267,12 +366,13 @@
       },
       "blueprint_meta": {
         "agent_kind": "workflow_runner",
-        "description": "Quality evaluator that runs post-response checks: factuality vs. supplied docs, tone and compliance checks, and scoring. Produces structured QA reports and triggers monitoring alerts or retraining tickets.",
+        "description": "Simple routing FSM that classifies incoming customer requests (FAQ, refund, escalation, other) and forwards them to the appropriate agent/flow (kb_rag, refunds_workflow, or human queue).",
         "capabilities": [
-          "evaluate agent responses for factual accuracy against supplied documents",
-          "check compliance with tone and policy requirements",
-          "assign QA scores and produce structured reports",
-          "create tickets for repeated failures or systemic issues"
+          "classify_incoming_request",
+          "route_to_kb_rag",
+          "route_to_refunds_workflow",
+          "route_to_human_queue",
+          "log_routing_decision"
         ],
         "tools": [],
         "vertical": "fintech"
@@ -288,24 +388,16 @@
   ],
   "plan_preview": {
     "missing_docs": [
-      "<UPLOAD:cleaned_faq_entries_without_placeholders>",
-      "<UPLOAD:complete_product_specifications>",
-      "<UPLOAD:regulatory_and_disclosure_documents>",
-      "<UPLOAD:contact_and_operational_details>",
-      "<UPLOAD:complaint_handling_policy>",
-      "<UPLOAD:escalation_matrix_and_slas>",
-      "<UPLOAD:regulatory_compliance_guidelines>",
-      "<UPLOAD:annotated_complaint_dataset>",
-      "<UPLOAD:response_templates_canned_replies>",
-      "<UPLOAD:ownership_and_contact_points>",
-      "<UPLOAD:monitoring_and_qa_guidelines>"
+      "<UPLOAD:refunds_procedure>",
+      "<UPLOAD:refunds_tool_spec>",
+      "<UPLOAD:crm_integration_spec>",
+      "<UPLOAD:supervisor_approval_workflow>"
     ],
     "warnings": [
-      "FAQ agent has only a noisy BankFAQs.csv detected. Provide cleaned FAQ entries and product/regulatory docs to improve answer grounding and reduce hallucination risk.",
-      "Complaint handler workflow will function but lacks complaint policy and SLA documents; automated resolutions (refunds, chargebacks) may be restricted and will escalate to humans when policy is missing.",
-      "Guardrails (runtime policy pack) are not emitted as an agent blueprint here; ensure the runtime includes the base_policy_pack.yaml to enforce safety constraints (PII, escalation rules).",
-      "QA evaluator requires policy and sample/annotated datasets to produce high-quality monitoring; consider uploading monitoring_and_qa_guidelines and annotated complaint dataset."
+      "The refunds_workflow references external operational procedures and integration points (payment API behavior, exact supervisor approval steps, CRM ticket fields). Those procedure/tool_spec documents are not provided; upload '<UPLOAD:refunds_procedure>' and '<UPLOAD:refunds_tool_spec>' to fully operationalize the workflow.",
+      "Policy enforcement (AML/KYC, PII handling) should be applied at runtime as guardrails. A runtime guardrails configuration is required but is intentionally not included as an agent blueprint per factory rules.",
+      "The workflow uses actions named to match available tools (verify_identity, initiate_refund, create_ticket, lookup_customer). Ensure those tool integrations exist and are authorized before connecting the workflow to production systems."
     ],
-    "rationale": "We produced three executable blueprints that align with the existing factory plan: a knowledge_rag FAQ agent for document-grounded answers; a workflow_runner complaint handler implementing an explicit FSM to safely verify, classify, attempt automated resolution (using available tools by name), create tickets, and escalate; and a workflow_runner QA evaluator for structured post-response checks and monitoring. Knowledge agents reference placeholders for missing documents so the factory can be provisioned immediately while awaiting uploads. The complaint and QA agents are workflows because they must orchestrate conditional, stateful steps and call platform tools (verify_identity, create_ticket, initiate_refund, handoff_to_human) during runtime. We omitted guardrails as requested (they belong to the runtime spine) and aggregated all missing document placeholders to guide the next uploads that will materially improve automation and reduce escalations."
+    "rationale": "Provided blueprints implement the operational components described in the existing plan while adhering to the factory's required agent_kinds. A knowledge_rag agent (kb_rag) uses the Bank FAQs and refunds policy to answer customer queries and detect refund/regulatory intent. A refunds_workflow workflow_runner FSM encodes the primary refund orchestration steps (eligibility check, info collection, identity verification, refund execution, and escalation). Tool_operator agents are included for the concrete external operations referenced by the workflow (verify_identity, initiate_refund, create_ticket, lookup_customer). The router is implemented as a lightweight FSM workflow_runner to classify and forward incoming requests. Missing operational procedure and tool specification documents are listed as placeholders so the factory can attach them and make the workflow fully executable in an integrated environment."
   }
 }

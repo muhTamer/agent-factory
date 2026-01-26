@@ -9,7 +9,7 @@ from app.llm_client import chat_json
 from app.shared.schemas.validate import validate_agent_blueprint, validate_workflow_spec
 
 
-DEFAULT_MODEL = "gpt-5o-mini"
+DEFAULT_MODEL = "gpt-5-mini"
 
 
 @dataclass
@@ -328,7 +328,7 @@ class BlueprintCreatorAgent:
                 {"role": "system", "content": system},
                 {"role": "user", "content": json.dumps(user_payload)},
             ],
-            model=self.model,  # always gpt-5o-mini
+            model=self.model,  # always gpt-5-mini
         )
 
     # -------------------------

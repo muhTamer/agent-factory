@@ -124,7 +124,7 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                     current_state=self.engine.current_state,
                     allowed_events=allowed_events,
                     slot_defs=self.engine.slot_defs,
-                    model="gpt-5o-mini",
+                    model="gpt-5-mini",
                 )
 
                 # Drive the workflow engine

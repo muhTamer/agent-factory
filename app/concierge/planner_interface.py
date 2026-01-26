@@ -16,18 +16,17 @@ class PlannerInterface:
         self.llm_client = llm_client
         self.model = model
 
-    def generate_plan_preview(self, use_llm: bool = True) -> Dict[str, Any]:
-        """
-        Generates a structured capability plan + UI metadata for Concierge.
-        """
-        infer = InferCapabilities(
+    from app.infer_capabilities import InferCapabilities
+
+    def generate_plan_preview(self, use_llm: bool = True, model: str = "gpt-5-mini") -> dict:
+        infer = InferCapabilities(model=model or "gpt-5-mini")
+        plan = infer.infer(
+            data_dir=self.data_dir,
             vertical=self.vertical,
-            data_dir=str(self.data_dir),
-            llm_client=self.llm_client,
-            model=self.model,
+            user_goals=getattr(self, "user_goals", "") or "",
+            max_agents=6,
         )
-        result = infer.infer(use_llm=use_llm)
-        return self._format_for_ui(result)
+        return plan
 
     def _format_for_ui(self, plan: Dict[str, Any]) -> Dict[str, Any]:
         """

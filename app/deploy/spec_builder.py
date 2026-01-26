@@ -197,7 +197,7 @@ def build_factory_spec(
     ]
 
     # Generate N AgentBlueprints from the existing plan (LLM)
-    bp_creator = BlueprintCreatorAgent(model="gpt-5o-mini")
+    bp_creator = BlueprintCreatorAgent(model="gpt-5-mini")
     bp_plan = bp_creator.generate_plan_from_existing_plan(
         plan=plan, user_goals=plan.get("user_goals", "")
     )

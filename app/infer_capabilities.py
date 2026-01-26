@@ -1,449 +1,519 @@
 # app/infer_capabilities.py
-"""
-InferCapabilities class
-- Determines which capabilities can be generated based on uploaded documents, vertical, and optional LLM checks.
-- Always includes baseline guardrails and QA evaluator.
-"""
-
 from __future__ import annotations
-import os
-from pathlib import Path
-from typing import List, Dict, Any
-from datetime import datetime
-from jsonschema import Draft202012Validator, ValidationError
 
-import re
-import random
 import json
-import csv
-import yaml
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List
+
+from app.llm_client import chat_json
+
+MODEL = "gpt-5-mini"
+
+
+# Generic document taxonomy (NOT agent taxonomy)
+DOC_TYPES = {
+    "knowledge_base",  # FAQs, Q&A, help center, KB articles, product guides
+    "policy",  # refunds policy, compliance, privacy, eligibility rules
+    "procedure",  # SOPs, onboarding playbooks, workflow steps
+    "tool_spec",  # API docs/specs/endpoints, tool adapters info
+    "other",
+}
+
+
+AGENT_KINDS = {
+    "rag",  # retrieval-based answering / lookup
+    "workflow",  # multi-step state machine / process runner
+    "tool",  # tool operator / action executor
+    "router",  # intent routing / agent selection
+    "qa",  # evaluation / monitoring / scoring
+    "guardrails",  # policy enforcement / safety constraints
+    "other",
+}
+
+
+@dataclass
+class InferOutput:
+    vertical: str
+    documents: List[Dict[str, Any]]
+    agents: List[Dict[str, Any]]
+    notes: List[str]
 
 
 class InferCapabilities:
-    def __init__(self, vertical: str, data_dir: str, llm_client=None, model: str | None = None):
-        """
-        Args:
-            vertical: user-selected domain (e.g., 'retail', 'fintech', 'telco', 'general_service')
-            data_dir: path to folder with uploaded documents
-            llm_client: optional object providing .chat_json() interface (e.g., app.llm_client.chat_json)
-        """
-        self.vertical = vertical.lower()
-        self.data_dir = Path(data_dir)
-        self.llm_client = llm_client
-        self.model = model  # NEW
-        self.docs = self._list_files()
-        self.capabilities = ["faq", "complaint", "guardrails", "qa"]
+    """
+    Concierge-side inference that remains generic:
+      1) Collect user-uploaded files
+      2) Classify docs into generic doc types (knowledge_base/policy/procedure/tool_spec/other)
+      3) Ask LLM to propose agent set + per-agent inputs (by doc type)
+      4) Normalize + produce plan structure used downstream (spec_builder)
+    """
+
+    def __init__(self, model: str = MODEL) -> None:
+        self.model = model
 
     # -----------------------------
-    # 1. File discovery
+    # Public API
     # -----------------------------
-    def _list_files(self) -> List[Path]:
-        """List all files under the data directory (non-recursive for now)."""
-        if not self.data_dir.exists():
-            return []
-        return [p for p in self.data_dir.iterdir() if p.is_file()]
+    def infer(
+        self,
+        *,
+        data_dir: str | Path,
+        vertical: str,
+        user_goals: str = "",
+        max_agents: int = 6,
+    ) -> Dict[str, Any]:
+        base_dir = Path(data_dir).resolve()
+        files = self._list_user_files(base_dir)
 
-    # -----------------------------
-    # 2. Public method: infer()
-    # -----------------------------
-    def infer(self, use_llm: bool = True) -> Dict[str, Any]:
-        """
-        Infer capabilities based on vertical, available docs, and optional LLM assessment.
-        Returns structured dict (capabilities + summary).
-        """
-        results = []
+        documents = self._classify_documents(files, vertical=vertical)
 
-        for cap in self.capabilities:
-            if cap in {"guardrails", "qa"}:
-                results.append(self._always_included(cap))
-                continue
-
-            if use_llm and self.llm_client:
-                res = self._llm_assess(cap)
-            else:
-                res = self._heuristic_assess(cap)
-            results.append(res)
-
-        summary = self._summarize(results)
-        return {"capabilities": results, "summary": summary}
-
-    # -----------------------------
-    # 3. Heuristic fallback (safe baseline)
-    # -----------------------------
-    def _heuristic_assess(self, cap: str) -> Dict[str, Any]:
-        """Fallback deterministic logic when LLM not available."""
-        names = " ".join([f.name.lower() for f in self.docs])
-        detected, missing, conf = [], [], 0.5
-
-        if cap == "faq":
-            if "faq" in names or any(f.suffix.lower() == ".csv" for f in self.docs):
-                detected = ["faq_csv"]
-                conf = 0.9
-            else:
-                missing = ["faqs.csv"]
-                conf = 0.5
-        elif cap == "complaint":
-            if any("refund" in f.name.lower() or "complaint" in f.name.lower() for f in self.docs):
-                detected = ["refund_policy.yaml"]
-                conf = 0.8
-            else:
-                missing = ["refunds_policy.yaml", "complaint_sop.md"]
-                conf = 0.4
-
-        status = "ready" if detected else "partial" if conf >= 0.6 else "missing_docs"
-        return {
-            "id": cap,
-            "status": status,
-            "confidence": round(conf, 2),
-            "docs_detected": detected,
-            "docs_missing": missing,
-            "always_included": False,
-            "why": "Heuristic fallback evaluation.",
-        }
-
-    # -----------------------------
-    # 4. Always-on baseline
-    # -----------------------------
-    def _always_included(self, cap: str) -> Dict[str, Any]:
-        if cap == "guardrails":
-            return {
-                "id": "guardrails",
-                "status": "ready",
-                "confidence": 1.0,
-                "docs_detected": ["base_policy_pack.yaml"],
-                "docs_missing": [],
-                "always_included": True,
-                "why": "Guardrails are mandatory runtime spine component.",
-            }
-        if cap == "qa":
-            return {
-                "id": "qa",
-                "status": "ready",
-                "confidence": 1.0,
-                "docs_detected": [],
-                "docs_missing": [],
-                "always_included": True,
-                "why": "QA evaluator always included for monitoring factuality and tone.",
-            }
-
-    # -----------------------------
-    # 5. LLM-assisted assessment
-    # -----------------------------
-    def _llm_assess(self, cap: str) -> Dict[str, Any]:
-        try:
-            samples = self._prepare_samples(cap)
-            self._audit_samples(cap, samples)  # keep audit trail
-            messages = [
-                {"role": "system", "content": self._system_prompt()},
-                {"role": "user", "content": self._user_prompt(cap, samples)},
-            ]
-            # pass-through to your real client
-            result = self.llm_client.chat_json(
-                messages=messages,
-                model=self.model or os.getenv("AZURE_OPENAI_DEPLOYMENT") or "gpt-5-mini",
-            )
-            return self._normalize_llm_result(cap, result)
-        except Exception as e:
-            return {
-                "id": cap,
-                "status": "partial",
-                "confidence": 0.4,
-                "docs_detected": [],
-                "docs_missing": [],
-                "always_included": False,
-                "why": f"LLM call failed: {e}",
-            }
-
-    # -----------------------------
-    # 6. Helper: privacy-safe sampling (stub for now)
-    # -----------------------------
-    def _prepare_samples(self, cap: str) -> list[dict]:
-        """
-        Extract small, sanitized snippets from supported files.
-        This ensures no PII or sensitive info leaves the environment.
-        """
-        samples: list[dict] = []
-
-        for f in self.docs:
-            ext = f.suffix.lower()
-
-            if ext in {".csv", ".tsv"}:
-                text = self._sample_csv(f)
-            elif ext in {".yaml", ".yml", ".json"}:
-                text = self._sample_yaml_json(f)
-            elif ext in {".md", ".txt"}:
-                text = self._sample_text(f)
-            else:
-                # Skip binaries or large files
-                continue
-
-            # Apply redaction + truncation
-            sanitized = self._sanitize_text(text)
-            if sanitized.strip():
-                samples.append({"filename": f.name, "sample_text": sanitized[:1500]})  # ≈400 tokens
-
-        # Randomize order slightly to reduce positional bias
-        random.shuffle(samples)
-        return samples[:5]  # limit number of samples sent
-
-    # ----------------------------------------------------------
-    # CSV sampler
-    # ----------------------------------------------------------
-    def _sample_csv(self, path: Path) -> str:
-        try:
-            with open(path, newline="", encoding="utf-8") as fh:
-                reader = csv.reader(fh)
-                rows = list(reader)
-            header = ", ".join(rows[0][:6]) if rows else ""
-            # Up to 2 random rows (for structure only)
-            data_rows = (
-                random.sample(rows[1:], min(2, max(0, len(rows) - 1))) if len(rows) > 1 else []
-            )
-            return f"Headers: {header}\nExamples:\n" + "\n".join(
-                [", ".join(r[:6]) for r in data_rows]
-            )
-        except Exception:
-            return ""
-
-    # ----------------------------------------------------------
-    # YAML / JSON sampler
-    # ----------------------------------------------------------
-    def _sample_yaml_json(self, path: Path) -> str:
-        try:
-            text = path.read_text(encoding="utf-8")
-            if path.suffix.lower() == ".json":
-                data = json.loads(text)
-            else:
-                data = yaml.safe_load(text)
-
-            # Only top-level keys + 1 nested example if dict
-            if isinstance(data, dict):
-                keys = list(data.keys())[:6]
-                snippet = {k: data[k] for k in keys}
-                return json.dumps(snippet, indent=2)[:1500]
-            elif isinstance(data, list):
-                return json.dumps(data[:2], indent=2)[:1500]
-            else:
-                return str(data)[:1500]
-        except Exception:
-            return ""
-
-    # ----------------------------------------------------------
-    # Text / Markdown sampler
-    # ----------------------------------------------------------
-    def _sample_text(self, path: Path) -> str:
-        try:
-            lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
-            non_empty = [line for line in lines if line.strip()]
-            if not non_empty:
-                return ""
-            # Take first paragraph + one random mid-section paragraph
-            para1 = non_empty[0]
-            para2 = random.choice(non_empty[1:]) if len(non_empty) > 3 else ""
-            return f"{para1}\n...\n{para2}"
-        except Exception:
-            return ""
-
-    # ----------------------------------------------------------
-    # Sanitization (PII masking, numeric bucketing)
-    # ----------------------------------------------------------
-    def _sanitize_text(self, text: str) -> str:
-        # Mask common PII patterns
-        text = re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", "[EMAIL]", text)
-        text = re.sub(r"\+?\d[\d\s\-\(\)]{7,}\d", "[PHONE]", text)
-        text = re.sub(r"[A-Z]{2}\d{6,}", "[ACCOUNT_ID]", text)
-        text = re.sub(r"\b\d{12,19}\b", "[CARD_NO]", text)
-        text = re.sub(r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b", "[CARD_NO]", text)
-        text = re.sub(r"\$?\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?", "$X,XXX", text)
-        text = re.sub(r"\b\d{5}(?:-\d{4})?\b", "[ZIP]", text)
-
-        # General entity placeholders
-        text = re.sub(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b", "[PERSON]", text)
-
-        # Collapse multiple spaces
-        text = re.sub(r"\s+", " ", text)
-        return text.strip()
-
-    # ----------------------------------------------------------
-    # Audit
-    # ----------------------------------------------------------
-    def _audit_samples(self, cap: str, samples: list[dict]) -> None:
-        """
-        Save the sanitized samples that were used for LLM sufficiency check.
-        Allows transparency and offline review.
-        """
-        if not samples:
-            return
-
-        audit_dir = self.data_dir / ".factory"  # NEW hidden folder
-        audit_dir.mkdir(parents=True, exist_ok=True)
-        audit_path = audit_dir / "samples_audit.json"
-
-        record = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "vertical": self.vertical,
-            "capability": cap,
-            "num_samples": len(samples),
-            "samples": samples,
-        }
-
-        try:
-            if audit_path.exists():
-                existing = json.loads(audit_path.read_text(encoding="utf-8"))
-                if isinstance(existing, list):
-                    existing.append(record)
-                    audit_path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
-                    return
-            # otherwise new file
-            audit_path.write_text(json.dumps([record], indent=2), encoding="utf-8")
-        except Exception as e:
-            print(f"[WARN] Could not write audit preview: {e}")
-
-    # -----------------------------
-    # 7. Helper: prompts
-    # -----------------------------
-    def _system_prompt(self) -> str:
-        return (
-            "You are a capability sufficiency evaluator for an AI Agent Factory.\n"
-            "Return STRICT JSON only (no prose). Fields: {capability, status, confidence, docs_detected, docs_missing, why}.\n"
-            "status MUST be exactly one of: 'ready', 'partial', 'missing_docs'.\n"
-            "docs_detected and docs_missing MUST be JSON arrays (use [] if none). Do NOT use 0, null, or strings.\n"
-            "Do not reproduce input text; do not include PII. Keep 'why' under 30 words."
+        # LLM proposes agents + uses documents (by name) as inputs
+        llm_plan = self._propose_agents_llm(
+            vertical=vertical,
+            user_goals=user_goals,
+            documents=documents,
+            max_agents=max_agents,
         )
 
-    def _user_prompt(self, cap: str, samples: List[Dict[str, str]]) -> str:
-        doc_section = "\n\n".join([f"--- {s['filename']} ---\n{s['sample_text']}" for s in samples])
-        return (
-            f"Vertical: {self.vertical}\nCapability: {cap}\nDocuments:\n{doc_section}\n\n"
-            "Choose status ONLY from: ready | partial | missing_docs."
+        agents = self._normalize_agents_plan(
+            llm_plan=llm_plan,
+            documents=documents,
         )
 
-    # -----------------------------
-    # 8. Helper: normalize LLM output
-    # -----------------------------
-    def _normalize_llm_result(self, cap: str, result: dict) -> dict:
-        """
-        Harden LLM output:
-        - map status synonyms to our enum
-        - coerce docs_* to arrays
-        - clip confidence to [0,1]
-        - default missing fields
-        - validate; else fallback to heuristic
-        """
-        # 1) guard
-        if not isinstance(result, dict):
-            return self._heuristic_assess(cap)
+        # Legacy back-compat: docs_detected union field (used by older spec_builder logic)
+        for a in agents:
+            a["docs_detected"] = self._legacy_docs_detected(a)
 
-        # 2) normalize status (handle common synonyms & alt fields)
-        status_synonyms = {
-            "insufficient": "missing_docs",
-            "not_ready": "missing_docs",
-            "missing": "missing_docs",
-            "unknown": "missing_docs",
-            "no": "missing_docs",
-            "partially": "partial",
-            "partially_ready": "partial",
-            "partial_ready": "partial",
-            "ok": "ready",
-            "sufficient": "ready",
-            "ready_now": "ready",
-            "ready": "ready",
+        out = InferOutput(
+            vertical=vertical,
+            documents=documents,
+            agents=agents,
+            notes=llm_plan.get("notes", []) if isinstance(llm_plan.get("notes"), list) else [],
+        )
+        return {
+            "vertical": out.vertical,
+            "documents": out.documents,
+            "agents": out.agents,
+            "notes": out.notes,
         }
-        raw_status = (result.get("status") or "").strip().lower()
-        if not raw_status:
-            alt = (result.get("sufficiency") or result.get("verdict") or "").strip().lower()
-            raw_status = alt
-        if raw_status in status_synonyms:
-            result["status"] = status_synonyms[raw_status]
 
-        # 3) coerce list-typed fields (docs_detected/docs_missing) to arrays of strings
-        def _as_list(v):
-            if v is None:
-                return []
-            if isinstance(v, list):
-                return [str(x) for x in v]
-            if isinstance(v, str):
-                return [v] if v.strip() else []
-            if isinstance(v, (int, float, bool)):
-                return [] if not v else [str(v)]
+    # -----------------------------
+    # File enumeration
+    # -----------------------------
+    def _list_user_files(self, base_dir: Path) -> List[Path]:
+        if not base_dir.exists():
             return []
 
-        result["docs_detected"] = _as_list(result.get("docs_detected"))
-        result["docs_missing"] = _as_list(result.get("docs_missing"))
+        out: List[Path] = []
+        for p in base_dir.iterdir():
+            if not p.is_file():
+                continue
 
-        # 4) confidence: coerce to float & clip to [0,1]
+            # Ignore internal/system artifacts (common culprits)
+            name_l = p.name.lower()
+            if name_l.startswith("."):
+                continue
+            if name_l in {"samples_audit.json"}:
+                continue
+            if name_l.endswith(".log"):
+                continue
+
+            out.append(p)
+
+        return out
+
+    # -----------------------------
+    # Document classification
+    # -----------------------------
+    def _classify_documents(self, files: List[Path], vertical: str) -> List[Dict[str, Any]]:
+        docs: List[Dict[str, Any]] = []
+        for p in files:
+            prior = self._heuristic_doc_type(p)
+            snippet = self._safe_snippet(p)
+
+            llm = self._classify_doc_llm(
+                filename=p.name,
+                prior=prior,
+                snippet=snippet,
+            )
+
+            doc_type = str(llm.get("doc_type", prior)).strip().lower()
+            if doc_type not in DOC_TYPES:
+                doc_type = prior
+
+            confidence = llm.get("confidence", 0.75)
+            try:
+                confidence = float(confidence)
+            except Exception:
+                confidence = 0.75
+            confidence = max(0.0, min(1.0, confidence))
+
+            reason = llm.get("reason", "")
+            if not isinstance(reason, str):
+                reason = ""
+
+            # ✅ NEW: vertical fit scoring
+            fit = self._assess_vertical_fit_llm(
+                vertical=vertical,
+                filename=p.name,
+                snippet=snippet,
+            )
+            fit_score = fit.get("fit_score", 0.6)
+            try:
+                fit_score = float(fit_score)
+            except Exception:
+                fit_score = 0.6
+            fit_score = max(0.0, min(1.0, fit_score))
+
+            vertical_guess = fit.get("vertical_guess", "")
+            if not isinstance(vertical_guess, str):
+                vertical_guess = ""
+
+            fit_reason = fit.get("reason", "")
+            if not isinstance(fit_reason, str):
+                fit_reason = ""
+
+            docs.append(
+                {
+                    "name": p.name,
+                    "path": str(p),
+                    "doc_type": doc_type,
+                    "confidence": confidence,
+                    "reason": reason[:300],
+                    # ✅ NEW fields
+                    "vertical_fit": fit_score,
+                    "vertical_guess": vertical_guess[:60],
+                    "vertical_fit_reason": fit_reason[:240],
+                    "off_vertical": bool(fit_score < 0.5),
+                }
+            )
+        return docs
+
+    def _heuristic_doc_type(self, p: Path) -> str:
+        ext = p.suffix.lower()
+        name = p.name.lower()
+
+        if ext in {".csv", ".tsv"}:
+            return "knowledge_base"
+        if ext in {".yaml", ".yml"}:
+            # could be policy/procedure/tool_spec; LLM will confirm
+            if (
+                "policy" in name
+                or "refund" in name
+                or "terms" in name
+                or "compliance" in name
+                or "privacy" in name
+            ):
+                return "policy"
+            if "sop" in name or "process" in name or "onboard" in name or "workflow" in name:
+                return "procedure"
+            return "policy"
+        if ext in {".md", ".txt"}:
+            if "sop" in name or "process" in name or "onboard" in name:
+                return "procedure"
+            return "other"
+        if ext in {".json"}:
+            if "openapi" in name or "swagger" in name or "tool" in name or "api" in name:
+                return "tool_spec"
+            return "other"
+
+        return "other"
+
+    def _safe_snippet(self, p: Path) -> str:
+        """
+        Privacy-minimizing snippet:
+          - CSV/TSV: header + 3 rows
+          - YAML/MD/TXT/JSON: first ~40 lines
+        """
+        ext = p.suffix.lower()
         try:
-            conf = float(result.get("confidence", 0.5))
-        except (TypeError, ValueError):
-            conf = 0.5
-        conf = max(0.0, min(1.0, conf))
-        result["confidence"] = conf
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            return ""
 
-        # 5) default capability & why
-        if not result.get("capability"):
-            result["capability"] = cap
-        if not isinstance(result.get("why"), str) or not result["why"].strip():
-            result["why"] = "LLM-assessed sufficiency."
+        lines = text.splitlines()
+        if ext in {".csv", ".tsv"}:
+            return "\n".join(lines[:5])
+        return "\n".join(lines[:40])
 
-        # 6) validate; fallback if invalid
-        if not self._validate_llm_output(result):
-            return self._heuristic_assess(cap)
-
-        # 7) final normalized shape
-        return {
-            "id": cap,
-            "status": result["status"],
-            "confidence": result["confidence"],
-            "docs_detected": result["docs_detected"],
-            "docs_missing": result["docs_missing"],
-            "always_included": False,
-            "why": result["why"],
+    def _classify_doc_llm(self, *, filename: str, prior: str, snippet: str) -> Dict[str, Any]:
+        system = (
+            "You classify uploaded customer-service documents into ONE doc_type:\n"
+            "knowledge_base, policy, procedure, tool_spec, other.\n"
+            "Use filename + snippet. If it contains eligibility/rules/terms, choose policy.\n"
+            "If it describes steps/process/onboarding, choose procedure.\n"
+            "If it looks like API/tool specs (endpoints/params), choose tool_spec.\n"
+            "Return strict JSON: {doc_type, confidence, reason}. confidence is 0..1.\n"
+        )
+        user = {
+            "filename": filename,
+            "prior": prior,
+            "snippet": snippet[:2000],
         }
 
-    # -----------------------------
-    # 9. Helper: summary
-    # -----------------------------
-    def _summarize(self, results: List[Dict[str, Any]]) -> Dict[str, int]:
-        summary = {"ready": 0, "partial": 0, "missing": 0, "total": len(results)}
-        for r in results:
-            s = r.get("status")
-            if s == "ready":
-                summary["ready"] += 1
-            elif s == "partial":
-                summary["partial"] += 1
-            else:
-                summary["missing"] += 1
-        return summary
-
-    # -----------------------------
-    # 10. Validate LLM output
-    # -----------------------------
-    def _validate_llm_output(self, data: dict) -> bool:
-        """Return True if LLM output passes schema validation."""
-        schema = {
-            "type": "object",
-            "required": [
-                "capability",
-                "status",
-                "confidence",
-                "docs_detected",
-                "docs_missing",
-                "why",
+        return chat_json(
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
             ],
-            "properties": {
-                "capability": {"type": "string"},
-                "status": {"type": "string", "enum": ["ready", "partial", "missing_docs"]},
-                "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                "docs_detected": {"type": "array", "items": {"type": "string"}},
-                "docs_missing": {"type": "array", "items": {"type": "string"}},
-                "why": {"type": "string"},
-            },
+            model=self.model,
+            temperature=1.0,
+        )
+
+    # -----------------------------
+    # LLM agent proposal (generic)
+    # -----------------------------
+    def _propose_agents_llm(
+        self,
+        *,
+        vertical: str,
+        user_goals: str,
+        documents: List[Dict[str, Any]],
+        max_agents: int,
+    ) -> Dict[str, Any]:
+        """
+        LLM proposes the agent set and per-agent doc usage, without hardcoding
+        any specific agents (FAQ/complaint/etc.) in code.
+        """
+        system = (
+            "You are designing a CUSTOMER-SERVICE multi-agent system plan.\n"
+            "You must propose a small set of agents that can handle the user's goals.\n"
+            "IMPORTANT CONSTRAINTS:\n"
+            "- Do NOT invent documents. Use only the provided document names.\n"
+            "- Keep it minimal (<= max_agents). Prefer reusable agents.\n"
+            "- Each agent must specify inputs by DOC TYPE buckets:\n"
+            "  knowledge_base, policy, procedure, tool_spec\n"
+            "- Documents have vertical_fit/off_vertical flags.\n"
+            "  By default, DO NOT attach off_vertical documents to agents.\n"
+            "  If there are NO on-vertical documents for a needed bucket, you may attach off_vertical docs,\n"
+            "  but then set status='partial' and explain the mismatch in notes.\n"
+            "- If a policy doc exists and is on-vertical, share it across relevant agents.\n"
+            "Return STRICT JSON with this shape:\n"
+            "{\n"
+            '  "agents": [\n'
+            "    {\n"
+            '      "id": string,\n'
+            '      "agent_kind": one of [rag, workflow, tool, router, qa, guardrails, other],\n'
+            '      "description": string,\n'
+            '      "status": one of [ready, partial, missing_docs],\n'
+            '      "inputs": {\n'
+            '        "knowledge_base": [doc_name...],\n'
+            '        "policy": [doc_name...],\n'
+            '        "procedure": [doc_name...],\n'
+            '        "tool_spec": [doc_name...]\n'
+            "      }\n"
+            "    }\n"
+            "  ],\n"
+            '  "notes": [string...]\n'
+            "}\n"
+        )
+
+        doc_summary = [
+            {
+                "name": d["name"],
+                "doc_type": d["doc_type"],
+                "confidence": d.get("confidence", 0.0),
+                "reason": d.get("reason", ""),
+                # ✅ NEW: vertical fit signals for planning
+                "vertical_fit": d.get("vertical_fit", 0.6),
+                "vertical_guess": d.get("vertical_guess", ""),
+                "off_vertical": bool(d.get("off_vertical", False)),
+                "vertical_fit_reason": d.get("vertical_fit_reason", ""),
+                "snippet": self._doc_snippet_for_planning(d, max_chars=600),
+            }
+            for d in documents
+        ]
+
+        user = {
+            "vertical": vertical,
+            "user_goals": user_goals,
+            "max_agents": max_agents,
+            "documents": doc_summary,
         }
-        try:
-            Draft202012Validator(schema).validate(data)
-            return True
-        except ValidationError as e:
-            print(f"[WARN] LLM output schema invalid: {e.message}")
-            return False
-        except Exception:
-            return False
+
+        return chat_json(
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
+            ],
+            model=self.model,
+            temperature=1.0,
+        )
+
+    def _doc_snippet_for_planning(self, d: Dict[str, Any], max_chars: int = 600) -> str:
+        """
+        Planning snippet comes from classification snippet already (reason + type).
+        Avoid re-reading file here; keep minimal.
+        """
+        # If you later store snippets in documents, prefer that.
+        s = f"{d.get('doc_type','')}: {d.get('reason','')}"
+        return (s or "")[:max_chars]
+
+    # -----------------------------
+    # Normalize + bridge to runtime keys
+    # -----------------------------
+    def _normalize_agents_plan(
+        self,
+        *,
+        llm_plan: Dict[str, Any],
+        documents: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        doc_names = {d["name"] for d in documents}
+
+        raw_agents = llm_plan.get("agents", [])
+        if not isinstance(raw_agents, list):
+            raw_agents = []
+
+        agents: List[Dict[str, Any]] = []
+        for a in raw_agents:
+            if not isinstance(a, dict):
+                continue
+
+            agent_id = str(a.get("id", "")).strip()
+            if not agent_id:
+                continue
+
+            agent_kind = str(a.get("agent_kind", "other")).strip().lower()
+            if agent_kind not in AGENT_KINDS:
+                agent_kind = "other"
+
+            description = a.get("description", "")
+            if not isinstance(description, str):
+                description = ""
+
+            status = str(a.get("status", "partial")).strip().lower()
+            if status not in {"ready", "partial", "missing_docs"}:
+                status = "partial"
+
+            inputs = a.get("inputs", {})
+            if not isinstance(inputs, dict):
+                inputs = {}
+
+            # Ensure list fields and only include known doc names
+            typed = {
+                "knowledge_base": self._normalize_doc_list(inputs.get("knowledge_base"), doc_names),
+                "policy": self._normalize_doc_list(inputs.get("policy"), doc_names),
+                "procedure": self._normalize_doc_list(inputs.get("procedure"), doc_names),
+                "tool_spec": self._normalize_doc_list(inputs.get("tool_spec"), doc_names),
+            }
+
+            # Bridge to runtime/spec_builder-friendly keys (generic mapping)
+            # NOTE: this is not hardcoding agents; it's mapping doc TYPES to input KEYS.
+            runtime_inputs = {
+                "docs": typed["knowledge_base"],
+                "policies": typed["policy"],
+                "procedures": typed["procedure"],
+                "tools": typed["tool_spec"],
+            }
+
+            agents.append(
+                {
+                    "id": agent_id,
+                    "agent_kind": agent_kind,
+                    "description": description,
+                    "status": status,
+                    # Keep both for transparency/debugging
+                    "inputs_typed": typed,
+                    "inputs": runtime_inputs,  # what spec_builder should consume
+                }
+            )
+
+        # If LLM returns nothing, keep system usable (minimal, generic fallback)
+        if not agents:
+            agents = self._minimal_generic_fallback(documents)
+
+        return agents
+
+    def _normalize_doc_list(self, v: Any, allowed: set[str]) -> List[str]:
+        if v is None:
+            return []
+        if isinstance(v, str):
+            v = [v]
+        if not isinstance(v, list):
+            return []
+        out: List[str] = []
+        for x in v:
+            if not isinstance(x, str):
+                continue
+            x = x.strip()
+            if not x:
+                continue
+            if x in allowed:
+                out.append(x)
+        # stable unique
+        return sorted(set(out))
+
+    def _minimal_generic_fallback(self, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Only used if LLM fails completely. Still generic: no FAQ/complaint naming.
+        """
+        kb = [d["name"] for d in documents if d.get("doc_type") == "knowledge_base"]
+        pol = [d["name"] for d in documents if d.get("doc_type") == "policy"]
+        proc = [d["name"] for d in documents if d.get("doc_type") == "procedure"]
+        tool = [d["name"] for d in documents if d.get("doc_type") == "tool_spec"]
+
+        return [
+            {
+                "id": "customer_service_assistant",
+                "agent_kind": "rag" if kb else "other",
+                "description": "Generic customer service assistant grounded in available documents.",
+                "status": "partial" if documents else "missing_docs",
+                "inputs_typed": {
+                    "knowledge_base": kb,
+                    "policy": pol,
+                    "procedure": proc,
+                    "tool_spec": tool,
+                },
+                "inputs": {
+                    "docs": kb,
+                    "policies": pol,
+                    "procedures": proc,
+                    "tools": tool,
+                },
+                "docs_detected": sorted(set(kb + pol + proc + tool)),
+            }
+        ]
+
+    def _legacy_docs_detected(self, agent: Dict[str, Any]) -> List[str]:
+        inputs = agent.get("inputs", {})
+        if not isinstance(inputs, dict):
+            return []
+        legacy: List[str] = []
+        for k in ("docs", "policies", "procedures", "tools"):
+            v = inputs.get(k)
+            if isinstance(v, str):
+                legacy.append(v)
+            elif isinstance(v, list):
+                legacy.extend([x for x in v if isinstance(x, str)])
+        return sorted(set(legacy))
+
+    def _assess_vertical_fit_llm(
+        self, *, vertical: str, filename: str, snippet: str
+    ) -> Dict[str, Any]:
+        """
+        Returns JSON: {fit_score: 0..1, vertical_guess: str, reason: str}
+        fit_score is how well the document matches the selected vertical.
+        """
+        system = (
+            "You assess whether an uploaded customer-service document matches a target vertical.\n"
+            "Use filename + snippet to guess the document's likely vertical (e.g., fintech, retail, telecom, insurance, travel).\n"
+            "Then score how well it fits the TARGET vertical.\n"
+            "Return STRICT JSON: {fit_score, vertical_guess, reason}.\n"
+            "fit_score must be a number between 0 and 1.\n"
+            "Keep reason short.\n"
+        )
+        user = {
+            "target_vertical": vertical,
+            "filename": filename,
+            "snippet": snippet[:2000],
+        }
+
+        return chat_json(
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
+            ],
+            model=self.model,
+            temperature=1.0,
+        )
