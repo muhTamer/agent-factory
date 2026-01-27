@@ -13,6 +13,8 @@ from app.generator.generate_agent import generate_agent
 from app.runtime.registry import AgentRegistry
 from app.runtime.router import LLMRouter
 from app.runtime.spine import RuntimeSpine
+from app.runtime.routing import DefaultRouter
+from app.runtime.router_adapter import LLMRouterAdapter
 
 router: LLMRouter | None = None
 spine: RuntimeSpine | None = None
@@ -70,7 +72,9 @@ def startup_event():
         else:
             print(f"[BOOT] Skipping unrecognized type {a_type} ({a_id})")
 
-    router = LLMRouter(registry=registry)
+    llm_router = LLMRouter(registry=registry)
+    router = LLMRouterAdapter(llm_router) if registry.all_ids() else DefaultRouter(registry)
+
     spine = RuntimeSpine(registry=registry, router=router)
 
     print(f"[BOOT] All agents loaded: {registry.all_ids()}")

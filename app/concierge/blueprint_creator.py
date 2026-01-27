@@ -76,6 +76,29 @@ class BlueprintCreatorAgent:
         wf.setdefault("states", {})
         wf.setdefault("initial_state", next(iter(wf["states"]), "start"))
 
+        # ---- Normalize states (schema compliance) ----
+        states = wf.get("states")
+
+        # Dict form (LLM-friendly): {state_name: {..}}
+        if isinstance(states, dict):
+            for _state_name, s in list(states.items()):
+                if not isinstance(s, dict):
+                    continue
+
+                # If LLM produced action as a list → rename to actions
+                if isinstance(s.get("action"), list):
+                    s["actions"] = [str(x) for x in s["action"] if x is not None]
+                    del s["action"]
+
+                # If LLM produced actions as a string → wrap into list
+                if isinstance(s.get("actions"), str) and s["actions"].strip():
+                    s["actions"] = [s["actions"].strip()]
+
+                # If both exist, keep actions list and drop invalid action
+                if "actions" in s and isinstance(s.get("action"), str):
+                    del s["action"]
+
+        wf["states"] = states
         return wf
 
     def generate_plan_from_existing_plan(
