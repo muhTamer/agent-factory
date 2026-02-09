@@ -2,50 +2,68 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
+from app.runtime.audit_writer import JsonlAuditWriter
+from app.runtime.guardrails import Guardrails, NoOpGuardrails
 from app.runtime.registry import AgentRegistry
 from app.runtime.routing import Router
+from app.runtime.trace import Trace
 
 
 class RuntimeSpine:
-    def __init__(self, registry: AgentRegistry, router: Router):
+    """
+    Invariant orchestration backbone.
+
+    Pipeline:
+      guard_pre -> route -> execute -> select -> respond -> guard_post -> return
+
+    Notes:
+      - Router is always present (LLMRouterAdapter or DefaultRouter).
+      - Guardrails are pluggable; default is NoOp.
+      - Trace/audit are always written (best-effort).
+    """
+
+    def __init__(
+        self,
+        registry: AgentRegistry,
+        router: Router,
+        guardrails: Guardrails | None = None,
+        audit_writer: JsonlAuditWriter | None = None,
+    ):
         self.registry = registry
         self.router = router
+        self.guardrails = guardrails or NoOpGuardrails()
+        self.audit_writer = audit_writer or JsonlAuditWriter()
 
-    def handle_chat(
-        self,
-        query: str,
-        request_id: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        q = (query or "").strip()
-        if not q:
-            return {"error": "Query text required."}
+    # -------------------------
+    # Guardrails stages
+    # -------------------------
+    def _guard_pre(self, query: str, context: dict) -> Tuple[bool, Any]:
+        gr = self.guardrails.pre(query, context)
+        if not gr.allowed:
+            return False, {"error": "Blocked by guardrails (pre).", "reason": gr.reason}
 
-        ctx: Dict[str, Any] = context or {}
-        rid = request_id or str(uuid.uuid4())
+        if gr.mutated_query is not None:
+            query = gr.mutated_query
+        if gr.mutated_context is not None:
+            context = gr.mutated_context
 
-        print(f"[REQ] {rid}: {q}")
+        return True, (query, context)
 
-        # 1) ROUTE
-        plan = self._route(q)
-        if not plan.candidates:
-            return {"error": "No routing candidates.", "request_id": rid}
+    def _guard_post(self, response: dict, context: dict) -> Tuple[bool, Any]:
+        gr = self.guardrails.post(response, context)
+        if not gr.allowed:
+            return False, {"error": "Blocked by guardrails (post).", "reason": gr.reason}
 
-        # 2) EXECUTE
-        results = self._execute_candidates(plan, q, ctx)
-        if not results:
-            return {"error": "No agent produced a response.", "request_id": rid}
+        if gr.mutated_response is not None:
+            response = gr.mutated_response
 
-        # 3) SELECT
-        selected = self._select_best(results)
-        if not selected:
-            return {"error": "No suitable response.", "request_id": rid}
+        return True, response
 
-        # 4) RESPOND
-        return self._respond(selected, plan, rid)
-
+    # -------------------------
+    # Orchestration stages
+    # -------------------------
     def _route(self, query: str):
         plan = self.router.route(query)
         print(f"[ROUTER] plan={plan}")
@@ -68,13 +86,7 @@ class RuntimeSpine:
                     }
                 )
                 score = float(res.get("score", cand.score))
-                results.append(
-                    {
-                        "agent_id": cand.id,
-                        "score": score,
-                        "response": res,
-                    }
-                )
+                results.append({"agent_id": cand.id, "score": score, "response": res})
             except Exception as e:
                 print(f"[ERR] agent {cand.id} failed: {e}")
 
@@ -101,3 +113,113 @@ class RuntimeSpine:
             ],
         }
         return resp
+
+    # -------------------------
+    # Public entrypoint
+    # -------------------------
+    def handle_chat(
+        self,
+        query: str,
+        request_id: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        q = (query or "").strip()
+        if not q:
+            return {"error": "Query text required."}
+
+        ctx: Dict[str, Any] = context or {}
+        rid = request_id or str(uuid.uuid4())
+
+        print(f"[REQ] {rid}: {q}")
+
+        trace = Trace.start(query=q, request_id=rid, context=ctx)
+        trace.add("request_received")
+
+        try:
+            # 0) Guardrails (pre)
+            ok, pre = self._guard_pre(q, ctx)
+
+            if not ok:
+                trace.add("guard_pre_block", reason=pre.get("reason", ""))
+                pre["request_id"] = rid
+                pre.setdefault("text", f"🚫 Blocked by policy: {pre.get('reason','')}")
+                pre.setdefault("response", {"text": pre["text"]})
+
+                trace.add(
+                    "guard_pre_block",
+                    guardrails_type=type(self.guardrails).__name__,
+                    reason=pre.get("reason", ""),
+                )
+
+                return pre
+
+            q, ctx = pre
+
+            trace.add(
+                "guard_pre_ok",
+                guardrails_type=type(self.guardrails).__name__,
+            )
+
+            # 1) Route
+            plan = self._route(q)
+            trace.add(
+                "route",
+                primary=plan.primary,
+                strategy=plan.strategy,
+                candidates=[
+                    {"id": c.id, "score": c.score, "reason": c.reason} for c in plan.candidates
+                ],
+            )
+
+            if not plan.candidates:
+                trace.add("route_empty")
+                return {"error": "No routing candidates.", "request_id": rid}
+
+            # 2) Execute
+            results = self._execute_candidates(plan, q, ctx)
+            trace.add(
+                "execute",
+                results=[{"agent_id": r["agent_id"], "score": r["score"]} for r in results],
+            )
+
+            if not results:
+                trace.add("execute_empty")
+                return {"error": "No agent produced a response.", "request_id": rid}
+
+            # 3) Select
+            selected = self._select_best(results)
+            if not selected:
+                trace.add("select_empty")
+                return {"error": "No suitable response.", "request_id": rid}
+
+            trace.add(
+                "select",
+                agent_id=selected["agent_id"],
+                score=selected["score"],
+            )
+
+            # 4) Respond
+            resp = self._respond(selected, plan, rid)
+            trace.add(
+                "response_ready",
+                agent_id=resp.get("agent_id"),
+                score=resp.get("score"),
+            )
+
+            # 5) Guardrails (post)
+            ok, post = self._guard_post(resp, ctx)
+            if not ok:
+                trace.add("guard_post_block", reason=post.get("reason", ""))
+                post["request_id"] = rid
+                post.setdefault("text", f"🚫 Blocked by policy: {post.get('reason','')}")
+                post.setdefault("response", {"text": post["text"]})
+                return post
+
+            trace.add("guard_post_ok")
+            return post
+
+        finally:
+            try:
+                self.audit_writer.write(trace)
+            except Exception as e:
+                print(f"[AUDIT] failed to write trace: {e}")

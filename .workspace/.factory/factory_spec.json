@@ -15,380 +15,269 @@
       "config": "spec/base_policy_pack.yaml"
     },
     {
-      "id": "router",
-      "type": "autogen",
-      "blueprint": "workflow_runner",
-      "status": "ready",
-      "inputs": {
-        "workflow_spec": {
-          "id": "router_fsm_v1",
-          "description": "FSM that classifies incoming messages and routes to RAG, refunds workflow, or escalation based on classification and policy triggers.",
-          "engine": "fsm",
-          "slots": {
-            "message": {
-              "type": "string",
-              "required": true,
-              "description": "Raw incoming customer message text"
-            },
-            "customer_id": {
-              "type": "string",
-              "required": false,
-              "description": "Customer identifier if present"
-            },
-            "order_id": {
-              "type": "string",
-              "required": false,
-              "description": "Order or transaction id if present"
-            },
-            "classification": {
-              "type": "string",
-              "required": false,
-              "description": "Determined intent: 'general_faq' | 'refund' | 'kyc' | 'aml' | 'escalation'"
-            },
-            "requires_escalation": {
-              "type": "boolean",
-              "required": false,
-              "description": "Whether message must be escalated to human (true/false)"
-            },
-            "policy_trigger": {
-              "type": "string",
-              "required": false,
-              "description": "Name of policy rule that triggered special handling (e.g., 'refund_amount_limit', 'aml_suspected')"
-            }
-          },
-          "states": {
-            "classify_message": {
-              "description": "Perform intent classification using message text and policy indicator rules (e.g., keywords, amounts, PII patterns). Set slots: classification, policy_trigger, requires_escalation as needed.",
-              "on_enter": "Run classifier + policy rule checks; set slots accordingly; emit 'classified' event",
-              "on": {
-                "classified": "route_decision"
-              },
-              "terminal": false
-            },
-            "route_decision": {
-              "description": "Decide destination based on classification and policy_trigger. Possible next states: to_rag (general_faq), to_refund (refund flows), to_kyc (kyc/aml flows), escalate (human).",
-              "on_enter": "If requires_escalation -> emit 'escalate'; else if classification == 'general_faq' -> emit 'to_rag'; else if classification == 'refund' -> emit 'to_refund'; else if classification in ['kyc','aml'] -> emit 'to_kyc'; otherwise emit 'to_rag'.",
-              "on": {
-                "to_rag": "route_to_rag",
-                "to_refund": "route_to_refund",
-                "to_kyc": "route_to_kyc",
-                "escalate": "escalate"
-              },
-              "terminal": false
-            },
-            "route_to_rag": {
-              "description": "Forward message and relevant slots to the RAG knowledge agent for answer generation. Record routing decision.",
-              "on_enter": "Invoke routing output -> target 'rag_qa' with slots (message, customer_id, order_id, policy_trigger); emit 'routed'",
-              "on": {
-                "routed": "end"
-              },
-              "terminal": false
-            },
-            "route_to_refund": {
-              "description": "Forward message and extracted transaction info to refunds workflow to initiate refund orchestration.",
-              "on_enter": "Invoke routing output -> target 'refunds_workflow' with slots (customer_id, order_id, message, policy_trigger); emit 'routed'",
-              "on": {
-                "routed": "end"
-              },
-              "terminal": false
-            },
-            "route_to_kyc": {
-              "description": "Forward KYC/AML related messages to human ops or KYC workflow for verification/escalation.",
-              "on_enter": "Route to human/KYC process (create ticket or handoff_to_human) with context; emit 'routed'",
-              "on": {
-                "routed": "end"
-              },
-              "terminal": false
-            },
-            "escalate": {
-              "description": "Create an escalation/ticket and handoff to human agents. This state is reached when policy or classifier deems immediate human attention is required.",
-              "on_enter": "Invoke create_ticket or handoff_to_human tools and mark requires_escalation=true; emit 'escalated'",
-              "on": {
-                "escalated": "end"
-              },
-              "terminal": false
-            },
-            "end": {
-              "description": "Terminal state after routing decision has been emitted and any immediate handoff action executed.",
-              "on_enter": "Complete routing flow and return routing metadata",
-              "terminal": true
-            }
-          },
-          "initial_state": "classify_message"
-        }
-      },
-      "blueprint_meta": {
-        "agent_kind": "workflow_runner",
-        "description": "Classifies incoming customer messages (general question, refund request, KYC/AML issue, or escalation) using available policy hints and routes them to the appropriate agent or tool. Detects sensitive flows (refunds, PII, AML triggers) and marks for escalation when required.",
-        "capabilities": [
-          "Classify incoming messages into intents: general_faq, refund_request, kyc_issue, aml_flag, escalation",
-          "Apply simple policy checks to flag sensitive flows",
-          "Populate slots used by downstream workflows (customer_id, order_id, classification, requires_escalation)",
-          "Emit routing decisions/events to invoke RAG or refunds workflow or human handoff"
-        ],
-        "tools": [],
-        "vertical": "fintech"
-      }
-    },
-    {
-      "id": "rag_qa",
+      "id": "customer_facing_rag",
       "type": "autogen",
       "blueprint": "knowledge_rag",
       "status": "ready",
       "inputs": {
         "docs": [
           "C:\\Users\\mozaki\\OneDrive\\CBS\\Thesis\\agent-factory\\.workspace\\BankFAQs.csv",
-          "C:\\Users\\mozaki\\OneDrive\\CBS\\Thesis\\agent-factory\\.workspace\\refunds_policy.yaml",
-          "<UPLOAD:knowledge_base_faqs>",
-          "<UPLOAD:product_spec_docs>"
+          "C:\\Users\\mozaki\\OneDrive\\CBS\\Thesis\\agent-factory\\.workspace\\refunds_policy.yaml"
         ]
       },
       "blueprint_meta": {
         "agent_kind": "knowledge_rag",
-        "description": "Retrieval-augmented generation agent that answers customer questions using provided FAQs and policy documents, cites policy when relevant, and flags queries requiring workflow intervention (refund initiation, KYC/AML escalation).",
+        "description": "First-line conversational FAQ responder that retrieves and summarizes bank FAQ content and references refund policy when relevant.",
         "capabilities": [
-          "Retrieve relevant passages from FAQ and policy documents",
-          "Provide concise FAQ-style answers and quote eligibility, limits and policy references",
-          "Cite source documents when making policy claims",
-          "Detect and flag queries that should trigger a workflow (refund initiation) or human escalation"
+          "retrieve_faq_answer",
+          "summarize_faq",
+          "cite_policy_references",
+          "handle_simple_followups",
+          "detect_pii_and_mask"
         ],
         "tools": [],
         "vertical": "fintech"
       }
     },
     {
-      "id": "refunds_workflow",
+      "id": "policy_qa_rag",
+      "type": "autogen",
+      "blueprint": "knowledge_rag",
+      "status": "ready",
+      "inputs": {
+        "docs": [
+          "C:\\Users\\mozaki\\OneDrive\\CBS\\Thesis\\agent-factory\\.workspace\\refunds_policy.yaml"
+        ]
+      },
+      "blueprint_meta": {
+        "agent_kind": "knowledge_rag",
+        "description": "Policy-focused RAG that answers compliance and policy clarification questions by retrieving passages from the refunds policy.",
+        "capabilities": [
+          "retrieve_policy_clause",
+          "explain_policy_terms",
+          "identify_policy_gaps",
+          "flag_policy_conflicts"
+        ],
+        "tools": [],
+        "vertical": "fintech"
+      }
+    },
+    {
+      "id": "router_v1",
       "type": "autogen",
       "blueprint": "workflow_runner",
       "status": "ready",
       "inputs": {
         "workflow_spec": {
-          "id": "refunds_fsm_v1",
-          "description": "FSM to execute refund orchestration with policy enforcement and escalation paths.",
+          "id": "router_v1_spec",
+          "description": "Finite-state router that classifies messages and selects the target subsystem.",
           "engine": "fsm",
           "slots": {
-            "customer_id": {
-              "type": "string",
-              "required": false,
-              "description": "Identifier for the customer requesting the refund"
-            },
-            "order_id": {
+            "user_message": {
               "type": "string",
               "required": true,
-              "description": "Order or payment transaction identifier for which refund is requested"
+              "description": "Raw message from the customer."
             },
-            "refund_amount": {
-              "type": "number",
-              "required": true,
-              "description": "Requested refund amount"
-            },
-            "refund_reason": {
+            "detected_intent": {
               "type": "string",
-              "required": true,
-              "description": "Customer-provided reason for refund"
-            },
-            "eligible": {
-              "type": "boolean",
               "required": false,
-              "description": "Set by policy evaluation whether refund is allowed"
+              "description": "Best-effort intent label (e.g., faq, refund, account_issue)."
             },
-            "aml_flag": {
-              "type": "boolean",
+            "entity": {
+              "type": "string",
               "required": false,
-              "description": "Set if AML/KYC checks raise suspicion"
+              "description": "Detected key entity (e.g., order_id, transaction_id)."
             },
-            "identity_verified": {
-              "type": "boolean",
+            "route": {
+              "type": "string",
               "required": false,
-              "description": "Result of identity verification"
-            },
-            "payment_initiated": {
-              "type": "boolean",
-              "required": false,
-              "description": "Whether refund payment was successfully initiated"
+              "description": "Decided route (faq | refunds_workflow | human)."
             }
           },
           "states": {
-            "collect_details": {
-              "description": "Collect any missing required details from the customer or upstream caller (order_id, refund_amount, refund_reason, bank/payment details).",
-              "on_enter": "Prompt for missing slots; when collection complete emit 'details_collected'",
+            "start": {
+              "description": "Receive message and perform classification.",
+              "on_enter": "classify_intent",
               "on": {
-                "details_collected": "verify_eligibility"
-              },
-              "terminal": false
+                "classified": "route_decision"
+              }
             },
-            "verify_eligibility": {
-              "description": "Evaluate refund eligibility using refunds_policy.yaml: check refund window, reason eligibility, refund amount limits, previous refunds and compliance constraints.",
-              "on_enter": "Evaluate policy rules; set slot 'eligible' true/false and possibly set 'policy_trigger' when special handling required; emit 'eligible' or 'ineligible'",
+            "route_decision": {
+              "description": "Decide route using detected_intent and entity heuristics and policy cues.",
+              "on_enter": "determine_route",
               "on": {
-                "eligible": "verify_identity",
-                "ineligible": "notify_ineligible"
-              },
-              "terminal": false
+                "route_faq": "route_faq",
+                "route_refund": "route_refund",
+                "route_human": "escalate_human"
+              }
             },
-            "verify_identity": {
-              "description": "Perform identity verification (KYC) before processing refund.",
-              "on_enter": "Invoke tool 'verify_identity' and 'lookup_customer' as needed; on success emit 'verified', on failure emit 'unverified'",
-              "on": {
-                "verified": "check_aml",
-                "unverified": "identity_failed"
-              },
-              "terminal": false
-            },
-            "check_aml": {
-              "description": "Run AML/KYC policy checks and determine if the transaction should be flagged or blocked.",
-              "on_enter": "Evaluate AML rules from refunds_policy.yaml and other policy docs; set 'aml_flag' true/false; emit 'aml_clear' or 'aml_flagged'",
-              "on": {
-                "aml_clear": "process_refund",
-                "aml_flagged": "aml_escalation"
-              },
-              "terminal": false
-            },
-            "process_refund": {
-              "description": "Coordinate with payment systems to initiate the refund.",
-              "on_enter": "Invoke tool 'initiate_refund' (and optionally 'lookup_payment'); on success emit 'refund_initiated', on failure emit 'refund_failed'",
-              "on": {
-                "refund_initiated": "complete_refund",
-                "refund_failed": "refund_failed"
-              },
-              "terminal": false
-            },
-            "complete_refund": {
-              "description": "Finalize flow: notify customer of successful refund, update records, and close the workflow.",
-              "on_enter": "Invoke 'update_ticket' / notify channels, set 'payment_initiated'=true and return success metadata",
+            "route_faq": {
+              "description": "Emit instruction to invoke the FAQ responder.",
+              "on_enter": "emit_route:faq",
               "terminal": true
             },
-            "notify_ineligible": {
-              "description": "Inform customer the refund is ineligible under policy and provide citation or next steps; offer appeal/escalation if applicable.",
-              "on_enter": "Generate explanatory response citing refunds_policy.yaml and offer next steps (create ticket/human appeal); emit 'closed_ineligible'",
-              "on": {
-                "closed_ineligible": "end_ineligible"
-              },
-              "terminal": false
-            },
-            "end_ineligible": {
-              "description": "Terminal state after notifying ineligible outcome.",
-              "on_enter": "Close flow with ineligible outcome",
+            "route_refund": {
+              "description": "Emit instruction to invoke the refunds workflow.",
+              "on_enter": "emit_route:refunds_workflow",
               "terminal": true
             },
-            "identity_failed": {
-              "description": "Identity verification failed. Create a ticket for manual review and request additional proof from customer.",
-              "on_enter": "Invoke 'create_ticket' and 'handoff_to_human' as needed, provide instructions to customer; emit 'escalated_identity'",
-              "on": {
-                "escalated_identity": "end_escalation"
-              },
-              "terminal": false
-            },
-            "aml_escalation": {
-              "description": "AML suspicion detected: halt automated refund and escalate to compliance/human ops.",
-              "on_enter": "Invoke 'create_ticket' and 'handoff_to_human' with AML context; emit 'escalated_aml'",
-              "on": {
-                "escalated_aml": "end_escalation"
-              },
-              "terminal": false
-            },
-            "refund_failed": {
-              "description": "Refund initiation failed due to payment gateway or policy enforcement; create ticket and notify customer of retry or manual handling.",
-              "on_enter": "Invoke 'create_ticket' with payment error details and notify customer; emit 'escalated_payment'",
-              "on": {
-                "escalated_payment": "end_escalation"
-              },
-              "terminal": false
-            },
-            "end_escalation": {
-              "description": "Terminal state after creating escalation ticket and handing off to human operations.",
-              "on_enter": "Return escalation/ticket metadata",
+            "escalate_human": {
+              "description": "Emit instruction to escalate the conversation to a human agent.",
+              "on_enter": "emit_route:human",
               "terminal": true
             }
           },
-          "initial_state": "collect_details"
+          "initial_state": "start"
         }
       },
       "blueprint_meta": {
         "agent_kind": "workflow_runner",
-        "description": "Orchestrates refund handling: collects required customer inputs, validates eligibility against the refunds policy, performs identity/AML checks, coordinates with payment systems to initiate refunds, and triggers notifications or escalations as required.",
+        "description": "Classifies incoming customer messages and routes them to the appropriate subsystem: FAQ responder, refunds workflow, or human escalation.",
         "capabilities": [
-          "Collect structured refund inputs (order_id, amount, reason, bank details) from customer or upstream router",
-          "Evaluate refund eligibility against refunds_policy.yaml rules (limits, age, reason eligibility)",
-          "Invoke identity verification and payment tools and interpret results",
-          "Escalate to human ops when AML/KYC triggers or refund limits are exceeded",
-          "Create tickets and send notifications about refund outcome"
+          "intent_classification",
+          "entity_detection",
+          "route_decision",
+          "emit_route_event"
         ],
         "tools": [],
         "vertical": "fintech"
       }
     },
     {
-      "id": "tool_lookup_customer",
+      "id": "refunds_workflow_v1",
       "type": "autogen",
-      "blueprint": "tool_operator",
+      "blueprint": "workflow_runner",
       "status": "ready",
       "inputs": {
-        "tool": "lookup_customer"
+        "workflow_spec": {
+          "id": "refunds_workflow_v1_spec",
+          "description": "FSM to evaluate refund eligibility and coordinate refund processing, referencing the refunds policy for decisions.",
+          "engine": "fsm",
+          "slots": {
+            "customer_id": {
+              "type": "string",
+              "required": true,
+              "description": "Customer identifier used for lookups and verification."
+            },
+            "order_id": {
+              "type": "string",
+              "required": true,
+              "description": "Order or transaction identifier for the refund request."
+            },
+            "refund_amount": {
+              "type": "number",
+              "required": true,
+              "description": "Requested refund amount."
+            },
+            "refund_reason": {
+              "type": "string",
+              "required": true,
+              "description": "Short description of why the refund is requested."
+            },
+            "policy_checked": {
+              "type": "boolean",
+              "required": false,
+              "description": "Indicates whether the refunds policy eligibility check was performed."
+            },
+            "identity_verified": {
+              "type": "boolean",
+              "required": false,
+              "description": "Indicates whether the customer's identity was successfully verified."
+            }
+          },
+          "states": {
+            "start": {
+              "description": "Begin refund flow and validate initial inputs.",
+              "on_enter": "initiate_refund_flow",
+              "on": {
+                "started": "assess_eligibility"
+              }
+            },
+            "assess_eligibility": {
+              "description": "Check refund eligibility against policy clauses (timing, product type, previous refunds, AML flags).",
+              "on_enter": "check_policy_eligibility",
+              "on": {
+                "eligible": "collect_missing_info",
+                "ineligible": "reject_refund"
+              }
+            },
+            "collect_missing_info": {
+              "description": "Request or verify any missing supporting data (receipts, payment method, KYC evidence).",
+              "on_enter": [
+                "request_additional_info"
+              ],
+              "on": {
+                "info_provided": "verify_identity",
+                "info_missing": "escalate_human"
+              }
+            },
+            "verify_identity": {
+              "description": "Verify customer identity and KYC status as required by policy.",
+              "on_enter": "verify_identity",
+              "on": {
+                "verified": "consult_limits",
+                "unverified": "reject_refund"
+              }
+            },
+            "consult_limits": {
+              "description": "Apply monetary and frequency limits from policy; determine if manual approval required.",
+              "on_enter": "apply_refund_limits",
+              "on": {
+                "within_limits": "approve_refund",
+                "exceeds_limits": "require_approval"
+              }
+            },
+            "require_approval": {
+              "description": "Create an approval ticket for manual review when policy requires escalation.",
+              "on_enter": "create_ticket",
+              "on": {
+                "approved": "approve_refund",
+                "denied": "reject_refund"
+              }
+            },
+            "approve_refund": {
+              "description": "Invoke payment system to process the refund.",
+              "on_enter": "initiate_refund",
+              "on": {
+                "refunded": "completed",
+                "refund_failed": "create_ticket_for_manual_review"
+              }
+            },
+            "reject_refund": {
+              "description": "Terminate flow and notify customer of ineligibility or failed checks.",
+              "on_enter": "notify_customer_rejection",
+              "terminal": true
+            },
+            "completed": {
+              "description": "Refund successful; notify customer and close flow.",
+              "on_enter": "notify_customer_success",
+              "terminal": true
+            },
+            "create_ticket_for_manual_review": {
+              "description": "Create a ticket for manual investigation of refund failure or complex cases.",
+              "on_enter": "create_ticket",
+              "on": {
+                "ticket_created": "escalate_human"
+              }
+            },
+            "escalate_human": {
+              "description": "Handoff to a human agent for manual processing or sensitive escalations.",
+              "on_enter": "handoff_to_human",
+              "terminal": true
+            }
+          },
+          "initial_state": "start"
+        }
       },
       "blueprint_meta": {
-        "agent_kind": "tool_operator",
-        "description": "Tool operator to fetch customer profile and basic KYC metadata from customer store.",
+        "agent_kind": "workflow_runner",
+        "description": "Orchestrates refund evaluation and processing steps according to the refunds policy: eligibility check, data collection, identity verification, approval, and refund execution.",
         "capabilities": [
-          "Retrieve customer profile by customer_id or email",
-          "Return KYC status, contact info hints, and account metadata"
-        ],
-        "tools": [],
-        "vertical": "fintech"
-      }
-    },
-    {
-      "id": "tool_verify_identity",
-      "type": "autogen",
-      "blueprint": "tool_operator",
-      "status": "ready",
-      "inputs": {
-        "tool": "verify_identity"
-      },
-      "blueprint_meta": {
-        "agent_kind": "tool_operator",
-        "description": "Tool operator to perform identity verification actions (document checks, 2FA, or third-party identity verification).",
-        "capabilities": [
-          "Trigger identity verification checks",
-          "Return verification result and evidence or next steps required"
-        ],
-        "tools": [],
-        "vertical": "fintech"
-      }
-    },
-    {
-      "id": "tool_lookup_order",
-      "type": "autogen",
-      "blueprint": "tool_operator",
-      "status": "ready",
-      "inputs": {
-        "tool": "lookup_order"
-      },
-      "blueprint_meta": {
-        "agent_kind": "tool_operator",
-        "description": "Tool operator to look up order or transaction details needed to validate refund claims.",
-        "capabilities": [
-          "Retrieve order metadata, payment method, transaction timestamps, and status",
-          "Return amount paid and eligible refund window information"
-        ],
-        "tools": [],
-        "vertical": "fintech"
-      }
-    },
-    {
-      "id": "tool_lookup_payment",
-      "type": "autogen",
-      "blueprint": "tool_operator",
-      "status": "ready",
-      "inputs": {
-        "tool": "lookup_payment"
-      },
-      "blueprint_meta": {
-        "agent_kind": "tool_operator",
-        "description": "Tool operator to query payment provider records for transaction status and settlement details.",
-        "capabilities": [
-          "Fetch payment transaction status and settlement timestamps",
-          "Provide payment provider response codes useful for diagnosing refund failures"
+          "evaluate_refund_eligibility",
+          "orchestrate_verifications",
+          "initiate_refund_when_allowed",
+          "create_approval_ticket",
+          "escalate_to_human"
         ],
         "tools": [],
         "vertical": "fintech"
@@ -404,10 +293,31 @@
       },
       "blueprint_meta": {
         "agent_kind": "tool_operator",
-        "description": "Tool operator that interfaces with payment systems to initiate refunds according to orchestration commands.",
+        "description": "Performs refund transactions through the configured payment gateway or core banking API.",
         "capabilities": [
-          "Initiate refund to original payment method or alternate method per business rules",
-          "Return initiation success/failure and refund reference id"
+          "call_payment_gateway",
+          "confirm_refund_execution",
+          "return_refund_status"
+        ],
+        "tools": [],
+        "vertical": "fintech"
+      }
+    },
+    {
+      "id": "tool_verify_identity",
+      "type": "autogen",
+      "blueprint": "tool_operator",
+      "status": "ready",
+      "inputs": {
+        "tool": "verify_identity"
+      },
+      "blueprint_meta": {
+        "agent_kind": "tool_operator",
+        "description": "Performs identity verification and KYC status checks against identity services or internal KYC data.",
+        "capabilities": [
+          "perform_identity_verification",
+          "return_verification_result",
+          "mask_or_flag_pii"
         ],
         "tools": [],
         "vertical": "fintech"
@@ -423,10 +333,11 @@
       },
       "blueprint_meta": {
         "agent_kind": "tool_operator",
-        "description": "Tool operator to create support or escalation tickets for manual review or follow-up actions.",
+        "description": "Creates support or approval tickets in the customer support system for manual review or approvals.",
         "capabilities": [
-          "Create a ticket with context, attach relevant documents and policy citations",
-          "Return ticket id and initial status"
+          "open_ticket",
+          "attach_case_metadata",
+          "return_ticket_id"
         ],
         "tools": [],
         "vertical": "fintech"
@@ -442,10 +353,11 @@
       },
       "blueprint_meta": {
         "agent_kind": "tool_operator",
-        "description": "Tool operator to hand off the conversation or case to a human agent or compliance team.",
+        "description": "Executes handoff actions to route a case or conversation to a human agent or team.",
         "capabilities": [
-          "Initiate human handoff with contextual summary and attachments",
-          "Notify human queue and return handoff confirmation"
+          "transfer_conversation",
+          "attach_context_for_human",
+          "confirm_handoff"
         ],
         "tools": [],
         "vertical": "fintech"
@@ -461,16 +373,15 @@
   ],
   "plan_preview": {
     "missing_docs": [
-      "<UPLOAD:knowledge_base_faqs> (expanded product/support KB for RAG retrieval)",
-      "<UPLOAD:refund_procedure_document> (detailed refund SOPs & escalation scripts for refunds_workflow)",
-      "<UPLOAD:payment_api_spec> (payment gateway API specs and connector docs required by initiate_refund)",
-      "<UPLOAD:kyc_sop> (KYC/AML procedure docs used by identity and AML checks)"
+      "<UPLOAD:refunds_procedure>",
+      "<UPLOAD:payment_gateway_tool_spec>",
+      "<UPLOAD:core_banking_api_spec>"
     ],
     "warnings": [
-      "Guardrails agent from the existing plan is intentionally omitted: runtime guardrails (PII redaction, AML/KYC enforcement) should be applied by the platform spine rather than modeled as a user-facing agent.",
-      "Provided documents are policy-focused (BankFAQs.csv, refunds_policy.yaml). A dedicated knowledge_base (indexed FAQs, product docs) and procedure/tool specs are missing and recommended for RAG and workflow readiness.",
-      "Workflow FSMs include on_enter textual action hints but require the runtime to map those hints to concrete tool invocations (tool operators listed above). Ensure tool connectors are implemented and documented."
+      "The refunds workflow references external tools and procedural steps; provide the refunds procedure document and tool specifications to make the workflow fully executable end-to-end.",
+      "Runtime guardrails (PII masking, AML/KYC enforcement) are not represented as agents here \u2014 they must be enforced by the platform runtime. Ensure the runtime enforces the baseline guardrails (No PII leakage; cite policy; escalate when unsure).",
+      "The router FSM uses classification signals; include an intent-model or classification mapping document if deterministic routing rules are required."
     ],
-    "rationale": "Converted the existing plan into executable agent blueprints using permitted agent kinds. Router and refunds workflows are expressed as FSM workflow_runner blueprints with explicit slots and states so the factory can instantiate orchestration. The RAG agent is a knowledge_rag with the available policy documents plus placeholders for recommended KBs. Operational integrations (lookup, verify_identity, initiate_refund, ticketing, handoff) are modeled as tool_operator blueprints referencing the provided tool names so the runtime can bind connectors. Guardrails are omitted per instructions because compliance/safety should live in the runtime spine. Missing documents and warnings call out the key artifacts required to bring agents to full 'ready' status."
+    "rationale": "Converted the existing plan into a set of concrete, executable blueprints using only supported agent_kinds. Two RAG agents provide customer FAQ responses and policy lookups using the provided docs. A router and refunds workflow are implemented as FSM workflow_runners to make routing and multi-step refund orchestration explicit. Tool operator agents wrap the named operational tools required by the workflow (initiate_refund, verify_identity, create_ticket, handoff_to_human). Listed missing_docs reflect the procedural and tool-spec documents required to make refund execution fully operational."
   }
 }

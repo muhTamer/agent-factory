@@ -291,6 +291,22 @@ if st.session_state.get("deployment"):
             st.write(payload)
             return
 
+        # --- Guardrails / error response ---
+        if payload.get("error"):
+            st.markdown("### 🚫 Blocked")
+            msg = (
+                payload.get("text")
+                or payload.get("response", {}).get("text")
+                or payload.get("error")
+            )
+            st.error(msg)
+
+            reason = payload.get("reason")
+            if reason:
+                st.caption(f"Reason: {reason}")
+
+            return
+
         # --- FAQ / answer-style response ---
         if "answer" in payload:
             st.markdown("### 💬 Answer")

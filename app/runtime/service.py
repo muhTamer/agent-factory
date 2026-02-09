@@ -15,6 +15,8 @@ from app.runtime.router import LLMRouter
 from app.runtime.spine import RuntimeSpine
 from app.runtime.routing import DefaultRouter
 from app.runtime.router_adapter import LLMRouterAdapter
+from app.runtime.policy_pack import PolicyPack
+from app.runtime.policy_guardrails import PolicyGuardrails
 
 router: LLMRouter | None = None
 spine: RuntimeSpine | None = None
@@ -28,9 +30,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+REPO_ROOT = Path(__file__).resolve().parents[2]  # .../agent-factory
+policy_path = REPO_ROOT / ".factory" / "policy_pack.json"
+
 # Global registry and state
 registry = AgentRegistry()
-FACTORY_SPEC_PATH = Path(".factory/factory_spec.json")
+FACTORY_SPEC_PATH = REPO_ROOT / ".factory" / "factory_spec.json"
+
+pack = PolicyPack.load(policy_path) if policy_path.exists() else PolicyPack()
+guardrails = PolicyGuardrails(pack)
+
+spine = RuntimeSpine(registry=registry, router=router, guardrails=guardrails)
 
 
 # ---------- Models ----------
@@ -75,9 +86,14 @@ def startup_event():
     llm_router = LLMRouter(registry=registry)
     router = LLMRouterAdapter(llm_router) if registry.all_ids() else DefaultRouter(registry)
 
-    spine = RuntimeSpine(registry=registry, router=router)
+    spine = RuntimeSpine(registry=registry, router=router, guardrails=guardrails)
 
     print(f"[BOOT] All agents loaded: {registry.all_ids()}")
+
+    print(
+        f"[POLICY] blocked_phrases={getattr(pack, 'blocked_phrases', None)} policy_path={policy_path.resolve()}"
+    )
+    print(f"[SPINE] guardrails={type(spine.guardrails).__name__}")
 
 
 # ---------- Routes ----------
