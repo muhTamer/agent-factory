@@ -1,6 +1,7 @@
 # ui/concierge_app.py
 import sys
 import os
+import time
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -11,6 +12,46 @@ import app.llm_client as llm_client
 import subprocess
 import sys
 import requests
+
+# ---------------------------
+# Quickstart uses repo-root /data (existing docs)
+# ---------------------------
+DATA_DIR = Path("data")
+
+# Update these two filenames to match what's in your repo's /data folder
+FINTECH_DATA_FILES = [
+    DATA_DIR / "BankFAQs.csv",
+    DATA_DIR / "refunds_policy.yaml",
+]
+
+
+def _load_quickstart_fintech_into_workspace(work_dir: Path) -> list[Path]:
+    """Copies existing /data files into workspace and returns the created workspace paths."""
+    missing = [p for p in FINTECH_DATA_FILES if not p.exists()]
+    if missing:
+        raise FileNotFoundError("Missing preset file(s): " + ", ".join(str(p) for p in missing))
+    work_dir.mkdir(exist_ok=True)
+    written = []
+    for src in FINTECH_DATA_FILES:
+        dst = work_dir / src.name
+        dst.write_bytes(src.read_bytes())
+        written.append(dst)
+    return written
+
+
+def _wait_runtime_health(base_url: str, timeout_s: float = 20.0) -> bool:
+    deadline = time.time() + timeout_s
+    base = (base_url or "").rstrip("/")
+    while time.time() < deadline:
+        try:
+            r = requests.get(base + "/health", timeout=1.5)
+            if r.status_code == 200:
+                return True
+        except Exception:
+            pass
+        time.sleep(0.5)
+    return False
+
 
 if "plan" not in st.session_state:
     st.session_state.plan = None
@@ -46,11 +87,43 @@ st.markdown(
 st.title("🤖 Agent Factory Concierge")
 st.write("Welcome! I’ll help you analyze your documents and design your customer-service system.")
 
+
+# ---------------------------
+# Quickstart (optional) — does NOT replace the normal flow
+# ---------------------------
+with st.expander("⚡ Quickstart (optional)", expanded=False):
+    st.write("Run a ready-made **Fintech** setup (loads preset docs, analyzes, deploys dry-run).")
+    st.caption(
+        "Keeps the normal flow intact — you can still upload your own docs and run Analyze/Generate/Approve as before."
+    )
+    qs_col1, qs_col2 = st.columns([1, 2])
+    with qs_col1:
+        qs_fintech = st.button("🚀 Quickstart: Fintech", key="qs_fintech_btn")
+    with qs_col2:
+        st.caption("Loads `data/bankFAQs.md` + `data/refund_policy.yaml` into `.workspace`.")
+
+    if qs_fintech:
+        st.session_state["quickstart_active"] = True
+        st.session_state["quickstart_vertical"] = "fintech"
+        # Trigger the same analysis path as pressing the Analyze button
+        st.session_state["quickstart_stage"] = "analyze"
+        st.rerun()
+
+
 # ---------------------------
 # 1. Select domain vertical
 # ---------------------------
 vertical = st.selectbox(
-    "Select your business domain:", ["retail", "fintech", "telco", "general_service"]
+    "Select your business domain:",
+    ["retail", "fintech", "telco", "general_service"],
+    index=(
+        ["retail", "fintech", "telco", "general_service"].index(
+            st.session_state.get("quickstart_vertical", "retail")
+        )
+        if st.session_state.get("quickstart_active")
+        else 0
+    ),
+    key="domain_vertical",
 )
 st.caption("💡 This helps determine which agents are relevant by default.")
 
@@ -68,13 +141,27 @@ uploaded_files = st.file_uploader(
 work_dir = Path(".workspace")
 work_dir.mkdir(exist_ok=True)
 
+# If quickstart is active, populate workspace with preset docs (acts like uploaded files)
+if (
+    st.session_state.get("quickstart_active")
+    and st.session_state.get("quickstart_vertical") == "fintech"
+):
+    try:
+        _load_quickstart_fintech_into_workspace(work_dir)
+    except Exception as e:
+        st.error(f"Quickstart failed to load preset files: {e}")
+        st.session_state["quickstart_active"] = False
+        st.session_state.pop("quickstart_stage", None)
+
 # ✅ If user didn't upload anything this run, clear previous workspace files
-if not uploaded_files:
+# (but do NOT clear when a Quickstart preset is active)
+if (not uploaded_files) and (not st.session_state.get("quickstart_active")):
     for p in work_dir.iterdir():
         if p.is_file():
             p.unlink()
 
 # Save newly uploaded files
+
 for f in uploaded_files:
     content = f.read()
     (work_dir / f.name).write_bytes(content)
@@ -96,11 +183,15 @@ agent = st.session_state.agent
 # Buttons
 col1, col2, col3 = st.columns(3)
 with col1:
-    analyze = st.button("🔍 Analyze Documents")
+    analyze = st.button("🔍 Analyze Documents") or (
+        st.session_state.get("quickstart_stage") == "analyze"
+    )
 with col2:
     generate = st.button("🧾 Generate Templates")
 with col3:
-    approve = st.button("🚀 Approve & Deploy (Dry-Run)")
+    approve = st.button("🚀 Approve & Deploy (Dry-Run)") or (
+        st.session_state.get("quickstart_stage") == "approve"
+    )
 
 # Output area
 st.subheader("🧠 Concierge Response")
@@ -154,6 +245,12 @@ if analyze:
 
     st.write("Choose to upload missing docs, generate templates, or approve & deploy below.")
 
+    # Quickstart: after analysis, automatically proceed to Approve & Deploy
+    if st.session_state.get("quickstart_stage") == "analyze":
+        st.session_state["quickstart_stage"] = "approve"
+        st.rerun()
+
+
 elif generate:
     res = agent.handle_event({"type": "user_action", "action": "generate_placeholders"})
     st.success(res["text"])
@@ -175,6 +272,15 @@ elif approve:
         st.write("**Run the runtime locally:**")
         st.code(dep["uvicorn_command"], language="bash")
         st.caption("Then open http://127.0.0.1:808/health")
+
+        # Quickstart convenience: optionally auto-start runtime
+        if st.session_state.get("quickstart_active"):
+            st.info(
+                "Quickstart: you can click **Start runtime** below, then test in **Try your multi-agent system**."
+            )
+            # Quickstart: mark deploy step complete and jump to Try section
+            st.session_state.pop("quickstart_stage", None)
+            st.session_state["jump_to_try"] = True
 
     else:
         st.warning(res.get("text") or "Could not generate deployment spec.")

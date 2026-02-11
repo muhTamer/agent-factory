@@ -1,4 +1,3 @@
-# app/runtime/policy_guardrails.py
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -12,19 +11,24 @@ class PolicyGuardrails(Guardrails):
         self.pack = pack
 
     def pre(self, query: str, context: Dict[str, Any]) -> GuardResult:
-        q = query or ""
+        # length check
+        if len(query) > self.pack.max_query_chars:
+            return GuardResult(
+                allowed=False,
+                reason=f"query_too_long>{self.pack.max_query_chars}",
+            )
 
-        if len(q) > self.pack.max_query_chars:
-            return GuardResult(allowed=False, reason=f"query_too_long>{self.pack.max_query_chars}")
+        # intent-aware blocking
+        intent = context.get("intent")
+        if intent and intent in self.pack.intent_rules:
+            rule = self.pack.intent_rules[intent]
+            if rule.get("mode") == "block":
+                return GuardResult(
+                    allowed=False,
+                    reason=rule.get("reason", f"intent_blocked:{intent}"),
+                )
 
-        lowered = q.lower()
-        for phrase in self.pack.blocked_phrases:
-            if phrase.lower() in lowered:
-                return GuardResult(allowed=False, reason=f"blocked_phrase:{phrase}")
-
-        # (later) pii_redaction / tool restrictions / jailbreak detection
         return GuardResult(allowed=True)
 
     def post(self, response: Dict[str, Any], context: Dict[str, Any]) -> GuardResult:
-        # (later) response compliance checks / redaction
         return GuardResult(allowed=True)

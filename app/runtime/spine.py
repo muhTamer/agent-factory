@@ -15,13 +15,17 @@ class RuntimeSpine:
     """
     Invariant orchestration backbone.
 
-    Pipeline:
-      guard_pre -> route -> execute -> select -> respond -> guard_post -> return
+    Correct Pipeline (B3.5 intent-aware):
+        route
+        -> infer_intent
+        -> guard_pre (intent-aware)
+        -> execute
+        -> select
+        -> respond
+        -> guard_post
+        -> return
 
-    Notes:
-      - Router is always present (LLMRouterAdapter or DefaultRouter).
-      - Guardrails are pluggable; default is NoOp.
-      - Trace/audit are always written (best-effort).
+    Guardrails operate on semantic intent, not raw text.
     """
 
     def __init__(
@@ -136,31 +140,7 @@ class RuntimeSpine:
         trace.add("request_received")
 
         try:
-            # 0) Guardrails (pre)
-            ok, pre = self._guard_pre(q, ctx)
-
-            if not ok:
-                trace.add("guard_pre_block", reason=pre.get("reason", ""))
-                pre["request_id"] = rid
-                pre.setdefault("text", f"🚫 Blocked by policy: {pre.get('reason','')}")
-                pre.setdefault("response", {"text": pre["text"]})
-
-                trace.add(
-                    "guard_pre_block",
-                    guardrails_type=type(self.guardrails).__name__,
-                    reason=pre.get("reason", ""),
-                )
-
-                return pre
-
-            q, ctx = pre
-
-            trace.add(
-                "guard_pre_ok",
-                guardrails_type=type(self.guardrails).__name__,
-            )
-
-            # 1) Route
+            # 1️⃣ ROUTE FIRST
             plan = self._route(q)
             trace.add(
                 "route",
@@ -175,7 +155,44 @@ class RuntimeSpine:
                 trace.add("route_empty")
                 return {"error": "No routing candidates.", "request_id": rid}
 
-            # 2) Execute
+            # 2️⃣ INFER INTENT FROM ROUTING (policy-aware)
+            if not ctx.get("intent"):
+                route_id = plan.primary
+                mapped_intent = None
+
+                pack = getattr(self.guardrails, "pack", None)
+                if pack is not None:
+                    mapped_intent = pack.route_to_intent.get(route_id)
+
+                ctx["intent"] = mapped_intent or route_id
+
+                trace.add(
+                    "intent_inferred",
+                    route=route_id,
+                    intent=ctx["intent"],
+                )
+
+            # 3️⃣ GUARDRAILS (PRE) — intent-aware
+            ok, pre = self._guard_pre(q, ctx)
+            if not ok:
+                trace.add(
+                    "guard_pre_block",
+                    intent=ctx.get("intent"),
+                    reason=pre.get("reason", ""),
+                )
+
+                pre["request_id"] = rid
+                pre.setdefault(
+                    "text",
+                    f"🚫 Blocked by policy: {pre.get('reason','')}",
+                )
+                pre.setdefault("response", {"text": pre["text"]})
+                return pre
+
+            q, ctx = pre
+            trace.add("guard_pre_ok", intent=ctx.get("intent"))
+
+            # 4️⃣ EXECUTE
             results = self._execute_candidates(plan, q, ctx)
             trace.add(
                 "execute",
@@ -184,13 +201,19 @@ class RuntimeSpine:
 
             if not results:
                 trace.add("execute_empty")
-                return {"error": "No agent produced a response.", "request_id": rid}
+                return {
+                    "error": "No agent produced a response.",
+                    "request_id": rid,
+                }
 
-            # 3) Select
+            # 5️⃣ SELECT
             selected = self._select_best(results)
             if not selected:
                 trace.add("select_empty")
-                return {"error": "No suitable response.", "request_id": rid}
+                return {
+                    "error": "No suitable response.",
+                    "request_id": rid,
+                }
 
             trace.add(
                 "select",
@@ -198,7 +221,7 @@ class RuntimeSpine:
                 score=selected["score"],
             )
 
-            # 4) Respond
+            # 6️⃣ RESPOND
             resp = self._respond(selected, plan, rid)
             trace.add(
                 "response_ready",
@@ -206,12 +229,19 @@ class RuntimeSpine:
                 score=resp.get("score"),
             )
 
-            # 5) Guardrails (post)
+            # 7️⃣ GUARDRAILS (POST)
             ok, post = self._guard_post(resp, ctx)
             if not ok:
-                trace.add("guard_post_block", reason=post.get("reason", ""))
+                trace.add(
+                    "guard_post_block",
+                    reason=post.get("reason", ""),
+                )
+
                 post["request_id"] = rid
-                post.setdefault("text", f"🚫 Blocked by policy: {post.get('reason','')}")
+                post.setdefault(
+                    "text",
+                    f"🚫 Blocked by policy: {post.get('reason','')}",
+                )
                 post.setdefault("response", {"text": post["text"]})
                 return post
 

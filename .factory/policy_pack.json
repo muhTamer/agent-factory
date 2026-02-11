@@ -1,10 +1,21 @@
 {
     "name": "default",
-    "version": "1",
+    "version": "2",
     "max_query_chars": 4000,
-    "blocked_phrases": [
-        "refund"
-    ],
-    "allowed_tools": null,
+    "route_to_intent": {
+        "refunds_workflow": "refund_request",
+        "faq_rag": "refund_policy_query",
+        "policy_guardrails": "refund_policy_query"
+    },
+    "intent_rules": {
+        "refund_request": {
+            "mode": "block",
+            "reason": "Refund requests are temporarily disabled"
+        },
+        "refund_policy_query": {
+            "mode": "allow"
+        }
+    },
+    "blocked_phrases": [],
     "pii_redaction": false
 }

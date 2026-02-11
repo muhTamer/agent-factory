@@ -1,0 +1,22 @@
+policy:
+  name: Refunds & Chargebacks Policy
+  version: 1.0
+  owner: Compliance Team
+
+refunds:
+  card_payments:
+    refundable_within_days: 14
+    conditions:
+      - transaction_not_settled
+      - no_fraud_detected
+
+  transfers:
+    domestic:
+      refundable: true
+      window_hours: 2
+    international:
+      refundable: false
+
+chargebacks:
+  supported: true
+  investigation_days: 30
