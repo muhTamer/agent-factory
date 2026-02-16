@@ -9,8 +9,7 @@
     },
     "intent_rules": {
         "refund_request": {
-            "mode": "block",
-            "reason": "Refund requests are temporarily disabled"
+            "mode": "allow"
         },
         "refund_policy_query": {
             "mode": "allow"

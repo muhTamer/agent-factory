@@ -384,11 +384,15 @@ if st.session_state.get("deployment"):
     show_router = st.checkbox("Show router plan", value=True, key="show_router")
     show_raw = st.checkbox("Show raw JSON", value=False, key="show_raw")
 
-    def _make_curl(base_url: str, q: str) -> str:
+    # Threading: persist a conversation id across turns (multi-turn flows)
+    if "chat_thread_id" not in st.session_state:
+        st.session_state["chat_thread_id"] = None
+
+    def _make_curl(base_url: str, q: str, thread_id: str | None) -> str:
         # Use single quotes around -d JSON, and JSON-escape the query safely.
         import json as _json
 
-        payload = _json.dumps({"query": q}, ensure_ascii=False)
+        payload = _json.dumps({"query": q, "thread_id": thread_id}, ensure_ascii=False)
         return f'curl.exe -X POST "{base_url.rstrip("/")}/chat" -H "Content-Type: application/json" -d \'{payload}\''
 
     def render_response(payload: dict):
@@ -412,6 +416,17 @@ if st.session_state.get("deployment"):
                 st.caption(f"Reason: {reason}")
 
             return
+
+        # --- Chat rendering (Voice agent output) ---
+        chat = payload.get("chat")
+        if isinstance(chat, dict) and isinstance(chat.get("messages"), list) and chat["messages"]:
+            st.markdown("### 💬 Chat")
+            for m in chat["messages"]:
+                st.info(m)
+
+            if chat.get("quick_replies"):
+                with st.expander("⚡ Quick replies"):
+                    st.write(chat["quick_replies"])
 
         # --- FAQ / answer-style response ---
         if "answer" in payload:
@@ -489,8 +504,12 @@ if st.session_state.get("deployment"):
             with st.spinner("Calling runtime /chat ..."):
                 resp = requests.post(
                     base + "/chat",
-                    json={"query": query},
-                    timeout=30,
+                    json={
+                        "query": query,
+                        "thread_id": st.session_state.get("chat_thread_id"),
+                        "context": {"domain": vertical},
+                    },
+                    timeout=120,
                 )
 
             st.caption(f"HTTP {resp.status_code}")
@@ -498,11 +517,19 @@ if st.session_state.get("deployment"):
                 st.error(resp.text)
             else:
                 data = resp.json()
+
+                # Persist thread id for the next turn (runtime should echo or generate it)
+                if isinstance(data, dict) and data.get("thread_id"):
+                    st.session_state["chat_thread_id"] = data["thread_id"]
+
                 st.write("### ✅ Response")
                 render_response(data)
 
                 st.write("### 🔧 Curl (copy/paste)")
-                st.code(_make_curl(runtime_url, query), language="bash")
+                st.code(
+                    _make_curl(runtime_url, query, st.session_state.get("chat_thread_id")),
+                    language="bash",
+                )
 
                 if show_raw:
                     with st.expander("🧾 Raw JSON"):

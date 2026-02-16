@@ -39,6 +39,7 @@ def map_query_to_event_and_slots(
     allowed_events: List[str],
     slot_defs: Dict[str, Any],
     model: str = DEFAULT_MODEL,
+    current_slots: Optional[Dict[str, Any]] = None,
 ) -> MapResult:
     """
     Uses LLM to map a user query into:
@@ -65,6 +66,7 @@ def map_query_to_event_and_slots(
         "current_state": current_state,
         "allowed_events": allowed_events,
         "slot_schema": slot_schema,
+        "current_slots": current_slots or {},
     }
 
     raw = chat_json(

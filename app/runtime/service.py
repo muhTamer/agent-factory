@@ -30,6 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+THREAD_CTX: dict[str, dict] = {}
 
 REPO_ROOT = Path(__file__).resolve().parents[2]  # .../agent-factory
 policy_path = REPO_ROOT / ".factory" / "policy_pack.json"
@@ -47,6 +48,7 @@ spine = RuntimeSpine(registry=registry, router=router, guardrails=guardrails)
 # ---------- Models ----------
 class ChatRequest(BaseModel):
     query: str
+    thread_id: str | None = None
     request_id: str | None = None
     context: dict | None = None
 
@@ -115,4 +117,13 @@ def chat(req: ChatRequest):
     if spine is None:
         raise HTTPException(status_code=500, detail="Runtime spine not initialized.")
 
-    return spine.handle_chat(q, request_id=req.request_id, context=req.context)
+    thread_id = req.thread_id or str(uuid.uuid4())
+    ctx = THREAD_CTX.get(thread_id, {})
+    ctx.update(req.context or {})
+    ctx["thread_id"] = thread_id
+
+    resp = spine.handle_chat(q, request_id=req.request_id, context=ctx)
+
+    THREAD_CTX[thread_id] = ctx
+    resp["thread_id"] = thread_id
+    return resp
