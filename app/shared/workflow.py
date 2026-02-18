@@ -210,17 +210,36 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
 
             def _try_policy_auto_event(self, engine: GenericWorkflowEngine) -> Optional[str]:
                 '''
-                Deterministically resolve an FSM event using compiled policy rules.
+                Deterministically resolve an FSM event for system states.
 
-                For states registered in policy_state_map, the rule engine decides
-                the event (e.g. eligible/ineligible, approval_needed/no_approval_needed)
-                without any LLM call.  Returns None to fall back to LLM mapper.
+                Two paths:
+                  - tool_exec: stub tools always succeed; fire pass_event immediately.
+                    Does NOT require the policy bridge.
+                  - eligibility / approval_needed: run compiled policy rules.
+                    Requires the policy bridge.
+
+                Returns None to fall back to LLM mapper (user-input states).
                 '''
-                if not self.policy_bridge or not self.policy_state_map:
+                if not self.policy_state_map:
                     return None
 
                 state_cfg = self.policy_state_map.get(engine.current_state)
                 if not state_cfg:
+                    return None
+
+                check_type = state_cfg.get("check")
+
+                # tool_exec: no policy bridge needed — stub always returns happy path
+                if check_type == "tool_exec":
+                    event = state_cfg["pass_event"]
+                    print(
+                        f"[TOOL-AUTO:$agent_id] state={engine.current_state} "
+                        f"-> event={event} (stub: tool always succeeds)"
+                    )
+                    return event
+
+                # eligibility / approval_needed: policy bridge required
+                if not self.policy_bridge:
                     return None
 
                 policy_slots = self._build_policy_slots(engine.slots or {})
@@ -358,6 +377,25 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                         "confidence": mr.confidence,
                         "rationale": mr.rationale,
                     }
+
+                # ── Auto-chain: advance through consecutive system states ──
+                # After any user-driven transition the engine may land in a
+                # system state (tool-exec / policy auto-event).  Keep advancing
+                # until we hit a state that needs user input or reach terminal.
+                _MAX_CHAIN = 8
+                _chain_events: List[str] = []
+                for _c in range(_MAX_CHAIN):
+                    if engine.states.get(engine.current_state, {}).get("terminal"):
+                        break
+                    _chain_event = self._try_policy_auto_event(engine)
+                    if _chain_event is None:
+                        break
+                    print(f"[CHAIN:$agent_id] auto-chain {_c+1} state={engine.current_state} event={_chain_event}")
+                    _chain_events.append(f"{engine.current_state}->{_chain_event}")
+                    wf_res = engine.handle({"event": _chain_event, "slots": {}, "query": query})
+
+                if _chain_events:
+                    wf_res.setdefault("mapper", {})["auto_chain"] = _chain_events
 
                 # Echo merged context for visibility/debugging
                 wf_res["context"] = engine.context
