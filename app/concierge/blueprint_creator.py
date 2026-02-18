@@ -90,6 +90,10 @@ class BlueprintCreatorAgent:
                     s["actions"] = [str(x) for x in s["action"] if x is not None]
                     del s["action"]
 
+                # Remove empty action strings — schema requires minLength: 1 if field is present
+                if "action" in s and isinstance(s.get("action"), str) and not s["action"].strip():
+                    del s["action"]
+
                 # If LLM produced actions as a string → wrap into list
                 if isinstance(s.get("actions"), str) and s["actions"].strip():
                     s["actions"] = [s["actions"].strip()]
@@ -234,8 +238,8 @@ class BlueprintCreatorAgent:
             ),
             "kinds": sorted(list(set([str(k) for k in kinds if k]))),
             "filenames": sorted(list(set([str(f) for f in filenames if f]))),
-            "missing_docs": [str(x) for x in missing] if isinstance(missing, list) else [],
-            "capability_signals": [str(x) for x in caps] if isinstance(caps, list) else [],
+            "missing_docs": ([str(x) for x in missing] if isinstance(missing, list) else []),
+            "capability_signals": ([str(x) for x in caps] if isinstance(caps, list) else []),
         }
 
     # -------------------------

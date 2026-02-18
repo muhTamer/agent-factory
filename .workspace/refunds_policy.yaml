@@ -1,52 +1,210 @@
-# data/refunds_policy.yaml
-# Example refund policy document used by the Agent Factory POC
+# ============================================================
+# Fintech Refunds & Reversal Policy
+# Organization: NovaPay Digital Banking
+# Version: 3.2
+# Last Updated: 2025-01-10
+# Owner: Head of Customer Operations
+# Domain: fintech
+# ============================================================
 
 metadata:
-  policy_name: Refunds Policy
-  version: 1.0
-  domain: fintech
-  last_updated: 2025-01-10
-  owner: Customer Service Department
+  policy_id: novapay_refunds_policy
+  jurisdiction: EU
+  regulatory_framework:
+    - PSD2
+    - AMLD5
+    - GDPR
+  internal_references:
+    - Risk Management Policy v2.4
+    - AML/KYC Compliance Handbook 2024
 
-description: >
-  This policy defines the eligibility, limits, and process for handling customer refund requests
-  across all banking and digital wallet products. It ensures compliance with AML and KYC regulations
-  and provides consistent customer experience.
+overview: >
+  This policy defines the eligibility criteria, approval workflow,
+  compliance safeguards, and execution standards for handling refund,
+  reimbursement, and payment reversal requests initiated by customers
+  across all NovaPay consumer and SME accounts.
 
-rules:
-  - id: refund_eligibility_basic
-    title: Basic Refund Eligibility
-    when: pre_guard
-    condition: >
-      customer_account_verified == true and
-      transaction_age_days <= 90
-    action: allow
-    explanation: Refunds are eligible within 90 days for verified customers.
+scope:
+  products:
+    - digital_wallet
+    - debit_card
+    - bank_transfer
+    - instant_payment
+  customer_segments:
+    - retail
+    - SME
+  exclusions:
+    - crypto transactions
+    - closed or frozen accounts
+    - transactions flagged as confirmed fraud
 
-  - id: refund_amount_limit
-    title: Refund Amount Limit
-    when: pre_guard
-    condition: refund_amount <= 5000
-    action: allow
-    explanation: Refunds above $5000 require supervisor approval.
+# ============================================================
+# SECTION 1 — ELIGIBILITY RULES
+# ============================================================
 
-  - id: refund_privacy_protection
-    title: PII Protection
-    when: post_guard
-    action: transform
-    transform: redact_pii
-    explanation: Redact personal identifiers before sharing refund case details.
+eligibility:
 
-  - id: refund_rejection_rule
-    title: Non-Eligible Transactions
-    when: pre_guard
-    condition: >
-      transaction_type in ["fraud", "chargeback"] and
-      investigation_status != "resolved"
-    action: deny
-    explanation: Refund requests under investigation cannot be approved until resolved.
+  - id: verified_customer_required
+    description: >
+      Refunds may only be processed for customers who have completed
+      KYC verification and whose account status is active.
+    conditions:
+      - kyc_status == "verified"
+      - account_status == "active"
+    outcome: eligible
 
-references:
-  - regulation: AML/KYC
-  - standard: PSD2 (EU)
-  - company_policy: Privacy Policy 2024
+  - id: refund_time_limit
+    description: >
+      Refund requests must be submitted within 90 calendar days from
+      the original transaction settlement date.
+    conditions:
+      - transaction_age_days <= 90
+    outcome: eligible
+
+  - id: unverified_customer_block
+    description: >
+      Customers who have not completed KYC verification are not eligible
+      for refunds. KYC verification is a mandatory prerequisite.
+    conditions:
+      - kyc_status != "verified"
+    outcome: ineligible
+    rationale: KYC verification is required for refund eligibility.
+
+  - id: investigation_block
+    description: >
+      Transactions currently under fraud investigation or chargeback
+      dispute cannot be refunded until investigation is resolved.
+    conditions:
+      - investigation_status in ["open", "pending"]
+    outcome: ineligible
+    rationale: Refund blocked due to ongoing investigation.
+
+  - id: account_restriction_block
+    description: >
+      Accounts that are suspended, restricted, or frozen are not eligible
+      for refunds until reinstated.
+    conditions:
+      - account_status in ["suspended", "frozen", "restricted"]
+    outcome: ineligible
+
+
+# ============================================================
+# SECTION 2 — REFUND AMOUNT RULES
+# ============================================================
+
+amount_rules:
+
+  - id: max_auto_refund_limit
+    description: >
+      Refunds up to and including EUR 5,000 may be auto-approved
+      by the system if eligibility conditions are met.
+    threshold: 5000
+    currency: EUR
+    approval: auto
+
+  - id: manager_approval_required
+    description: >
+      Refunds exceeding EUR 5,000 require manager approval.
+    threshold: 5000
+    currency: EUR
+    approval: manager_required
+
+  - id: partial_refund_allowed
+    description: >
+      Partial refunds are allowed if the requested amount does not
+      exceed the original transaction amount.
+    conditions:
+      - refund_amount_requested <= original_transaction_amount
+    outcome: allowed
+
+
+# ============================================================
+# SECTION 3 — AML / RISK SAFEGUARDS
+# ============================================================
+
+risk_controls:
+
+  - id: aml_velocity_check
+    description: >
+      Customers requesting more than 3 refunds within a rolling 30-day
+      window must be flagged for enhanced AML review.
+    condition:
+      - refunds_last_30_days > 3
+    action: escalate_risk_review
+
+  - id: high_risk_country_check
+    description: >
+      Transactions involving sanctioned or high-risk jurisdictions
+      require compliance review before refund.
+    condition:
+      - transaction_country in ["IR", "KP", "SY"]
+    action: compliance_hold
+
+
+# ============================================================
+# SECTION 4 — EXECUTION RULES
+# ============================================================
+
+execution:
+
+  - id: refund_method
+    description: >
+      Refunds must be returned to the original payment method whenever possible.
+      If not available, escalate to manual handling.
+    rules:
+      - if original_payment_method_available == true:
+          action: refund_to_original_method
+      - else:
+          action: escalate_manual_processing
+
+  - id: refund_settlement_time
+    description: >
+      Standard refund settlement time is 3–5 business days.
+      Instant refunds may be available for eligible wallet balances.
+    sla:
+      standard: "3-5 business days"
+      instant_wallet: "within minutes"
+
+
+# ============================================================
+# SECTION 5 — PRIVACY & DATA PROTECTION
+# ============================================================
+
+privacy:
+
+  - id: redact_pii
+    description: >
+      Personally identifiable information must not be exposed in
+      customer-facing logs or internal escalation notes.
+    action: redact_before_output
+
+  - id: gdpr_logging
+    description: >
+      All refund decisions must be logged with decision rationale
+      and policy reference for audit purposes.
+
+
+# ============================================================
+# SECTION 6 — ESCALATION CONDITIONS
+# ============================================================
+
+escalation:
+
+  - id: ambiguous_customer_request
+    description: >
+      If the refund request is unclear or lacks sufficient transaction
+      details, request clarification before proceeding.
+
+  - id: customer_dispute
+    description: >
+      If the customer disputes eligibility decision, escalate to Tier 2 support.
+
+  - id: repeated_failures
+    description: >
+      If automated refund execution fails more than once, create a
+      support ticket and notify operations team.
+
+
+# ============================================================
+# END OF POLICY
+# ============================================================

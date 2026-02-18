@@ -146,7 +146,7 @@ class GenericWorkflowEngine:
     # ------------------------------------------------------------------
     def _enter_state(self, state_name: str) -> None:
         state = self.states[state_name]
-        self.logger(f"[WF] → enter state={state_name} terminal={state['terminal']}")
+        self.logger(f"[WF] -> enter state={state_name} terminal={state['terminal']}")
 
         self.history.append(
             {
