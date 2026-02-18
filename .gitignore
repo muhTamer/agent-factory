@@ -36,3 +36,10 @@ data/
 # Ignore generated artifacts
 generated/
 
+# Auto-generated runtime artifacts (written on every run — not source)
+.factory/audit/
+.factory/compiled_policies/
+.factory/factory_spec.json
+.workspace/
+.claude/
+
