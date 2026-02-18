@@ -77,7 +77,7 @@ def generate_agent(agent_spec: Dict[str, Any]) -> Path:
             print(f"[GEN] Using entrypoint: {entrypoint}")
             return build_func(agent_id=agent_id, inputs=inputs, gen_dir=gen_dir)
         except Exception as e:
-            print(f"[WARN] Entrypoint failed: {entrypoint} → {e}")
+            print(f"[WARN] Entrypoint failed: {entrypoint} -> {e}")
             traceback.print_exc()
 
     # Step 2: Fallback — use template copy
@@ -135,7 +135,7 @@ def smoke_test_agent(gen_dir: Path) -> bool:
         agent = reg.import_generated_agent(gen_dir.name, gen_dir)
         agent.load({"id": gen_dir.name})
         res = agent.handle({"query": "ping"})
-        print(f"[SMOKE] {gen_dir.name} → {res}")
+        print(f"[SMOKE] {gen_dir.name} -> {res}")
         return True
     except Exception as e:
         print(f"[ERROR] Smoke test failed for {gen_dir.name}: {e}")

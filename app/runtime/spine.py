@@ -111,7 +111,10 @@ class RuntimeSpine:
     def _guard_post(self, response: dict, context: dict) -> Tuple[bool, Any]:
         gr = self.guardrails.post(response, context)
         if not gr.allowed:
-            return False, {"error": "Blocked by guardrails (post).", "reason": gr.reason}
+            return False, {
+                "error": "Blocked by guardrails (post).",
+                "reason": gr.reason,
+            }
 
         if gr.mutated_response is not None:
             response = gr.mutated_response
@@ -277,7 +280,11 @@ class RuntimeSpine:
             # 3️⃣ GUARDRAILS (PRE) — intent-aware
             ok, pre = self._guard_pre(q, ctx)
             if not ok:
-                trace.add("guard_pre_block", intent=ctx.get("intent"), reason=pre.get("reason", ""))
+                trace.add(
+                    "guard_pre_block",
+                    intent=ctx.get("intent"),
+                    reason=pre.get("reason", ""),
+                )
                 pre["request_id"] = rid
                 pre.setdefault("text", f"🚫 Blocked by policy: {pre.get('reason','')}")
                 pre.setdefault("response", {"text": pre["text"]})
@@ -304,6 +311,24 @@ class RuntimeSpine:
                 return {"error": "No suitable response.", "request_id": rid}
 
             trace.add("select", agent_id=selected["agent_id"], score=selected["score"])
+
+            # 5.5 FSM state snapshot (workflow_runner agents only)
+            _res = selected.get("response") or {}
+            if "current_state" in _res:
+                _fsm_event: Dict[str, Any] = {
+                    "agent_id": selected["agent_id"],
+                    "workflow_id": _res.get("workflow_id"),
+                    "current_state": _res.get("current_state"),
+                    "terminal": bool(_res.get("terminal", False)),
+                    "action": _res.get("action"),
+                }
+                _slots = _res.get("slots")
+                if isinstance(_slots, dict):
+                    _fsm_event["slots"] = {k: v for k, v in _slots.items() if v is not None}
+                _missing = _res.get("missing_slots")
+                if _missing:
+                    _fsm_event["missing_slots"] = _missing
+                trace.add("fsm_state", **_fsm_event)
 
             # 6️⃣ RESPOND
             resp = self._respond(selected, plan, rid)

@@ -124,6 +124,11 @@ def _inputs_from_blueprint(bp: Dict[str, Any], data_dir: Path) -> Dict[str, Any]
             inputs["docs"] = resolved_docs
         if resolved_policies and "policies" not in inputs:
             inputs["policies"] = resolved_policies
+        # Auto-inject policy_config by scanning workflow states for known policy patterns
+        if "policy_config" not in inputs:
+            pc = _build_policy_config(inputs.get("workflow_spec") or {}, data_dir)
+            if pc:
+                inputs["policy_config"] = pc
 
     # For tool_operator, allow a default tool name from blueprint inputs or bp["tools"][0]
     if agent_kind == "tool_operator":
@@ -157,6 +162,100 @@ def _inputs_from_blueprint(bp: Dict[str, Any], data_dir: Path) -> Dict[str, Any]
             inputs[k] = new_list
 
     return inputs
+
+
+# ------------------------------------------------------------
+# 🔗 Policy config auto-detection for workflow_runner agents
+# ------------------------------------------------------------
+def _build_policy_config(workflow_spec: Dict[str, Any], base_dir: Path) -> Dict[str, Any]:
+    """
+    Scan a workflow_spec for states whose event sets match known policy check patterns,
+    then wire them to the compiled policy pack automatically.
+
+    Detected patterns:
+      {eligible, ineligible}               -> eligibility check
+      {approval_required, auto_approve}    -> approval_needed check
+      {approval_needed, no_approval_needed}-> approval_needed check
+
+    Returns an empty dict if no policy pack is found or no matching states exist.
+    """
+    # Locate compiled policy pack (check repo-root .factory first, then workspace)
+    candidates = [
+        Path(".factory") / "compiled_policies",
+        base_dir / ".factory" / "compiled_policies",
+    ]
+    pack_path: Optional[Path] = None
+    for d in candidates:
+        if d.exists():
+            packs = sorted(d.glob("*.json"))
+            if packs:
+                pack_path = packs[0]
+                break
+    if not pack_path:
+        return {}
+
+    # Normalise states dict (handles both dict and list forms)
+    raw_states = workflow_spec.get("states") or {}
+    if isinstance(raw_states, list):
+        raw_states = {s["name"]: s for s in raw_states if isinstance(s, dict) and "name" in s}
+
+    ELIGIBILITY = {"eligible", "ineligible"}
+    APPROVAL_A = {"approval_required", "auto_approve"}
+    APPROVAL_B = {"approval_needed", "no_approval_needed"}
+
+    state_auto_events: Dict[str, Any] = {}
+    for state_name, state_def in raw_states.items():
+        on = state_def.get("on") or {}
+        if not isinstance(on, dict):
+            continue
+        event_set = set(on.keys())
+        if event_set == ELIGIBILITY:
+            state_auto_events[state_name] = {
+                "check": "eligibility",
+                "pass_event": "eligible",
+                "fail_event": "ineligible",
+            }
+        elif event_set == APPROVAL_A:
+            state_auto_events[state_name] = {
+                "check": "approval_needed",
+                "pass_event": "approval_required",
+                "fail_event": "auto_approve",
+            }
+        elif event_set == APPROVAL_B:
+            state_auto_events[state_name] = {
+                "check": "approval_needed",
+                "pass_event": "approval_needed",
+                "fail_event": "no_approval_needed",
+            }
+
+    if not state_auto_events:
+        return {}
+
+    # Map FSM amount slot name -> policy slot name
+    slot_map: Dict[str, str] = {}
+    for slot_name in workflow_spec.get("slots") or {}:
+        if slot_name in ("amount", "amount_requested", "refund_amount"):
+            slot_map[slot_name] = "refund_amount_requested"
+            break
+
+    # Build relative path (forward slashes, repo-root relative)
+    try:
+        rel = pack_path.resolve().relative_to(Path(".").resolve())
+        rel_str = str(rel).replace("\\", "/")
+    except ValueError:
+        rel_str = str(pack_path).replace("\\", "/")
+
+    return {
+        "policy_pack_path": rel_str,
+        "state_auto_events": state_auto_events,
+        "slot_map": slot_map,
+        "slot_computed": {},
+        "slot_defaults": {
+            "kyc_status": "verified",
+            "account_status": "active",
+            "investigation_status": "none",
+        },
+    }
 
 
 # ------------------------------------------------------------
