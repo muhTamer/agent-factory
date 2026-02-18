@@ -58,10 +58,13 @@ def map_query_to_event_and_slots(
         "- Only output slot keys that exist in the provided slot schema.\n"
         "- Do NOT hallucinate IDs. If the user did not provide a value, omit it.\n"
         "- Confidence is 0..1.\n"
-        "- MISSING vs INVALID: if the user has simply not yet provided required fields, return null "
-        "(the engine will ask again). Only use an error/escalation/invalid event if the user "
-        "explicitly provided data that is wrong, malformed, or contradictory — NOT because a field "
-        "is absent.\n\n"
+        "- MISSING vs INVALID vs DECLINED:\n"
+        "  * MISSING: user hasn't provided a field yet → omit it from slots, return null event.\n"
+        "  * INVALID: user provided data that is wrong/malformed/contradictory → use error event.\n"
+        "  * DECLINED: user explicitly says they don't have / can't provide a field "
+        "(e.g. 'we don't have a request id', 'I don't know my account number') → "
+        "set that slot to the string 'N/A' so the engine can skip past it. "
+        "Do NOT return null for the event in this case — extract whatever event makes sense.\n\n"
         "Return JSON with keys: event, slots, confidence, rationale."
     )
 

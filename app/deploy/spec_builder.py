@@ -231,15 +231,61 @@ def _build_policy_config(workflow_spec: Dict[str, Any], base_dir: Path) -> Dict[
         if not event_set:
             continue
 
-        # 1. Eligibility check (vocabulary match — superset-safe)
-        pass_e = next((e for e in event_set if e in _ELIG_PASS), None)
-        fail_e = next((e for e in event_set if e in _ELIG_FAIL), None)
-        if pass_e and fail_e:
-            state_auto_events[state_name] = {
-                "check": "eligibility",
-                "pass_event": pass_e,
-                "fail_event": fail_e,
-            }
+        # 1. Eligibility check (vocabulary match — superset-safe).
+        # Also handles compound events like eligible_no_approval / eligible_requires_approval
+        # by using prefix matching: any event starting with "eligible" (not "ineligible") is a pass.
+        def _elig_pass_events(es):
+            exact = [e for e in es if e in _ELIG_PASS]
+            if exact:
+                return exact
+            # prefix-based: starts with "eligible" but not "ineligible"
+            return [
+                e
+                for e in es
+                if e.lower().startswith("eligible") and not e.lower().startswith("ineligible")
+            ]
+
+        def _elig_fail_events(es):
+            exact = [e for e in es if e in _ELIG_FAIL]
+            if exact:
+                return exact
+            return [
+                e for e in es if e.lower().startswith("ineligible") or e.lower() == "not_eligible"
+            ]
+
+        pass_candidates = _elig_pass_events(event_set)
+        fail_candidates = _elig_fail_events(event_set)
+
+        if pass_candidates and fail_candidates:
+            # Single pass event → simple eligibility check
+            # Two pass events (e.g. eligible_no_approval + eligible_requires_approval) →
+            # combined eligibility+approval check that picks the right pass event
+            if len(pass_candidates) == 1:
+                state_auto_events[state_name] = {
+                    "check": "eligibility",
+                    "pass_event": pass_candidates[0],
+                    "fail_event": fail_candidates[0],
+                }
+            else:
+                # Compound: find which pass event signals "no approval needed"
+                no_appr = next(
+                    (e for e in pass_candidates if "no_approval" in e or "auto" in e),
+                    pass_candidates[0],
+                )
+                req_appr = next(
+                    (
+                        e
+                        for e in pass_candidates
+                        if "require" in e or "approval" in e and "no" not in e
+                    ),
+                    pass_candidates[-1],
+                )
+                state_auto_events[state_name] = {
+                    "check": "combined_eligibility_approval",
+                    "no_approval_event": no_appr,
+                    "approval_required_event": req_appr,
+                    "fail_event": fail_candidates[0],
+                }
             continue
 
         # 2. Approval check (vocabulary match — superset-safe)

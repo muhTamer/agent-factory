@@ -255,6 +255,20 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                         )
                         return event
 
+                    elif check_type == "combined_eligibility_approval":
+                        # Runs both checks; picks the right pass event
+                        is_eligible, reason, _ = self.policy_bridge.check_eligibility(policy_slots)
+                        if not is_eligible:
+                            event = state_cfg["fail_event"]
+                        else:
+                            needs_approval, appr_reason, _ = self.policy_bridge.check_approval_needed(policy_slots)
+                            event = state_cfg["approval_required_event"] if needs_approval else state_cfg["no_approval_event"]
+                        print(
+                            f"[POLICY-AUTO:$agent_id] state={engine.current_state} "
+                            f"eligible={is_eligible} -> event={event}"
+                        )
+                        return event
+
                     elif check_type == "approval_needed":
                         needed, reason, _ = self.policy_bridge.check_approval_needed(policy_slots)
                         event = state_cfg["pass_event"] if needed else state_cfg["fail_event"]
@@ -347,6 +361,11 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                     # extracted slots, force event=None so the engine stays in
                     # request_clarification mode.  Prevents the LLM from picking an
                     # error/escalation event just because a required field is absent.
+                    #
+                    # Exception: "N/A" is a valid sentinel set by the mapper when the
+                    # user explicitly declines to provide a field.  Treat it as satisfied
+                    # so the workflow can progress past an unavailable required slot.
+                    _DECLINED_SENTINELS = {"N/A", "n/a", "unknown", "not_available", "none"}
                     _mapped_event = mr.event
                     if _mapped_event is not None:
                         _tentative = dict(engine.slots or {})
@@ -355,6 +374,7 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                             k for k, meta in (engine.slot_defs or {}).items()
                             if isinstance(meta, dict) and meta.get("required")
                             and not _tentative.get(k)
+                            and str(_tentative.get(k, "")).strip() not in _DECLINED_SENTINELS
                         ]
                         if _still_missing:
                             _mapped_event = None
