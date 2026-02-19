@@ -48,6 +48,7 @@ class VoiceAgent:
             "- If structured.delegation_target is present, briefly explain you're connecting them to the right specialist.\n"
             "- If structured.action is 'clarify' and structured.question is present, rephrase the clarification question in a friendly customer-facing tone.\n"
             "- If structured.action is 'delegate', acknowledge the customer and explain you are connecting them to the right specialist.\n"
+            "- If structured.grounded_citations is present, the answer was synthesized from retrieved passages; format it naturally and mention sources if relevant (e.g., 'According to our refund policy...').\n"
             "- Provide 2-5 quick replies when it helps.\n"
         )
 

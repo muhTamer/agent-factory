@@ -429,10 +429,6 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 import json, math, re, yaml
 from app.runtime.interfaces import IAgent
-from app.runtime.rag_fsm import (
-    RAGThreadState, estimate_solvability, expand_query, rerank_hits,
-    ANALYZE, CLARIFY, RETRIEVE, RESPOND, DELEGATE,
-)
 
 _WORD = re.compile(r"[A-Za-z0-9]+")
 
@@ -484,8 +480,10 @@ class Agent(IAgent):
         self._fsm_engines: Dict[str, Any] = {}
         self._memory: Optional[object] = None
 
-        # Multi-turn: thread-aware FSM state (RAG_main fallback)
-        self._threads: Dict[str, RAGThreadState] = {}
+        # Shared dense embeddings (computed once at load, reused by all FSM threads)
+        self._shared_dense_vecs: Optional[list] = None
+        self._shared_llm_fn = None
+        self._shared_embed_fn = None
 
         # Solvability config (loaded from config.yaml)
         self._solv_cfg: Dict[str, Any] = {}
@@ -539,6 +537,25 @@ class Agent(IAgent):
         except ImportError:
             self._memory = None
 
+        # Try to load LLM and embedding functions once
+        try:
+            from app.llm_client import chat_json as _chat_json
+            self._shared_llm_fn = _chat_json
+        except ImportError:
+            pass
+        try:
+            from app.runtime.embeddings import get_embed_fn
+            self._shared_embed_fn = get_embed_fn()
+        except (ImportError, Exception):
+            pass
+
+        # Pre-compute dense embeddings at startup (avoid slow first query)
+        if self._shared_embed_fn and self._texts:
+            try:
+                self._shared_dense_vecs = self._shared_embed_fn(self._texts)
+            except Exception:
+                self._shared_dense_vecs = None
+
         self._solv_cfg = (self.cfg or {}).get("solvability", {})
         self.ready = True
 
@@ -552,37 +569,27 @@ class Agent(IAgent):
             return str(request["thread_id"])
         return "default"
 
-    def _get_thread(self, thread_id: str) -> RAGThreadState:
-        if thread_id not in self._threads:
-            self._threads[thread_id] = RAGThreadState()
-        return self._threads[thread_id]
-
-    def _reset_thread(self, thread_id: str) -> None:
-        self._threads.pop(thread_id, None)
-
-    # ── TF-IDF retrieval (used by fallback path) ───────────────
-
-    def _search(self, query: str, top_k: int = 5) -> Dict[str, Any]:
-        if not self._texts or not self._vecs:
-            return {
-                "answer": "I don't have that yet.",
-                "score": 0.0,
-                "citations": [],
-                "_hits": [],
-            }
-
     def _fsm_for(self, thread_id: str):
         if thread_id not in self._fsm_engines:
             try:
                 from app.runtime.rag_fsm import RAGFiniteStateMachine, RAGFSMConfig
+
+                _cfg = RAGFSMConfig(
+                    enable_llm_synthesis=bool(self._shared_llm_fn),
+                    enable_dense_retrieval=bool(self._shared_embed_fn),
+                    enable_retrieval_clarification=True,
+                )
                 self._fsm_engines[thread_id] = RAGFiniteStateMachine(
                     agent_id="__AGENT_ID__",
                     faqs=self.faqs,
                     idf=self._idf,
                     vecs=self._vecs,
                     texts=self._texts,
-                    config=RAGFSMConfig(),
+                    config=_cfg,
                     memory=self._memory,
+                    llm_fn=self._shared_llm_fn,
+                    embed_fn=self._shared_embed_fn,
+                    dense_vecs=self._shared_dense_vecs,
                 )
             except ImportError:
                 return None
@@ -622,6 +629,12 @@ class Agent(IAgent):
 
         if result.state.value == "respond":
             response["rag_answered"] = True
+
+        # Grounded citations and synthesis metadata
+        if result.grounded_citations:
+            response["grounded_citations"] = result.grounded_citations
+        if result.synthesis_metadata:
+            response["synthesis_metadata"] = result.synthesis_metadata
 
         # Solvability metadata for thesis tracing
         if result.solvability:
