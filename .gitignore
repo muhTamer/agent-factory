@@ -40,6 +40,8 @@ generated/
 .factory/audit/
 .factory/compiled_policies/
 .factory/factory_spec.json
+.factory/performance_history.json
+.factory/test_performance_history.json
 .workspace/
 .claude/
 
