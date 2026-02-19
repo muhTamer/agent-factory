@@ -17,9 +17,12 @@ from app.runtime.routing import DefaultRouter
 from app.runtime.router_adapter import LLMRouterAdapter
 from app.runtime.policy_pack import PolicyPack
 from app.runtime.policy_guardrails import PolicyGuardrails
+from app.runtime.tools import DEFAULT_REGISTRY, build_registry
+from app.runtime.tools.registry import ToolRegistry
 
 router: LLMRouter | None = None
 spine: RuntimeSpine | None = None
+tool_registry: ToolRegistry = DEFAULT_REGISTRY  # replaced at startup if config found
 
 app = FastAPI(title="Agent Factory Runtime", version="1.0")
 app.add_middleware(
@@ -38,6 +41,7 @@ policy_path = REPO_ROOT / ".factory" / "policy_pack.json"
 # Global registry and state
 registry = AgentRegistry()
 FACTORY_SPEC_PATH = REPO_ROOT / ".factory" / "factory_spec.json"
+TOOLS_CONFIG_PATH = REPO_ROOT / ".factory" / "tools_config.json"
 
 pack = PolicyPack.load(policy_path) if policy_path.exists() else PolicyPack()
 guardrails = PolicyGuardrails(pack)
@@ -53,10 +57,15 @@ class ChatRequest(BaseModel):
     context: dict | None = None
 
 
+class ToolTestRequest(BaseModel):
+    slots: dict = {}
+    context: dict = {}
+
+
 # ---------- Startup ----------
 @app.on_event("startup")
 def startup_event():
-    global router, spine
+    global router, spine, tool_registry
 
     if not FACTORY_SPEC_PATH.exists():
         raise RuntimeError(f"Factory spec not found at {FACTORY_SPEC_PATH}")
@@ -97,6 +106,15 @@ def startup_event():
     )
     print(f"[SPINE] guardrails={type(spine.guardrails).__name__}")
 
+    # Load customer tool overrides (stubs used as fallback for any unspecified tool)
+    if TOOLS_CONFIG_PATH.exists():
+        tools_config = json.loads(TOOLS_CONFIG_PATH.read_text(encoding="utf-8"))
+        tool_registry = build_registry(tools_config.get("tools", []))
+        print(f"[TOOLS] Loaded customer config: {tool_registry.all_names()}")
+    else:
+        tool_registry = DEFAULT_REGISTRY
+        print(f"[TOOLS] No tools_config.json found — using stubs: {tool_registry.all_names()}")
+
 
 # ---------- Routes ----------
 @app.get("/health")
@@ -107,6 +125,35 @@ def health():
         "dry_run": True,
         "request_id": str(uuid.uuid4()),
     }
+
+
+@app.get("/tools")
+def list_tools():
+    """List all registered tools and their descriptions."""
+    return {
+        "tools": tool_registry.describe_all(),
+        "count": len(tool_registry.all_names()),
+        "config_file": str(TOOLS_CONFIG_PATH) if TOOLS_CONFIG_PATH.exists() else None,
+    }
+
+
+@app.post("/tools/{name}/test")
+def test_tool(name: str, req: ToolTestRequest):
+    """
+    Call a specific tool with the provided slots and context.
+    Useful for verifying tool behaviour before deploying with real backends.
+    """
+    tool = tool_registry.get(name)
+    if tool is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Tool '{name}' not found. Available: {tool_registry.all_names()}",
+        )
+    try:
+        result = tool.execute(req.slots, req.context)
+        return {"tool": name, "slots_in": req.slots, "result": result}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.post("/chat")

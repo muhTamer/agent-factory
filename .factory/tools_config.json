@@ -1,0 +1,52 @@
+{
+  "_comment": "Customer tool configuration. Each entry overrides one built-in stub tool.",
+  "_docs": "Supported types: stub | http | sql. Omit a tool to keep the built-in stub.",
+
+  "tools": [
+    {
+      "_comment": "── EXAMPLE: keep built-in stub (no change needed) ──────────────────",
+      "name": "verify_identity",
+      "type": "stub"
+    },
+
+    {
+      "_comment": "── EXAMPLE: HTTP endpoint (replace URL + headers with your values) ─",
+      "_disabled": true,
+      "name": "initiate_refund",
+      "type": "http",
+      "url": "https://your-erp.example.com/api/refunds",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer ${REFUND_API_KEY}",
+        "Content-Type": "application/json"
+      },
+      "timeout": 15,
+      "slot_map": {
+        "refundId": "refund_id",
+        "status":   "refund_status"
+      }
+    },
+
+    {
+      "_comment": "── EXAMPLE: SQL query (SQLite shown; use postgresql:// for Postgres) ─",
+      "_disabled": true,
+      "name": "lookup_customer",
+      "type": "sql",
+      "dsn": "sqlite:///data/customers.db",
+      "query": "SELECT account_status, kyc_status FROM customers WHERE id = :customer_id",
+      "slot_map": {
+        "account_status": "account_status",
+        "kyc_status":     "kyc_status"
+      }
+    },
+
+    {
+      "_comment": "── EXAMPLE: SQL for lookup_payment ─────────────────────────────────",
+      "_disabled": true,
+      "name": "lookup_payment",
+      "type": "sql",
+      "dsn": "sqlite:///data/payments.db",
+      "query": "SELECT settlement_status, transaction_age_days FROM payments WHERE id = :request_id"
+    }
+  ]
+}
