@@ -272,7 +272,18 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
         docs = [docs]
 
     # Write config for runtime inspection/debugging
-    cfg = {"id": agent_id, "docs": docs}
+    cfg = {
+        "id": agent_id,
+        "docs": docs,
+        "solvability": {
+            "answer_threshold": 0.55,
+            "delegate_threshold": 0.20,
+            "max_clarifications": 2,
+            "enable_llm_analysis": True,
+            "enable_query_expansion": True,
+            "enable_llm_reranking": True,
+        },
+    }
     (gen_dir / "config.yaml").write_text(
         yaml.safe_dump(cfg, sort_keys=False),
         encoding="utf-8",
@@ -408,16 +419,20 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
     )
 
     # ---------------------------
-    # Generate agent.py (loads faqs.json, TF-IDF retrieval)
+    # Generate agent.py (multi-turn RAG with FSM, solvability, clarification, delegation)
     # ---------------------------
     header = f"# Auto-generated FAQ RAG agent ({agent_id})\n"
     body = textwrap.dedent(
         """\
 from __future__ import annotations
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Optional
 from pathlib import Path
 import json, math, re, yaml
 from app.runtime.interfaces import IAgent
+from app.runtime.rag_fsm import (
+    RAGThreadState, estimate_solvability, expand_query, rerank_hits,
+    ANALYZE, CLARIFY, RETRIEVE, RESPOND, DELEGATE,
+)
 
 _WORD = re.compile(r"[A-Za-z0-9]+")
 
@@ -494,6 +509,14 @@ class Agent(IAgent):
         self._vecs: List[Dict[str, float]] = []
         self._texts: List[str] = []  # aligned to faqs
 
+        # Multi-turn: thread-aware FSM state
+        self._threads: Dict[str, RAGThreadState] = {}
+
+        # Solvability config (loaded from config.yaml)
+        self._solv_cfg: Dict[str, Any] = {}
+
+    # ── Config / data loading ──────────────────────────────────
+
     def _load_config(self) -> None:
         cfg_path = Path(__file__).parent / "config.yaml"
         if not cfg_path.exists():
@@ -535,11 +558,37 @@ class Agent(IAgent):
         self._load_config()
         self._load_faqs()
         self._build_index()
+        self._solv_cfg = (self.cfg or {}).get("solvability", {})
         self.ready = True
+
+    # ── Thread state management ────────────────────────────────
+
+    def _get_thread_id(self, request: Dict[str, Any]) -> str:
+        ctx = request.get("context") if isinstance(request, dict) else None
+        if isinstance(ctx, dict) and ctx.get("thread_id"):
+            return str(ctx["thread_id"])
+        if isinstance(request, dict) and request.get("thread_id"):
+            return str(request["thread_id"])
+        return "default"
+
+    def _get_thread(self, thread_id: str) -> RAGThreadState:
+        if thread_id not in self._threads:
+            self._threads[thread_id] = RAGThreadState()
+        return self._threads[thread_id]
+
+    def _reset_thread(self, thread_id: str) -> None:
+        self._threads.pop(thread_id, None)
+
+    # ── TF-IDF retrieval ───────────────────────────────────────
 
     def _search(self, query: str, top_k: int = 5) -> Dict[str, Any]:
         if not self._texts or not self._vecs:
-            return {"answer": "I don’t have that yet.", "score": 0.0, "citations": []}
+            return {
+                "answer": "I don’t have that yet.",
+                "score": 0.0,
+                "citations": [],
+                "_hits": [],
+            }
 
         qv = _vec_query(query, self._idf)
         scored = []
@@ -548,7 +597,17 @@ class Agent(IAgent):
             scored.append((s, i))
         scored.sort(reverse=True, key=lambda x: x[0])
 
-        best_score, best_i = scored[0]
+        hits = []
+        for s, i in scored[:top_k]:
+            it = self.faqs[i]
+            hits.append({
+                "score": float(s),
+                "question": str(it.get("q", "")),
+                "answer": str(it.get("a", "")),
+                "source": str(it.get("source", "")),
+            })
+
+        best_score = hits[0]["score"] if hits else 0.0
 
         # Relevance gate (tunable)
         if best_score < 0.12:
@@ -556,44 +615,158 @@ class Agent(IAgent):
                 "answer": "I couldn’t find that in the provided documents.",
                 "score": float(best_score),
                 "citations": [],
+                "_hits": hits,
             }
-
-        hits = []
-        for s, i in scored[:top_k]:
-            it = self.faqs[i]
-            hits.append({
-                "score": float(s),
-                "question": str(it.get("q","")),
-                "answer": str(it.get("a","")),
-                "source": str(it.get("source","")),
-            })
 
         return {
             "answer": hits[0]["answer"],
             "score": float(hits[0]["score"]),
             "citations": [{"question": h["question"], "source": h["source"]} for h in hits[:3]],
+            "_hits": hits,
         }
+
+    # ── Main FSM handler ──────────────────────────────────────
 
     def handle(self, request: Dict[str, Any]) -> Dict[str, Any]:
         text = (request.get("text") or request.get("query") or "").strip()
         if not text:
-            return {"intent": "faq", "answer": "Please provide a question.", "score": 0.0, "citations": []}
+            return {
+                "intent": "faq",
+                "action": "answer",
+                "answer": "Please provide a question.",
+                "score": 0.0,
+                "citations": [],
+                "rag_state": RESPOND,
+                "thread_active": False,
+            }
 
-        res = self._search(text)
-        return {
+        thread_id = self._get_thread_id(request)
+        ts = self._get_thread(thread_id)
+
+        # Determine if this is a clarification follow-up or a new query
+        if ts.fsm_state == CLARIFY:
+            # User is responding to a clarification question
+            ts.refined_query = text
+            ts.clarification_count += 1
+            ts.fsm_state = ANALYZE
+        elif ts.fsm_state != ANALYZE or ts.original_query:
+            # New query — reset thread state
+            self._reset_thread(thread_id)
+            ts = self._get_thread(thread_id)
+            ts.original_query = text
+        else:
+            # First query on fresh thread
+            ts.original_query = text
+
+        effective_query = ts.refined_query or ts.original_query
+
+        # ═══ ANALYZE: TF-IDF probe + solvability estimation ═══
+        ts.fsm_state = ANALYZE
+        probe = self._search(effective_query)
+        tfidf_hits = probe.get("_hits", [])
+        ts.tfidf_probe = tfidf_hits
+
+        solv = estimate_solvability(effective_query, tfidf_hits, self._solv_cfg)
+        ts.solvability = solv["score"]
+        ts.solvability_reason = solv["reason"]
+
+        # ═══ DELEGATE: query outside FAQ scope ═══
+        if solv["action"] == "delegate":
+            ts.fsm_state = DELEGATE
+            result = {
+                "intent": "faq_delegate",
+                "action": "delegate",
+                "answer": None,
+                "score": solv["score"],
+                "citations": [],
+                "rag_state": DELEGATE,
+                "delegate": {
+                    "reason": solv["reason"],
+                    "suggested_type": solv.get("delegate_to", "unknown"),
+                    "confidence": solv["score"],
+                },
+                "thread_active": False,
+                "solvability": solv,
+            }
+            self._reset_thread(thread_id)
+            return result
+
+        # ═══ CLARIFY: query is vague/ambiguous ═══
+        max_clarify = self._solv_cfg.get("max_clarifications", 2)
+        if solv["action"] == "clarify" and ts.clarification_count < max_clarify:
+            ts.fsm_state = CLARIFY
+            ts.last_question = solv["clarify_question"]
+            return {
+                "intent": "faq_clarify",
+                "action": "clarify",
+                "answer": None,
+                "question": solv["clarify_question"],
+                "score": solv["score"],
+                "citations": [],
+                "rag_state": CLARIFY,
+                "thread_active": True,
+                "solvability": solv,
+            }
+
+        # ═══ RETRIEVE: LLM-enhanced retrieval ═══
+        ts.fsm_state = RETRIEVE
+
+        retrieval_query = effective_query
+        if self._solv_cfg.get("enable_query_expansion", True) and solv["score"] < 0.55:
+            retrieval_query = expand_query(effective_query, tfidf_hits[:3])
+
+        final = self._search(retrieval_query)
+        final_hits = final.get("_hits", [])
+
+        # LLM re-ranking when top results are ambiguous
+        if (
+            self._solv_cfg.get("enable_llm_reranking", True)
+            and len(final_hits) >= 2
+            and abs(final_hits[0]["score"] - final_hits[1]["score"]) < 0.10
+        ):
+            final_hits = rerank_hits(retrieval_query, final_hits)
+
+        # ═══ RESPOND: build final answer ═══
+        ts.fsm_state = RESPOND
+
+        if final_hits and final_hits[0]["score"] >= 0.12:
+            answer = final_hits[0]["answer"]
+            score = final_hits[0]["score"]
+            citations = [
+                {"question": h["question"], "source": h["source"]}
+                for h in final_hits[:3]
+            ]
+        else:
+            answer = "I couldn’t find a specific answer in the knowledge base."
+            score = final_hits[0]["score"] if final_hits else 0.0
+            citations = []
+
+        result = {
             "intent": "faq",
-            "answer": res["answer"],
-            "score": res["score"],
-            "citations": res["citations"],
+            "action": "answer",
+            "answer": answer,
+            "score": score,
+            "citations": citations,
+            "rag_state": RESPOND,
+            "thread_active": False,
+            "solvability": solv,
         }
+        self._reset_thread(thread_id)
+        return result
 
     def metadata(self) -> Dict[str, Any]:
         return {
             "id": "__AGENT_ID__",
             "type": "faq_rag",
             "ready": self.ready,
-            "description": "Answers customer FAQs using TF-IDF retrieval over normalized FAQ pairs extracted from uploaded documents.",
-            "capabilities": ["faq_answering", "policy_lookup", "knowledge_base_search"],
+            "description": (
+                "Multi-turn FAQ RAG agent with AOP solvability estimation, "
+                "clarification, LLM-enhanced retrieval, and delegation."
+            ),
+            "capabilities": [
+                "faq_answering", "policy_lookup", "knowledge_base_search",
+                "clarification", "delegation", "solvability_estimation",
+            ],
             "vertical": "generic_customer_service",
             "docs": len(self.faqs),
         }
