@@ -272,7 +272,18 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
         docs = [docs]
 
     # Write config for runtime inspection/debugging
-    cfg = {"id": agent_id, "docs": docs}
+    cfg = {
+        "id": agent_id,
+        "docs": docs,
+        "solvability": {
+            "answer_threshold": 0.55,
+            "delegate_threshold": 0.20,
+            "max_clarifications": 2,
+            "enable_llm_analysis": True,
+            "enable_query_expansion": True,
+            "enable_llm_reranking": True,
+        },
+    }
     (gen_dir / "config.yaml").write_text(
         yaml.safe_dump(cfg, sort_keys=False),
         encoding="utf-8",
@@ -408,13 +419,13 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
     )
 
     # ---------------------------
-    # Generate agent.py (loads faqs.json, TF-IDF retrieval)
+    # Generate agent.py (multi-turn RAG with FSM, solvability, clarification, delegation)
     # ---------------------------
     header = f"# Auto-generated FAQ RAG agent ({agent_id})\n"
     body = textwrap.dedent(
         """\
 from __future__ import annotations
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Optional
 from pathlib import Path
 import json, math, re, yaml
 from app.runtime.interfaces import IAgent
@@ -426,10 +437,8 @@ def _tok(s: str) -> List[str]:
 
 def _build_tfidf(items: List[str]):
     df = {}
-    docs_tokens = []
     for text in items:
         toks = list(dict.fromkeys(_tok(text)))
-        docs_tokens.append(toks)
         for t in toks:
             df[t] = df.get(t, 0) + 1
 
@@ -454,33 +463,6 @@ def _build_tfidf(items: List[str]):
 
     return idf, vecs
 
-def _vec_query(query: str, idf: Dict[str, float]) -> Dict[str, float]:
-    tf = {}
-    for t in _tok(query):
-        tf[t] = tf.get(t, 0) + 1
-    vec = {}
-    norm = 0.0
-    for t, f in tf.items():
-        w = (1 + math.log(f)) * idf.get(t, 0.0)
-        vec[t] = w
-        norm += w * w
-    norm = math.sqrt(max(1e-9, norm))
-    for t in list(vec.keys()):
-        vec[t] /= norm
-    return vec
-
-def _cosine(a: Dict[str, float], b: Dict[str, float]) -> float:
-    if not a or not b:
-        return 0.0
-    if len(a) > len(b):
-        a, b = b, a
-    s = 0.0
-    for t, w in a.items():
-        w2 = b.get(t)
-        if w2 is not None:
-            s += w * w2
-    return float(max(0.0, min(1.0, s)))
-
 class Agent(IAgent):
     def __init__(self) -> None:
         self.ready = False
@@ -493,6 +475,18 @@ class Agent(IAgent):
         self._idf: Dict[str, float] = {}
         self._vecs: List[Dict[str, float]] = []
         self._texts: List[str] = []  # aligned to faqs
+
+        # Thread-aware RAG FSM engines
+        self._fsm_engines: Dict[str, Any] = {}
+        self._memory: Optional[object] = None
+
+        # Shared dense embeddings (computed once at load, reused by all FSM threads)
+        self._shared_dense_vecs: Optional[list] = None
+        self._shared_llm_fn = None
+        self._shared_embed_fn = None
+
+        # Solvability config (loaded from config.yaml)
+        self._solv_cfg: Dict[str, Any] = {}
 
     def _load_config(self) -> None:
         cfg_path = Path(__file__).parent / "config.yaml"
@@ -535,12 +529,131 @@ class Agent(IAgent):
         self._load_config()
         self._load_faqs()
         self._build_index()
+
+        # Try to load conversation memory (optional)
+        try:
+            from app.runtime.memory import ConversationMemory
+            self._memory = ConversationMemory()
+        except ImportError:
+            self._memory = None
+
+        # Try to load LLM and embedding functions once
+        try:
+            from app.llm_client import chat_json as _chat_json
+            self._shared_llm_fn = _chat_json
+        except ImportError:
+            pass
+        try:
+            from app.runtime.embeddings import get_embed_fn
+            self._shared_embed_fn = get_embed_fn()
+        except (ImportError, Exception):
+            pass
+
+        # Pre-compute dense embeddings at startup (avoid slow first query)
+        if self._shared_embed_fn and self._texts:
+            try:
+                self._shared_dense_vecs = self._shared_embed_fn(self._texts)
+            except Exception:
+                self._shared_dense_vecs = None
+
+        self._solv_cfg = (self.cfg or {}).get("solvability", {})
         self.ready = True
 
-    def _search(self, query: str, top_k: int = 5) -> Dict[str, Any]:
-        if not self._texts or not self._vecs:
-            return {"answer": "I don’t have that yet.", "score": 0.0, "citations": []}
+    # ── Thread state management ────────────────────────────────
 
+    def _get_thread_id(self, request: Dict[str, Any]) -> str:
+        ctx = request.get("context") if isinstance(request, dict) else None
+        if isinstance(ctx, dict) and ctx.get("thread_id"):
+            return str(ctx["thread_id"])
+        if isinstance(request, dict) and request.get("thread_id"):
+            return str(request["thread_id"])
+        return "default"
+
+    def _fsm_for(self, thread_id: str):
+        if thread_id not in self._fsm_engines:
+            try:
+                from app.runtime.rag_fsm import RAGFiniteStateMachine, RAGFSMConfig
+
+                _cfg = RAGFSMConfig(
+                    enable_llm_synthesis=bool(self._shared_llm_fn),
+                    enable_dense_retrieval=bool(self._shared_embed_fn),
+                    enable_retrieval_clarification=True,
+                )
+                self._fsm_engines[thread_id] = RAGFiniteStateMachine(
+                    agent_id="__AGENT_ID__",
+                    faqs=self.faqs,
+                    idf=self._idf,
+                    vecs=self._vecs,
+                    texts=self._texts,
+                    config=_cfg,
+                    memory=self._memory,
+                    llm_fn=self._shared_llm_fn,
+                    embed_fn=self._shared_embed_fn,
+                    dense_vecs=self._shared_dense_vecs,
+                )
+            except ImportError:
+                return None
+        return self._fsm_engines[thread_id]
+
+    def handle(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        text = (request.get("text") or request.get("query") or "").strip()
+        if not text:
+            return {"intent": "faq", "answer": "Please provide a question.", "score": 0.0, "citations": []}
+
+        thread_id = self._get_thread_id(request)
+        fsm = self._fsm_for(thread_id)
+
+        if fsm is None:
+            # Fallback: simple TF-IDF search if rag_fsm unavailable
+            return self._search_fallback(text)
+
+        result = fsm.step(query=text, thread_id=thread_id)
+
+        response: Dict[str, Any] = {
+            "intent": "faq",
+            "answer": result.answer or "",
+            "score": result.score,
+            "citations": result.citations,
+            "rag_state": result.state.value,
+        }
+
+        # Delegation signal (spine reads this)
+        if result.delegation_target:
+            response["delegation_target"] = result.delegation_target
+            response["delegation_reason"] = result.delegation_reason
+
+        # Clarification signal (spine reads this for pinning)
+        if result.clarification_question:
+            response["rag_clarification"] = True
+            response["answer"] = result.clarification_question
+
+        if result.state.value == "respond":
+            response["rag_answered"] = True
+
+        # Grounded citations and synthesis metadata
+        if result.grounded_citations:
+            response["grounded_citations"] = result.grounded_citations
+        if result.synthesis_metadata:
+            response["synthesis_metadata"] = result.synthesis_metadata
+
+        # Solvability metadata for thesis tracing
+        if result.solvability:
+            response["solvability"] = {
+                "tfidf_score": result.solvability.tfidf_score,
+                "coverage_ratio": result.solvability.coverage_ratio,
+                "confidence": result.solvability.confidence,
+                "should_delegate": result.solvability.should_delegate,
+                "reasoning": result.solvability.reasoning,
+            }
+
+        return response
+
+    def _search_fallback(self, query: str, top_k: int = 5) -> Dict[str, Any]:
+        \"\"\"Fallback TF-IDF search without FSM (backward compatibility).\"\"\"
+        if not self._texts or not self._vecs:
+            return {"intent": "faq", "answer": "I don't have that yet.", "score": 0.0, "citations": []}
+
+        from app.runtime.rag_fsm import _vec_query, _cosine
         qv = _vec_query(query, self._idf)
         scored = []
         for i, dv in enumerate(self._vecs):
@@ -548,43 +661,34 @@ class Agent(IAgent):
             scored.append((s, i))
         scored.sort(reverse=True, key=lambda x: x[0])
 
-        best_score, best_i = scored[0]
-
-        # Relevance gate (tunable)
-        if best_score < 0.12:
-            return {
-                "answer": "I couldn’t find that in the provided documents.",
-                "score": float(best_score),
-                "citations": [],
-            }
-
         hits = []
         for s, i in scored[:top_k]:
             it = self.faqs[i]
             hits.append({
                 "score": float(s),
-                "question": str(it.get("q","")),
-                "answer": str(it.get("a","")),
-                "source": str(it.get("source","")),
+                "question": str(it.get("q", "")),
+                "answer": str(it.get("a", "")),
+                "source": str(it.get("source", "")),
             })
 
+        best_score = hits[0]["score"] if hits else 0.0
+
+        # Relevance gate (tunable)
+        if best_score < 0.12:
+            return {
+                "intent": "faq",
+                "answer": "I couldn't find that in the provided documents.",
+                "score": float(best_score),
+                "citations": [],
+                "_hits": hits,
+            }
+
         return {
+            "intent": "faq",
             "answer": hits[0]["answer"],
             "score": float(hits[0]["score"]),
             "citations": [{"question": h["question"], "source": h["source"]} for h in hits[:3]],
-        }
-
-    def handle(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        text = (request.get("text") or request.get("query") or "").strip()
-        if not text:
-            return {"intent": "faq", "answer": "Please provide a question.", "score": 0.0, "citations": []}
-
-        res = self._search(text)
-        return {
-            "intent": "faq",
-            "answer": res["answer"],
-            "score": res["score"],
-            "citations": res["citations"],
+            "_hits": hits,
         }
 
     def metadata(self) -> Dict[str, Any]:
@@ -592,8 +696,14 @@ class Agent(IAgent):
             "id": "__AGENT_ID__",
             "type": "faq_rag",
             "ready": self.ready,
-            "description": "Answers customer FAQs using TF-IDF retrieval over normalized FAQ pairs extracted from uploaded documents.",
-            "capabilities": ["faq_answering", "policy_lookup", "knowledge_base_search"],
+            "description": (
+                "Multi-turn FAQ RAG agent with AOP solvability estimation, "
+                "clarification, LLM-enhanced retrieval, and delegation."
+            ),
+            "capabilities": [
+                "faq_answering", "policy_lookup", "knowledge_base_search",
+                "multi_turn", "clarification", "delegation", "solvability_estimation",
+            ],
             "vertical": "generic_customer_service",
             "docs": len(self.faqs),
         }
