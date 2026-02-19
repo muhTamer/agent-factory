@@ -272,7 +272,18 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
         docs = [docs]
 
     # Write config for runtime inspection/debugging
-    cfg = {"id": agent_id, "docs": docs}
+    cfg = {
+        "id": agent_id,
+        "docs": docs,
+        "solvability": {
+            "answer_threshold": 0.55,
+            "delegate_threshold": 0.20,
+            "max_clarifications": 2,
+            "enable_llm_analysis": True,
+            "enable_query_expansion": True,
+            "enable_llm_reranking": True,
+        },
+    }
     (gen_dir / "config.yaml").write_text(
         yaml.safe_dump(cfg, sort_keys=False),
         encoding="utf-8",
@@ -408,7 +419,7 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
     )
 
     # ---------------------------
-    # Generate agent.py (loads faqs.json, TF-IDF retrieval)
+    # Generate agent.py (multi-turn RAG with FSM, solvability, clarification, delegation)
     # ---------------------------
     header = f"# Auto-generated FAQ RAG agent ({agent_id})\n"
     body = textwrap.dedent(
@@ -418,6 +429,10 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 import json, math, re, yaml
 from app.runtime.interfaces import IAgent
+from app.runtime.rag_fsm import (
+    RAGThreadState, estimate_solvability, expand_query, rerank_hits,
+    ANALYZE, CLARIFY, RETRIEVE, RESPOND, DELEGATE,
+)
 
 _WORD = re.compile(r"[A-Za-z0-9]+")
 
@@ -469,6 +484,12 @@ class Agent(IAgent):
         self._fsm_engines: Dict[str, Any] = {}
         self._memory: Optional[object] = None
 
+        # Multi-turn: thread-aware FSM state (RAG_main fallback)
+        self._threads: Dict[str, RAGThreadState] = {}
+
+        # Solvability config (loaded from config.yaml)
+        self._solv_cfg: Dict[str, Any] = {}
+
     def _load_config(self) -> None:
         cfg_path = Path(__file__).parent / "config.yaml"
         if not cfg_path.exists():
@@ -518,7 +539,10 @@ class Agent(IAgent):
         except ImportError:
             self._memory = None
 
+        self._solv_cfg = (self.cfg or {}).get("solvability", {})
         self.ready = True
+
+    # ── Thread state management ────────────────────────────────
 
     def _get_thread_id(self, request: Dict[str, Any]) -> str:
         ctx = request.get("context") if isinstance(request, dict) else None
@@ -527,6 +551,25 @@ class Agent(IAgent):
         if isinstance(request, dict) and request.get("thread_id"):
             return str(request["thread_id"])
         return "default"
+
+    def _get_thread(self, thread_id: str) -> RAGThreadState:
+        if thread_id not in self._threads:
+            self._threads[thread_id] = RAGThreadState()
+        return self._threads[thread_id]
+
+    def _reset_thread(self, thread_id: str) -> None:
+        self._threads.pop(thread_id, None)
+
+    # ── TF-IDF retrieval (used by fallback path) ───────────────
+
+    def _search(self, query: str, top_k: int = 5) -> Dict[str, Any]:
+        if not self._texts or not self._vecs:
+            return {
+                "answer": "I don't have that yet.",
+                "score": 0.0,
+                "citations": [],
+                "_hits": [],
+            }
 
     def _fsm_for(self, thread_id: str):
         if thread_id not in self._fsm_engines:
@@ -605,15 +648,6 @@ class Agent(IAgent):
             scored.append((s, i))
         scored.sort(reverse=True, key=lambda x: x[0])
 
-        best_score, best_i = scored[0]
-        if best_score < 0.12:
-            return {
-                "intent": "faq",
-                "answer": "I couldn't find that in the provided documents.",
-                "score": float(best_score),
-                "citations": [],
-            }
-
         hits = []
         for s, i in scored[:top_k]:
             it = self.faqs[i]
@@ -624,11 +658,24 @@ class Agent(IAgent):
                 "source": str(it.get("source", "")),
             })
 
+        best_score = hits[0]["score"] if hits else 0.0
+
+        # Relevance gate (tunable)
+        if best_score < 0.12:
+            return {
+                "intent": "faq",
+                "answer": "I couldn't find that in the provided documents.",
+                "score": float(best_score),
+                "citations": [],
+                "_hits": hits,
+            }
+
         return {
             "intent": "faq",
             "answer": hits[0]["answer"],
             "score": float(hits[0]["score"]),
             "citations": [{"question": h["question"], "source": h["source"]} for h in hits[:3]],
+            "_hits": hits,
         }
 
     def metadata(self) -> Dict[str, Any]:
@@ -636,9 +683,15 @@ class Agent(IAgent):
             "id": "__AGENT_ID__",
             "type": "faq_rag",
             "ready": self.ready,
-            "description": "Multi-turn FAQ RAG agent with solvability estimation, clarification, and delegation.",
-            "capabilities": ["faq_answering", "policy_lookup", "knowledge_base_search",
-                           "multi_turn", "clarification", "delegation"],
+            "description": (
+                "Multi-turn FAQ RAG agent with AOP solvability estimation, "
+                "clarification, LLM-enhanced retrieval, and delegation."
+            ),
+            "capabilities": [
+                "faq_answering", "policy_lookup", "knowledge_base_search",
+                "multi_turn", "clarification", "delegation", "solvability_estimation",
+            ],
+            "vertical": "generic_customer_service",
             "docs": len(self.faqs),
         }
 """

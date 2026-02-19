@@ -428,8 +428,35 @@ if st.session_state.get("deployment"):
                 with st.expander("⚡ Quick replies"):
                     st.write(chat["quick_replies"])
 
+        # --- RAG Clarification response ---
+        if (
+            isinstance(payload, dict)
+            and payload.get("action") == "clarify"
+            and payload.get("question")
+        ):
+            st.markdown("### Clarification Needed")
+            st.info(payload.get("question", ""))
+            if payload.get("solvability"):
+                with st.expander("Solvability Analysis"):
+                    st.json(payload["solvability"])
+
+        # --- RAG Delegation response ---
+        if (
+            isinstance(payload, dict)
+            and payload.get("action") == "delegate"
+            and isinstance(payload.get("delegate"), dict)
+        ):
+            st.markdown("### Delegated")
+            delegate = payload["delegate"]
+            st.warning(f"Query delegated: {delegate.get('reason', 'N/A')}")
+            if delegate.get("suggested_type"):
+                st.caption(f"Suggested handler: {delegate['suggested_type']}")
+            if payload.get("solvability"):
+                with st.expander("Solvability Analysis"):
+                    st.json(payload["solvability"])
+
         # --- FAQ / answer-style response ---
-        if "answer" in payload:
+        if "answer" in payload and payload.get("answer") is not None:
             st.markdown("### 💬 Answer")
             st.success(payload.get("answer", ""))
 

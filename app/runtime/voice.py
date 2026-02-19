@@ -46,6 +46,8 @@ class VoiceAgent:
             "- If structured contains missing_slots (list of strings), ask the user for those values in ONE natural question.\n"
             "- If structured.rag_clarification is true, produce a natural question asking for more details about their topic.\n"
             "- If structured.delegation_target is present, briefly explain you're connecting them to the right specialist.\n"
+            "- If structured.action is 'clarify' and structured.question is present, rephrase the clarification question in a friendly customer-facing tone.\n"
+            "- If structured.action is 'delegate', acknowledge the customer and explain you are connecting them to the right specialist.\n"
             "- Provide 2-5 quick replies when it helps.\n"
         )
 

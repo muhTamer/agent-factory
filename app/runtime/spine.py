@@ -294,7 +294,7 @@ class RuntimeSpine:
 
             if (
                 pinned
-                and pinned_type in ("workflow_runner", "rag_fsm")
+                and pinned_type in ("workflow_runner", "rag_fsm", "faq_rag")
                 and pinned_terminal is False
             ):
                 plan = type("Plan", (), {})()
@@ -416,8 +416,10 @@ class RuntimeSpine:
 
             trace.add("select", agent_id=selected["agent_id"], score=selected["score"])
 
-            # 5.25 RAG delegation re-routing
+            # 5.25 RAG delegation re-routing (supports both signal formats)
             _res = selected.get("response") or {}
+
+            # Format A: delegation_target key (RAG FSM style)
             if _res.get("delegation_target"):
                 _delegation_target = _res["delegation_target"]
                 trace.add(
@@ -449,6 +451,52 @@ class RuntimeSpine:
                 ctx.pop("pinned_agent_id", None)
                 ctx.pop("pinned_agent_type", None)
                 ctx.pop("pinned_terminal", None)
+
+            # Format B: action=="delegate" with delegate dict (RAG_main style)
+            elif (
+                isinstance(_res, dict)
+                and _res.get("action") == "delegate"
+                and isinstance(_res.get("delegate"), dict)
+            ):
+                delegate_info = _res["delegate"]
+                suggested_type = delegate_info.get("suggested_type")
+                suggested_id = delegate_info.get("suggested_id")
+
+                delegate_agent_id = None
+                if suggested_id and self.registry.get(suggested_id):
+                    delegate_agent_id = suggested_id
+                elif suggested_type and suggested_type != "unknown":
+                    for aid, meta in self.registry.all_meta().items():
+                        if meta.get("type") == suggested_type and aid != selected["agent_id"]:
+                            delegate_agent_id = aid
+                            break
+
+                if delegate_agent_id:
+                    delegate_agent = self.registry.get(delegate_agent_id)
+                    if delegate_agent:
+                        try:
+                            delegate_result = delegate_agent.handle(
+                                {"query": q, "text": q, "context": ctx}
+                            )
+                            try:
+                                delegate_score = float(delegate_result.get("score", 0.5))
+                            except (TypeError, ValueError):
+                                delegate_score = 0.5
+                            trace.add(
+                                "rag_delegation",
+                                from_agent=selected["agent_id"],
+                                to_agent=delegate_agent_id,
+                                reason=delegate_info.get("reason", ""),
+                            )
+                            selected = {
+                                "agent_id": delegate_agent_id,
+                                "score": delegate_score,
+                                "response": delegate_result,
+                            }
+                            selected["response"]["delegated_from"] = _res.get("agent_id", "")
+                        except Exception as e:
+                            trace.add("rag_delegation_failed", error=str(e))
+                            print(f"[ERR] RAG delegation to {delegate_agent_id} failed: {e}")
 
             # 5.5 FSM state snapshot (workflow_runner agents only)
             _res = selected.get("response") or {}
@@ -486,15 +534,19 @@ class RuntimeSpine:
                     ctx.pop("pinned_terminal", None)
 
             # Pin RAG agent during clarification (multi-turn FAQ)
-            if isinstance(resp, dict) and resp.get("rag_clarification"):
+            # Supports both signal formats: rag_clarification (FSM) and rag_state+thread_active (RAG_main)
+            if isinstance(resp, dict) and (
+                resp.get("rag_clarification")
+                or (resp.get("rag_state") == "CLARIFY" and resp.get("thread_active") is True)
+            ):
                 ctx["pinned_agent_id"] = resp.get("agent_id", plan.primary)
                 ctx["pinned_agent_type"] = "rag_fsm"
                 ctx["pinned_terminal"] = False
                 trace.add("rag_pinned", agent_id=ctx["pinned_agent_id"])
             elif (
                 isinstance(resp, dict)
-                and resp.get("rag_answered")
-                and ctx.get("pinned_agent_type") == "rag_fsm"
+                and ctx.get("pinned_agent_type") in ("rag_fsm", "faq_rag")
+                and (resp.get("rag_answered") or resp.get("thread_active") is not True)
             ):
                 ctx.pop("pinned_agent_id", None)
                 ctx.pop("pinned_agent_type", None)
@@ -519,7 +571,10 @@ class RuntimeSpine:
                 )
 
                 is_rag_special = isinstance(candidate, dict) and (
-                    candidate.get("rag_clarification") or candidate.get("delegation_target")
+                    candidate.get("rag_clarification")
+                    or candidate.get("delegation_target")
+                    or candidate.get("rag_state") in ("CLARIFY", "DELEGATE")
+                    or candidate.get("action") in ("clarify", "delegate")
                 )
 
                 if is_workflow or is_rag_special:
