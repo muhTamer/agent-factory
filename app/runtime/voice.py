@@ -44,6 +44,8 @@ class VoiceAgent:
             "- Do NOT hallucinate policy facts; only use facts present in the provided structured data.\n"
             "- If structured.status is 'awaiting_info' or 'missing_info' OR structured.action indicates clarification, you must ask for the missing info.\n"
             "- If structured contains missing_slots (list of strings), ask the user for those values in ONE natural question.\n"
+            "- If structured.rag_clarification is true, produce a natural question asking for more details about their topic.\n"
+            "- If structured.delegation_target is present, briefly explain you're connecting them to the right specialist.\n"
             "- Provide 2-5 quick replies when it helps.\n"
         )
 

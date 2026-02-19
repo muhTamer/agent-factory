@@ -19,6 +19,7 @@ from app.runtime.policy_pack import PolicyPack
 from app.runtime.policy_guardrails import PolicyGuardrails
 from app.orchestration.performance_store import PerformanceStore
 from app.orchestration.aop_coordinator import AOPCoordinator
+from app.runtime.memory import ConversationMemory
 
 router: LLMRouter | None = None
 spine: RuntimeSpine | None = None
@@ -94,8 +95,10 @@ def startup_event():
     perf_store = PerformanceStore()
     aop = AOPCoordinator(registry=registry, performance_store=perf_store)
 
+    memory = ConversationMemory()
+
     spine = RuntimeSpine(
-        registry=registry, router=router, guardrails=guardrails, aop_coordinator=aop
+        registry=registry, router=router, guardrails=guardrails, aop_coordinator=aop, memory=memory
     )
 
     print(f"[BOOT] All agents loaded: {registry.all_ids()}")

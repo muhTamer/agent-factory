@@ -80,6 +80,13 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
         except ImportError:
             _POLICY_BRIDGE_AVAILABLE = False
 
+        try:
+            from app.runtime.memory import ConversationMemory as _ConversationMemory
+            _MEMORY_AVAILABLE = True
+        except ImportError:
+            _ConversationMemory = None
+            _MEMORY_AVAILABLE = False
+
 
         class Agent(IAgent):
             def __init__(self) -> None:
@@ -91,6 +98,9 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                 # Shared, immutable inputs loaded once
                 self.workflow_spec: Dict[str, Any] = {}
                 self.context: Dict[str, Any] = {}
+
+                # Conversation memory — the "M" in PMPA (Wang et al. 2024)
+                self._memory: Optional[object] = None
 
                 # Policy auto-event resolution (optional, loaded from policy_config)
                 self.policy_bridge: Optional[object] = None
@@ -142,6 +152,10 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                             )
                         except Exception as e:
                             print(f"[WF:$agent_id] Policy bridge load failed: {e}")
+
+                # Initialize conversation memory if available
+                if _MEMORY_AVAILABLE and _ConversationMemory is not None:
+                    self._memory = _ConversationMemory()
 
                 self.ready = True
 
@@ -347,6 +361,14 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                         "policy_auto_resolved": True,
                     }
                 else:
+                    # Inject conversation context from memory (PMPA memory-assisted planning)
+                    _conv_ctx: List[Dict[str, Any]] = []
+                    if self._memory:
+                        try:
+                            _conv_ctx = self._memory.get_conversation_context(thread_id, limit=3)
+                        except Exception:
+                            pass
+
                     # LLM mapper path — for user-driven events (e.g. begin, info_provided)
                     mr = map_query_to_event_and_slots(
                         query=query,
@@ -355,6 +377,7 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                         slot_defs=engine.slot_defs,
                         model="gpt-5-mini",
                         current_slots=getattr(engine, "slots", {}) or {},
+                        conversation_context=_conv_ctx if _conv_ctx else None,
                     )
 
                     # Hard guard: if required slots are still missing after applying the
@@ -416,6 +439,36 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
 
                 if _chain_events:
                     wf_res.setdefault("mapper", {})["auto_chain"] = _chain_events
+
+                # Record turn + state snapshot in conversation memory (PMPA audit trail)
+                if self._memory:
+                    try:
+                        _policy_decisions = []
+                        _mapper = wf_res.get("mapper") or {}
+                        if _mapper.get("policy_auto_resolved"):
+                            _policy_decisions.append({
+                                "type": "policy_auto_event",
+                                "state": _mapper.get("state"),
+                                "event": _mapper.get("event"),
+                            })
+                        self._memory.record_turn(
+                            thread_id=thread_id,
+                            query=query,
+                            response=wf_res,
+                            agent_id="$agent_id",
+                            fsm_state=engine.current_state,
+                            slots=dict(engine.slots or {}),
+                            policy_decisions=_policy_decisions if _policy_decisions else None,
+                        )
+                        self._memory.record_state_snapshot(
+                            thread_id=thread_id,
+                            state=engine.current_state,
+                            slots=dict(engine.slots or {}),
+                            agent_id="$agent_id",
+                            trigger="state_entry",
+                        )
+                    except Exception:
+                        pass
 
                 # Echo merged context for visibility/debugging
                 wf_res["context"] = engine.context

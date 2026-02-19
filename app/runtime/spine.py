@@ -14,6 +14,7 @@ from app.runtime.voice import VoiceAgent
 
 if TYPE_CHECKING:
     from app.orchestration.aop_coordinator import AOPCoordinator
+    from app.runtime.memory import ConversationMemory
 
 # Simple in-memory per-thread context store (POC).
 # Replace with Redis/Postgres later.
@@ -44,6 +45,7 @@ class RuntimeSpine:
         guardrails: Guardrails | None = None,
         audit_writer: JsonlAuditWriter | None = None,
         aop_coordinator: Optional[AOPCoordinator] = None,
+        memory: Optional[ConversationMemory] = None,
     ):
         self.registry = registry
         self.router = router
@@ -51,6 +53,16 @@ class RuntimeSpine:
         self.audit_writer = audit_writer or JsonlAuditWriter()
         self.voice = VoiceAgent()
         self.aop_coordinator = aop_coordinator
+        # Conversation memory — the "M" in PMPA (Wang et al. 2024)
+        if memory is not None:
+            self.memory = memory
+        else:
+            try:
+                from app.runtime.memory import ConversationMemory as _CM
+
+                self.memory: Optional[ConversationMemory] = _CM()
+            except Exception:
+                self.memory = None
 
     # -------------------------
     # Context defaults (non-generated, survives regen)
@@ -280,7 +292,11 @@ class RuntimeSpine:
             pinned_type = ctx.get("pinned_agent_type")
             pinned_terminal = ctx.get("pinned_terminal")
 
-            if pinned and pinned_type == "workflow_runner" and pinned_terminal is False:
+            if (
+                pinned
+                and pinned_type in ("workflow_runner", "rag_fsm")
+                and pinned_terminal is False
+            ):
                 plan = type("Plan", (), {})()
                 plan.primary = pinned
                 plan.strategy = "single"
@@ -400,6 +416,40 @@ class RuntimeSpine:
 
             trace.add("select", agent_id=selected["agent_id"], score=selected["score"])
 
+            # 5.25 RAG delegation re-routing
+            _res = selected.get("response") or {}
+            if _res.get("delegation_target"):
+                _delegation_target = _res["delegation_target"]
+                trace.add(
+                    "rag_delegation",
+                    from_agent=selected["agent_id"],
+                    to_agent=_delegation_target,
+                    reason=_res.get("delegation_reason", ""),
+                )
+                _delegate_agent = self.registry.get(_delegation_target)
+                if _delegate_agent:
+                    try:
+                        _delegate_result = _delegate_agent.handle(
+                            {"query": q, "text": q, "context": ctx}
+                        )
+                        _delegate_score = (
+                            float(_delegate_result.get("score", 0.5))
+                            if isinstance(_delegate_result, dict)
+                            else 0.5
+                        )
+                        selected = {
+                            "agent_id": _delegation_target,
+                            "score": _delegate_score,
+                            "response": _delegate_result,
+                        }
+                        trace.add("delegation_executed", agent_id=_delegation_target)
+                    except Exception as e:
+                        trace.add("delegation_failed", error=str(e))
+                # Unpin RAG agent after delegation
+                ctx.pop("pinned_agent_id", None)
+                ctx.pop("pinned_agent_type", None)
+                ctx.pop("pinned_terminal", None)
+
             # 5.5 FSM state snapshot (workflow_runner agents only)
             _res = selected.get("response") or {}
             if "current_state" in _res:
@@ -435,6 +485,22 @@ class RuntimeSpine:
                     ctx.pop("pinned_agent_type", None)
                     ctx.pop("pinned_terminal", None)
 
+            # Pin RAG agent during clarification (multi-turn FAQ)
+            if isinstance(resp, dict) and resp.get("rag_clarification"):
+                ctx["pinned_agent_id"] = resp.get("agent_id", plan.primary)
+                ctx["pinned_agent_type"] = "rag_fsm"
+                ctx["pinned_terminal"] = False
+                trace.add("rag_pinned", agent_id=ctx["pinned_agent_id"])
+            elif (
+                isinstance(resp, dict)
+                and resp.get("rag_answered")
+                and ctx.get("pinned_agent_type") == "rag_fsm"
+            ):
+                ctx.pop("pinned_agent_id", None)
+                ctx.pop("pinned_agent_type", None)
+                ctx.pop("pinned_terminal", None)
+                trace.add("rag_unpinned")
+
             trace.add("response_ready", agent_id=resp.get("agent_id"), score=resp.get("score"))
 
             # 6.5️⃣ VOICE (chat rendering) — for workflow-style structured outputs
@@ -452,7 +518,11 @@ class RuntimeSpine:
                     or "terminal" in candidate
                 )
 
-                if is_workflow:
+                is_rag_special = isinstance(candidate, dict) and (
+                    candidate.get("rag_clarification") or candidate.get("delegation_target")
+                )
+
+                if is_workflow or is_rag_special:
                     thread_id = str(
                         (ctx or {}).get("thread_id") or resp.get("thread_id") or "default"
                     )
@@ -492,6 +562,30 @@ class RuntimeSpine:
                 THREAD_CTX[ctx.get("thread_id", "default")] = ctx
             except Exception:
                 pass
+
+            # Record turn in conversation memory
+            if self.memory:
+                try:
+                    _resp = (
+                        resp if isinstance(resp, dict) else (post if isinstance(post, dict) else {})
+                    )  # noqa: F841
+                except Exception:
+                    _resp = {}
+                try:
+                    self.memory.record_turn(
+                        thread_id=thread_id,
+                        query=q,
+                        response=_resp,
+                        agent_id=_resp.get("agent_id") if isinstance(_resp, dict) else None,
+                        fsm_state=(
+                            _resp.get("current_state") or _resp.get("rag_state")
+                            if isinstance(_resp, dict)
+                            else None
+                        ),
+                        slots=_resp.get("slots") if isinstance(_resp, dict) else None,
+                    )
+                except Exception:
+                    pass
 
             try:
                 self.audit_writer.write(trace)
