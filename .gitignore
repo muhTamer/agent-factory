@@ -13,10 +13,6 @@ build/
 # VSCode
 .vscode/
 
-# local config
-.env
-.env.*
-
 # data
 data/
 *.csv
@@ -27,7 +23,6 @@ data/
 
 # Environment & secrets
 .env
-.env.*
 !env.example
 # Local configs / keys
 *.key
@@ -40,6 +35,8 @@ generated/
 .factory/audit/
 .factory/compiled_policies/
 .factory/factory_spec.json
+.factory/performance_history.json
+.factory/test_performance_history.json
 .workspace/
 .claude/
 

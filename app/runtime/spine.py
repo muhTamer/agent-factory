@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 from app.runtime.audit_writer import JsonlAuditWriter
 from app.runtime.guardrails import Guardrails, NoOpGuardrails
@@ -11,6 +11,9 @@ from app.runtime.registry import AgentRegistry
 from app.runtime.routing import Router
 from app.runtime.trace import Trace
 from app.runtime.voice import VoiceAgent
+
+if TYPE_CHECKING:
+    from app.orchestration.aop_coordinator import AOPCoordinator
 
 # Simple in-memory per-thread context store (POC).
 # Replace with Redis/Postgres later.
@@ -40,12 +43,14 @@ class RuntimeSpine:
         router: Router,
         guardrails: Guardrails | None = None,
         audit_writer: JsonlAuditWriter | None = None,
+        aop_coordinator: Optional[AOPCoordinator] = None,
     ):
         self.registry = registry
         self.router = router
         self.guardrails = guardrails or NoOpGuardrails()
         self.audit_writer = audit_writer or JsonlAuditWriter()
         self.voice = VoiceAgent()
+        self.aop_coordinator = aop_coordinator
 
     # -------------------------
     # Context defaults (non-generated, survives regen)
@@ -120,6 +125,49 @@ class RuntimeSpine:
             response = gr.mutated_response
 
         return True, response
+
+    # -------------------------
+    # Orchestration pattern classification
+    # -------------------------
+    def _classify_orchestration_pattern(self, query: str) -> str:
+        """
+        Determine whether a query requires AOP hierarchical delegation
+        or can be handled by existing direct routing.
+
+        Uses LLM to detect multi-intent queries.
+        Returns: "direct" | "hierarchical_delegation"
+        """
+        from app.llm_client import chat_json
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a query classifier for a customer-service multi-agent system.\n"
+                    "Determine if the query contains MULTIPLE DISTINCT intents that require "
+                    "different agents, or a SINGLE intent.\n\n"
+                    "Examples of MULTIPLE intents:\n"
+                    '  "I want a refund AND please update my email" -> hierarchical_delegation\n'
+                    '  "Cancel my order and tell me your return policy" -> hierarchical_delegation\n\n'
+                    "Examples of SINGLE intent:\n"
+                    '  "I want a refund for order #123" -> direct\n'
+                    '  "What is your refund policy?" -> direct\n'
+                    '  "I received a damaged product" -> direct\n\n'
+                    "When in doubt, choose direct.\n\n"
+                    'Return STRICT JSON: {"pattern": "direct"} or {"pattern": "hierarchical_delegation"}'
+                ),
+            },
+            {"role": "user", "content": query},
+        ]
+
+        try:
+            raw = chat_json(messages=messages, temperature=1.0)
+            pattern = raw.get("pattern", "direct")
+            if pattern in ("direct", "hierarchical_delegation"):
+                return pattern
+            return "direct"
+        except Exception:
+            return "direct"
 
     # -------------------------
     # Orchestration stages
@@ -253,6 +301,46 @@ class RuntimeSpine:
                 ]
                 print(f"[ROUTER] sticky primary={pinned}")
                 trace.add("sticky_route", primary=pinned)
+
+            # 0.5️⃣ AOP PATTERN CLASSIFICATION (before normal routing)
+            elif self.aop_coordinator is not None:
+                pattern = self._classify_orchestration_pattern(q)
+                trace.add("orchestration_pattern", pattern=pattern)
+
+                if pattern == "hierarchical_delegation":
+                    print(f"[AOP] hierarchical delegation for: {q[:80]}")
+                    aop_resp = self.aop_coordinator.orchestrate(q, ctx, trace)
+                    aop_resp["request_id"] = rid
+
+                    # Voice rendering — produce customer-friendly chat text
+                    try:
+                        voice_thread = str(ctx.get("thread_id") or "default")
+                        vertical = ctx.get("domain") or ctx.get("vertical")
+                        chat = self.voice.render(
+                            user_query=q,
+                            thread_id=voice_thread,
+                            vertical=vertical,
+                            structured=aop_resp,
+                        )
+                        if isinstance(aop_resp, dict):
+                            aop_resp["chat"] = chat
+                            if isinstance(chat, dict) and chat.get("messages"):
+                                aop_resp["text"] = chat["messages"][0]
+                    except Exception as e:
+                        trace.add("voice_chat_failed", error=str(e))
+
+                    # Run through guardrails (post) and return
+                    ok, post = self._guard_post(aop_resp, ctx)
+                    if not ok:
+                        trace.add("guard_post_block", reason=post.get("reason", ""))
+                        post["request_id"] = rid
+                        post.setdefault("text", f"Blocked by policy: {post.get('reason','')}")
+                        return post
+                    trace.add("guard_post_ok")
+                    return post
+
+                # pattern == "direct" -> fall through to normal routing
+                plan = self._route(q)
             else:
                 plan = self._route(q)
 

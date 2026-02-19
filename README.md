@@ -86,23 +86,8 @@ pytest -q
 
 ---
 
-## 7) What’s included (v0)
-
-- `app/main.py` — FastAPI app with `/health` and `/version`
-- `tests/test_health.py` — smoke test
-- `requirements.txt` — minimal deps for API + dev tooling
-- `.pre-commit-config.yaml` — Black & Ruff
-- `.github/workflows/ci.yml` — CI to check lint & tests
-- `.vscode/` — opinions for formatting/on-save
-- `data/` — placeholder folder (gitignored) for local-only files
-- `.env` — not committed (use to keep local configs)
-
----
-
-## 8) Next tiny step (proposed)
-
-- Add a `/ingest` placeholder endpoint that validates CSV (BankFAQs.csv) and echoes basic stats — **no RAG yet**.
-- Then wire a minimal embedding/index step.
-
-We’ll proceed incrementally.
-muhTamer
+## 7) for git worktree
+```
+Copy .env file
+Copy data folder
+``` 
