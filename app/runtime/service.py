@@ -91,11 +91,12 @@ def startup_event():
     llm_router = LLMRouter(registry=registry)
     router = LLMRouterAdapter(llm_router) if registry.all_ids() else DefaultRouter(registry)
 
+    # Conversation memory (shared across spine + AOP)
+    memory = ConversationMemory()
+
     # AOP coordinator (hierarchical delegation for multi-intent queries)
     perf_store = PerformanceStore()
-    aop = AOPCoordinator(registry=registry, performance_store=perf_store)
-
-    memory = ConversationMemory()
+    aop = AOPCoordinator(registry=registry, performance_store=perf_store, memory=memory)
 
     spine = RuntimeSpine(
         registry=registry, router=router, guardrails=guardrails, aop_coordinator=aop, memory=memory
