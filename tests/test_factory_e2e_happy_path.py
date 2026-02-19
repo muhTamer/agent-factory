@@ -43,8 +43,8 @@ from app.runtime.routing import Candidate, RoutePlan
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACK_PATH = REPO_ROOT / ".factory/compiled_policies/refunds_policy_pack.json"
-FAQ_AGENT_DIR = REPO_ROOT / "generated/faq_rag_agent"
-REFUNDS_AGENT_DIR = REPO_ROOT / "generated/refunds_workflow_agent"
+FAQ_AGENT_DIR = REPO_ROOT / "generated/customer_qa_rag"
+REFUNDS_AGENT_DIR = REPO_ROOT / "generated/refunds_workflow"
 FAQS_JSON = FAQ_AGENT_DIR / "faqs.json"
 
 # ---------------------------------------------------------------------------
@@ -68,10 +68,9 @@ pytestmark = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 
 FULL_REFUND_SLOTS = {
+    "case_id": "CASE-E2E-001",
     "customer_id": "CUST-E2E-001",
-    "request_id": "REQ-E2E-001",
     "amount": 1500.0,
-    "currency": "EUR",
     "payment_method": "debit_card",
 }
 
@@ -232,13 +231,13 @@ class TestPhase2AgentSuggestions:
         ref_meta = json.loads((REFUNDS_AGENT_DIR / "metadata.json").read_text(encoding="utf-8"))
 
         # Both agents should be present
-        assert faq_meta["id"] == "faq_rag_agent"
-        assert ref_meta["id"] == "refunds_workflow_agent"
+        assert faq_meta["id"] == "customer_qa_rag"
+        assert ref_meta["id"] == "refunds_workflow"
 
     def test_agent_blueprints_cover_expected_capabilities(self):
         """Each agent should advertise the capabilities it was built for."""
-        faq_agent = _load_agent_from_dir("faq_rag_agent", FAQ_AGENT_DIR)
-        refunds_agent = _load_agent_from_dir("refunds_workflow_agent", REFUNDS_AGENT_DIR)
+        faq_agent = _load_agent_from_dir("customer_qa_rag", FAQ_AGENT_DIR)
+        refunds_agent = _load_agent_from_dir("refunds_workflow", REFUNDS_AGENT_DIR)
 
         faq_caps = faq_agent.metadata()["capabilities"]
         ref_caps = refunds_agent.metadata()["capabilities"]
@@ -248,14 +247,11 @@ class TestPhase2AgentSuggestions:
         assert "workflow" in ref_caps
 
     def test_all_deployed_tool_operators_ready(self):
-        """All five tool operators are deployable and ready."""
+        """All generated tool operators are deployable and ready."""
 
         tool_ids = [
-            "tool_initiate_refund",
-            "tool_lookup_customer",
-            "tool_verify_identity",
-            "tool_create_ticket",
-            "tool_handoff_to_human",
+            "refund_executor_tool",
+            "ticket_manager_tool",
         ]
         for tid in tool_ids:
             agent_dir = REPO_ROOT / "generated" / tid
@@ -277,46 +273,46 @@ class TestPhase3Deploy:
 
         registry = AgentRegistry()
 
-        faq_agent = _load_agent_from_dir("faq_rag_agent", FAQ_AGENT_DIR)
-        refunds_agent = _load_agent_from_dir("refunds_workflow_agent", REFUNDS_AGENT_DIR)
+        faq_agent = _load_agent_from_dir("customer_qa_rag", FAQ_AGENT_DIR)
+        refunds_agent = _load_agent_from_dir("refunds_workflow", REFUNDS_AGENT_DIR)
 
-        registry.register("faq_rag_agent", faq_agent)
-        registry.register("refunds_workflow_agent", refunds_agent)
+        registry.register("customer_qa_rag", faq_agent)
+        registry.register("refunds_workflow", refunds_agent)
 
-        assert "faq_rag_agent" in registry.all_ids()
-        assert "refunds_workflow_agent" in registry.all_ids()
+        assert "customer_qa_rag" in registry.all_ids()
+        assert "refunds_workflow" in registry.all_ids()
 
     def test_registry_get_returns_loaded_agent(self):
         from app.runtime.registry import AgentRegistry
 
         registry = AgentRegistry()
-        faq_agent = _load_agent_from_dir("faq_rag_agent", FAQ_AGENT_DIR)
-        registry.register("faq_rag_agent", faq_agent)
+        faq_agent = _load_agent_from_dir("customer_qa_rag", FAQ_AGENT_DIR)
+        registry.register("customer_qa_rag", faq_agent)
 
-        retrieved = registry.get("faq_rag_agent")
+        retrieved = registry.get("customer_qa_rag")
         assert retrieved is faq_agent
 
     def test_registry_all_meta_includes_agent_ids(self):
         from app.runtime.registry import AgentRegistry
 
         registry = AgentRegistry()
-        faq_agent = _load_agent_from_dir("faq_rag_agent", FAQ_AGENT_DIR)
-        refunds_agent = _load_agent_from_dir("refunds_workflow_agent", REFUNDS_AGENT_DIR)
-        registry.register("faq_rag_agent", faq_agent)
-        registry.register("refunds_workflow_agent", refunds_agent)
+        faq_agent = _load_agent_from_dir("customer_qa_rag", FAQ_AGENT_DIR)
+        refunds_agent = _load_agent_from_dir("refunds_workflow", REFUNDS_AGENT_DIR)
+        registry.register("customer_qa_rag", faq_agent)
+        registry.register("refunds_workflow", refunds_agent)
 
         meta = registry.all_meta()
-        assert "faq_rag_agent" in meta
-        assert "refunds_workflow_agent" in meta
-        assert meta["faq_rag_agent"]["ready"] is True
-        assert meta["refunds_workflow_agent"]["ready"] is True
+        assert "customer_qa_rag" in meta
+        assert "refunds_workflow" in meta
+        assert meta["customer_qa_rag"]["ready"] is True
+        assert meta["refunds_workflow"]["ready"] is True
 
     def test_import_generated_agent_via_registry(self):
         """AgentRegistry.import_generated_agent() dynamically loads agent.py."""
         from app.runtime.registry import AgentRegistry
 
         registry = AgentRegistry()
-        agent = registry.import_generated_agent("faq_rag_agent", FAQ_AGENT_DIR)
+        agent = registry.import_generated_agent("customer_qa_rag", FAQ_AGENT_DIR)
         assert hasattr(agent, "handle")
         assert hasattr(agent, "load")
         assert hasattr(agent, "metadata")
@@ -338,19 +334,19 @@ def runtime_spine():
 
     registry = AgentRegistry()
 
-    faq_agent = _load_agent_from_dir("faq_rag_agent", FAQ_AGENT_DIR)
-    refunds_agent = _load_agent_from_dir("refunds_workflow_agent", REFUNDS_AGENT_DIR)
+    faq_agent = _load_agent_from_dir("customer_qa_rag", FAQ_AGENT_DIR)
+    refunds_agent = _load_agent_from_dir("refunds_workflow", REFUNDS_AGENT_DIR)
 
-    registry.register("faq_rag_agent", faq_agent)
-    registry.register("refunds_workflow_agent", refunds_agent)
+    registry.register("customer_qa_rag", faq_agent)
+    registry.register("refunds_workflow", refunds_agent)
 
     router = _MockRouter(
         {
-            "refund": "refunds_workflow_agent",
-            "reversal": "refunds_workflow_agent",
-            "faq": "faq_rag_agent",
-            "account": "faq_rag_agent",
-            "transfer": "faq_rag_agent",
+            "refund": "refunds_workflow",
+            "reversal": "refunds_workflow",
+            "faq": "customer_qa_rag",
+            "account": "customer_qa_rag",
+            "transfer": "customer_qa_rag",
         }
     )
 
@@ -375,7 +371,7 @@ class TestPhase4MultipleAgents:
             "Can I transfer my account to another branch?",
             context={"thread_id": "e2e-faq-001"},
         )
-        assert result.get("agent_id") == "faq_rag_agent"
+        assert result.get("agent_id") == "customer_qa_rag"
 
     def test_faq_query_returns_non_empty_answer(self, runtime_spine):
         result = runtime_spine.handle_chat(
@@ -407,7 +403,7 @@ class TestPhase4MultipleAgents:
             context={"thread_id": "e2e-faq-005"},
         )
         plan = result.get("router_plan", {})
-        assert plan.get("primary") == "faq_rag_agent"
+        assert plan.get("primary") == "customer_qa_rag"
 
     # ── Refund Workflow — Turn 1 (info gathering) ─────────────────────────
 
@@ -417,15 +413,15 @@ class TestPhase4MultipleAgents:
                 "I need to process a refund for a customer",
                 context={"thread_id": "e2e-refund-001"},
             )
-        assert result.get("agent_id") == "refunds_workflow_agent"
+        assert result.get("agent_id") == "refunds_workflow"
 
-    def test_refund_turn1_starts_in_collect_info(self, runtime_spine):
+    def test_refund_turn1_starts_in_start_state(self, runtime_spine):
         with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
             result = runtime_spine.handle_chat(
                 "I need to process a refund for a customer",
                 context={"thread_id": "e2e-refund-turn1-001"},
             )
-        assert result.get("current_state") == "collect_info"
+        assert result.get("current_state") == "start"
 
     def test_refund_turn1_returns_clarification(self, runtime_spine):
         with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
@@ -447,7 +443,7 @@ class TestPhase4MultipleAgents:
                 context={"thread_id": tid},
             )
         ctx = THREAD_CTX.get(tid, {})
-        assert ctx.get("pinned_agent_id") == "refunds_workflow_agent"
+        assert ctx.get("pinned_agent_id") == "refunds_workflow"
         assert ctx.get("pinned_agent_type") == "workflow_runner"
         assert ctx.get("pinned_terminal") is False
 
@@ -470,19 +466,19 @@ class TestPhase4MultipleAgents:
                 "I need to process a refund",
                 context={"thread_id": tid},
             )
-        assert r1.get("current_state") == "collect_info"
+        assert r1.get("current_state") == "start"
         assert r1.get("terminal") is False
 
         # Turn 2: provide all required slots → auto-chain completes
         with patch(
             "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("info_provided", FULL_REFUND_SLOTS),
+            return_value=_mapper_json("validated", FULL_REFUND_SLOTS),
         ):
             r2 = runtime_spine.handle_chat(
                 "CUST-E2E-001 refund EUR 1500 debit card REQ-E2E-001",
                 context={"thread_id": tid},
             )
-        assert r2.get("current_state") == "completed"
+        assert r2.get("current_state") == "notify_customer_success"
         assert r2.get("terminal") is True
 
     def test_refund_completion_unpins_workflow_agent(self, runtime_spine):
@@ -497,7 +493,7 @@ class TestPhase4MultipleAgents:
 
         with patch(
             "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("info_provided", FULL_REFUND_SLOTS),
+            return_value=_mapper_json("validated", FULL_REFUND_SLOTS),
         ):
             runtime_spine.handle_chat(
                 "CUST-E2E-001 EUR 1500 debit card REQ-E2E-001",
@@ -531,7 +527,7 @@ class TestPhase4MultipleAgents:
                 "The customer ID is CUST-E2E-002",  # no 'refund' keyword
                 context={"thread_id": tid},
             )
-        assert r2.get("agent_id") == "refunds_workflow_agent"
+        assert r2.get("agent_id") == "refunds_workflow"
 
     # ── Guardrails ─────────────────────────────────────────────────────────
 
@@ -570,12 +566,12 @@ class TestPhase4MultipleAgents:
                 context={"thread_id": tid_refund},
             )
 
-        assert r_faq.get("agent_id") == "faq_rag_agent"
-        assert r_refund.get("agent_id") == "refunds_workflow_agent"
+        assert r_faq.get("agent_id") == "customer_qa_rag"
+        assert r_refund.get("agent_id") == "refunds_workflow"
 
         # FAQ thread should NOT be pinned to workflow
         ctx_faq = THREAD_CTX.get(tid_faq, {})
-        assert ctx_faq.get("pinned_agent_id") != "refunds_workflow_agent"
+        assert ctx_faq.get("pinned_agent_id") != "refunds_workflow"
 
     def test_multiple_faq_sessions_independent(self, runtime_spine):
         """Multiple parallel FAQ sessions don't share state."""
@@ -587,7 +583,7 @@ class TestPhase4MultipleAgents:
             )
             answers.append(result.get("agent_id"))
 
-        assert all(a == "faq_rag_agent" for a in answers)
+        assert all(a == "customer_qa_rag" for a in answers)
 
 
 # ---------------------------------------------------------------------------
@@ -603,21 +599,20 @@ class TestPhase5ApprovalPath:
 
     def test_large_refund_lands_in_await_approval(self):
         """
-        Amount EUR 6000 → validate_policy fires eligible_requires_approval
+        Amount EUR 6000 → eligible → needs_manual_approval → await_approval
         → FSM enters await_approval (not completed, not terminal).
         """
-        refunds_agent = _load_agent_from_dir("refunds_workflow_agent", REFUNDS_AGENT_DIR)
+        refunds_agent = _load_agent_from_dir("refunds_workflow", REFUNDS_AGENT_DIR)
 
         large_slots = {
+            "case_id": "CASE-E2E-BIG",
             "customer_id": "CUST-E2E-BIG",
-            "request_id": "REQ-E2E-BIG",
             "amount": 6000.0,
-            "currency": "EUR",
             "payment_method": "bank_transfer",
         }
         with patch(
             "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("info_provided", large_slots),
+            return_value=_mapper_json("validated", large_slots),
         ):
             result = refunds_agent.handle(
                 {
@@ -630,19 +625,18 @@ class TestPhase5ApprovalPath:
         assert result["terminal"] is False
 
     def test_small_refund_skips_approval(self):
-        """Amount EUR 500 → eligible_no_approval → goes directly to execute_refund → completed."""
-        refunds_agent = _load_agent_from_dir("refunds_workflow_agent", REFUNDS_AGENT_DIR)
+        """Amount EUR 500 → eligible → auto_approve_event → process_refund → notify_customer_success."""
+        refunds_agent = _load_agent_from_dir("refunds_workflow", REFUNDS_AGENT_DIR)
 
         small_slots = {
+            "case_id": "CASE-E2E-SMALL",
             "customer_id": "CUST-E2E-SMALL",
-            "request_id": "REQ-E2E-SMALL",
             "amount": 500.0,
-            "currency": "EUR",
             "payment_method": "digital_wallet",
         }
         with patch(
             "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("info_provided", small_slots),
+            return_value=_mapper_json("validated", small_slots),
         ):
             result = refunds_agent.handle(
                 {
@@ -651,5 +645,5 @@ class TestPhase5ApprovalPath:
                 }
             )
 
-        assert result["current_state"] == "completed"
+        assert result["current_state"] == "notify_customer_success"
         assert result["terminal"] is True

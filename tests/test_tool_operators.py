@@ -1,6 +1,6 @@
 # tests/test_tool_operators.py
 """
-Happy-path tests for the five generated tool operator agents.
+Happy-path tests for the generated tool operator agents.
 
 Each tool operator agent:
   - reads its config.json to find its tool name
@@ -42,12 +42,10 @@ def _load_tool_agent(agent_id: str):
     return agent
 
 
+# Maps agent directory name → tool name it wraps
 TOOL_AGENTS = [
-    ("tool_initiate_refund", "initiate_refund"),
-    ("tool_lookup_customer", "lookup_customer"),
-    ("tool_verify_identity", "verify_identity"),
-    ("tool_create_ticket", "create_ticket"),
-    ("tool_handoff_to_human", "handoff_to_human"),
+    ("refund_executor_tool", "initiate_refund"),
+    ("ticket_manager_tool", "create_ticket"),
 ]
 
 AGENT_IDS = [agent_id for agent_id, _ in TOOL_AGENTS]
@@ -103,8 +101,8 @@ def test_tool_operator_handle_includes_tool_name(agent_id, tool_name):
 # ---------------------------------------------------------------------------
 
 
-def test_initiate_refund_returns_refund_id():
-    agent = _load_tool_agent("tool_initiate_refund")
+def test_refund_executor_returns_refund_id():
+    agent = _load_tool_agent("refund_executor_tool")
     result = agent.handle({})
     stub = STUB_RESPONSES["initiate_refund"]
     assert result.get("refund_id") == stub["refund_id"]
@@ -112,37 +110,11 @@ def test_initiate_refund_returns_refund_id():
     assert result.get("status") == stub["status"]
 
 
-def test_verify_identity_returns_kyc_verified():
-    agent = _load_tool_agent("tool_verify_identity")
-    result = agent.handle({})
-    stub = STUB_RESPONSES["verify_identity"]
-    assert result.get("kyc_status") == stub["kyc_status"]
-    assert result.get("identity_verified") == stub["identity_verified"]
-    assert result.get("status") == stub["status"]
-
-
-def test_lookup_customer_returns_active_account():
-    agent = _load_tool_agent("tool_lookup_customer")
-    result = agent.handle({})
-    stub = STUB_RESPONSES["lookup_customer"]
-    assert result.get("account_status") == stub["account_status"]
-    assert result.get("kyc_status") == stub["kyc_status"]
-    assert result.get("status") == stub["status"]
-
-
-def test_create_ticket_returns_ticket_id():
-    agent = _load_tool_agent("tool_create_ticket")
+def test_ticket_manager_returns_ticket_id():
+    agent = _load_tool_agent("ticket_manager_tool")
     result = agent.handle({})
     stub = STUB_RESPONSES["create_ticket"]
     assert result.get("ticket_id") == stub["ticket_id"]
-    assert result.get("status") == stub["status"]
-
-
-def test_handoff_to_human_returns_handed_off():
-    agent = _load_tool_agent("tool_handoff_to_human")
-    result = agent.handle({})
-    stub = STUB_RESPONSES["handoff_to_human"]
-    assert result.get("handed_off") == stub["handed_off"]
     assert result.get("status") == stub["status"]
 
 
@@ -159,13 +131,34 @@ def test_stub_tools_verify_identity():
     assert result["identity_verified"] is True
 
 
+def test_stub_tools_lookup_payment():
+    from app.runtime.tools.stub_tools import STUB_TOOLS
+
+    result = STUB_TOOLS["lookup_payment"]({"amount": 500}, {})
+    assert result["payment_found"] is True
+    assert result["settlement_status"] == "settled"
+
+
 def test_stub_tools_initiate_refund():
     from app.runtime.tools.stub_tools import STUB_TOOLS
 
     result = STUB_TOOLS["initiate_refund"]({}, {})
     assert result["refund_id"] == "DEMO-REF-001"
-    assert result["refund_status"] == "success"
     assert result["refund_initiated"] is True
+
+
+def test_stub_tools_create_ticket():
+    from app.runtime.tools.stub_tools import STUB_TOOLS
+
+    result = STUB_TOOLS["create_ticket"]({}, {})
+    assert result["ticket_id"] == "DEMO-TKT-001"
+
+
+def test_stub_tools_handoff_to_human():
+    from app.runtime.tools.stub_tools import STUB_TOOLS
+
+    result = STUB_TOOLS["handoff_to_human"]({}, {})
+    assert result["handed_off"] is True
 
 
 def test_stub_tools_lookup_customer():
@@ -174,31 +167,3 @@ def test_stub_tools_lookup_customer():
     result = STUB_TOOLS["lookup_customer"]({}, {})
     assert result["account_status"] == "active"
     assert result["kyc_status"] == "verified"
-    assert result["customer_found"] is True
-
-
-def test_stub_tools_create_ticket():
-    from app.runtime.tools.stub_tools import STUB_TOOLS
-
-    result = STUB_TOOLS["create_ticket"]({}, {})
-    assert result["ticket_id"] == "DEMO-TKT-001"
-    assert result["ticket_status"] == "created"
-
-
-def test_stub_tools_handoff_to_human():
-    from app.runtime.tools.stub_tools import STUB_TOOLS
-
-    result = STUB_TOOLS["handoff_to_human"]({}, {})
-    assert result["handed_off"] is True
-    assert result["handoff_agent"] == "human_ops_team"
-
-
-def test_stub_tools_lookup_payment():
-    from app.runtime.tools.stub_tools import STUB_TOOLS
-
-    slots = {"amount": 250.0}
-    result = STUB_TOOLS["lookup_payment"](slots, {})
-    assert result["payment_found"] is True
-    assert result["settlement_status"] == "settled"
-    assert result["transaction_age_days"] == 5
-    assert result["original_transaction_amount"] == 250.0

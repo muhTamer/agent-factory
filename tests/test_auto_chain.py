@@ -21,7 +21,7 @@ from unittest.mock import patch
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-AGENT_PATH = REPO_ROOT / "generated" / "refunds_workflow_agent" / "agent.py"
+AGENT_PATH = REPO_ROOT / "generated" / "refunds_workflow" / "agent.py"
 PACK_PATH = REPO_ROOT / ".factory/compiled_policies/refunds_policy_pack.json"
 
 # ---------------------------------------------------------------------------
@@ -45,10 +45,9 @@ def _mapper_json(event, slots):
 
 
 FULL_SLOTS = {
+    "case_id": "CASE-001",
     "customer_id": "CUST-001",
-    "request_id": "REQ-001",
     "amount": 1000.0,
-    "currency": "EUR",
     "payment_method": "debit_card",
 }
 
@@ -76,12 +75,12 @@ class TestTryPolicyAutoEvent:
 
     def test_collect_info_returns_none(self):
         """collect_info is a user-input state — no auto-event."""
-        engine = self._engine_at_state("collect_info")
+        engine = self._engine_at_state("start")
         result = self.agent._try_policy_auto_event(engine)
         assert result is None
 
-    def test_validate_policy_eligible_no_approval(self):
-        """validate_policy with amount < 5000 → eligible_no_approval."""
+    def test_evaluate_policy_eligible_returns_eligible(self):
+        """evaluate_policy with valid account → fires 'eligible'."""
         slots = {
             "kyc_status": "verified",
             "account_status": "active",
@@ -89,12 +88,25 @@ class TestTryPolicyAutoEvent:
             "amount": 1000.0,
             "refund_amount_requested": 1000.0,
         }
-        engine = self._engine_at_state("validate_policy", slots)
+        engine = self._engine_at_state("evaluate_policy", slots)
         result = self.agent._try_policy_auto_event(engine)
-        assert result == "eligible_no_approval"
+        assert result == "eligible"
 
-    def test_validate_policy_eligible_requires_approval(self):
-        """validate_policy with amount > 5000 → eligible_requires_approval."""
+    def test_determine_approval_path_small_amount_auto_approves(self):
+        """determine_approval_path with amount < 5000 → auto_approve_event."""
+        slots = {
+            "kyc_status": "verified",
+            "account_status": "active",
+            "investigation_status": "none",
+            "amount": 1000.0,
+            "refund_amount_requested": 1000.0,
+        }
+        engine = self._engine_at_state("determine_approval_path", slots)
+        result = self.agent._try_policy_auto_event(engine)
+        assert result == "auto_approve_event"
+
+    def test_determine_approval_path_large_amount_requires_approval(self):
+        """determine_approval_path with amount > 5000 → needs_manual_approval."""
         slots = {
             "kyc_status": "verified",
             "account_status": "active",
@@ -102,9 +114,9 @@ class TestTryPolicyAutoEvent:
             "amount": 6000.0,
             "refund_amount_requested": 6000.0,
         }
-        engine = self._engine_at_state("validate_policy", slots)
+        engine = self._engine_at_state("determine_approval_path", slots)
         result = self.agent._try_policy_auto_event(engine)
-        assert result == "eligible_requires_approval"
+        assert result == "needs_manual_approval"
 
     def test_validate_policy_ineligible(self):
         """validate_policy with frozen account → ineligible."""
@@ -114,19 +126,19 @@ class TestTryPolicyAutoEvent:
             "investigation_status": "none",
             "amount": 1000.0,
         }
-        engine = self._engine_at_state("validate_policy", slots)
+        engine = self._engine_at_state("evaluate_policy", slots)
         result = self.agent._try_policy_auto_event(engine)
         assert result == "ineligible"
 
     def test_execute_refund_returns_pass_event(self):
         """execute_refund is tool_exec → always returns refund_success (stub)."""
-        engine = self._engine_at_state("execute_refund")
+        engine = self._engine_at_state("process_refund")
         result = self.agent._try_policy_auto_event(engine)
         assert result == "refund_success"
 
     def test_tool_exec_does_not_require_policy_bridge(self):
         """tool_exec check type works even if policy_bridge is None."""
-        engine = self._engine_at_state("execute_refund")
+        engine = self._engine_at_state("process_refund")
         original_bridge = self.agent.policy_bridge
         try:
             self.agent.policy_bridge = None
@@ -155,7 +167,7 @@ class TestAutoChainEndToEnd:
         agent = _load_refunds_agent()
         with patch(
             "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("info_provided", FULL_SLOTS),
+            return_value=_mapper_json("validated", FULL_SLOTS),
         ):
             result = agent.handle(
                 {
@@ -163,7 +175,7 @@ class TestAutoChainEndToEnd:
                     "thread_id": "t-ac-001",
                 }
             )
-        assert result["current_state"] == "completed"
+        assert result["current_state"] == "notify_customer_success"
         assert result["terminal"] is True
 
     def test_auto_chain_skips_both_system_states(self):
@@ -171,7 +183,7 @@ class TestAutoChainEndToEnd:
         agent = _load_refunds_agent()
         with patch(
             "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("info_provided", FULL_SLOTS),
+            return_value=_mapper_json("validated", FULL_SLOTS),
         ):
             result = agent.handle(
                 {
@@ -181,14 +193,14 @@ class TestAutoChainEndToEnd:
             )
         chain = result.get("mapper", {}).get("auto_chain", [])
         # Should have advanced at least through execute_refund
-        assert any("execute_refund" in step for step in chain)
+        assert any("process_refund" in step for step in chain)
 
     def test_auto_chain_does_not_advance_past_terminal(self):
         """Auto-chain stops when it reaches a terminal state."""
         agent = _load_refunds_agent()
         with patch(
             "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("info_provided", FULL_SLOTS),
+            return_value=_mapper_json("validated", FULL_SLOTS),
         ):
             result = agent.handle(
                 {
@@ -196,9 +208,9 @@ class TestAutoChainEndToEnd:
                     "thread_id": "t-ac-003",
                 }
             )
-        # Check auto_chain did not contain "completed" as a start state
+        # Check auto_chain did not contain "notify_customer_success" as a start state
         chain = result.get("mapper", {}).get("auto_chain", [])
-        assert not any(step.startswith("completed") for step in chain)
+        assert not any(step.startswith("notify_customer_success") for step in chain)
 
     def test_auto_chain_large_amount_hits_approval_path(self):
         """
@@ -209,7 +221,7 @@ class TestAutoChainEndToEnd:
         large_slots = {**FULL_SLOTS, "amount": 6000.0}
         with patch(
             "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("info_provided", large_slots),
+            return_value=_mapper_json("validated", large_slots),
         ):
             result = agent.handle(
                 {
@@ -235,15 +247,14 @@ class TestAutoChainEndToEnd:
 
         # Instead: directly manipulate the engine's slots after initial LLM step
         frozen_slots = {
+            "case_id": "CASE-FROZEN",
             "customer_id": "CUST-FROZEN",
-            "request_id": "REQ-FROZEN",
             "amount": 1000.0,
-            "currency": "EUR",
             "payment_method": "debit_card",
         }
         with patch(
             "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("info_provided", frozen_slots),
+            return_value=_mapper_json("validated", frozen_slots),
         ):
             # Override slot_defaults to simulate frozen account
             original_defaults = agent.policy_slot_defaults.copy()
@@ -262,7 +273,7 @@ class TestAutoChainEndToEnd:
             finally:
                 agent.policy_slot_defaults = original_defaults
 
-        assert result["current_state"] == "refund_rejected"
+        assert result["current_state"] == "notify_customer_reject"
         assert result["terminal"] is True
 
 
@@ -350,7 +361,7 @@ class TestAutoChainToolExecOnly:
         # Inject a fake tool_exec config without needing the engine to be in that state
 
         engine = agent._engine_for("_tool_unit")
-        engine.current_state = "execute_refund"
+        engine.current_state = "process_refund"
 
         # The real policy_state_map has execute_refund as tool_exec
         event = agent._try_policy_auto_event(engine)

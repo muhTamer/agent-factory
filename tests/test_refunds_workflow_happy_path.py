@@ -24,7 +24,7 @@ from unittest.mock import patch
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-AGENT_PATH = REPO_ROOT / "generated" / "refunds_workflow_agent" / "agent.py"
+AGENT_PATH = REPO_ROOT / "generated" / "refunds_workflow" / "agent.py"
 PACK_PATH = REPO_ROOT / ".factory/compiled_policies/refunds_policy_pack.json"
 
 pytestmark = pytest.mark.skipif(
@@ -37,16 +37,15 @@ pytestmark = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 
 FULL_SLOTS = {
+    "case_id": "CASE-001",
     "customer_id": "CUST-001",
-    "request_id": "REQ-001",
     "amount": 1000.0,
-    "currency": "EUR",
     "payment_method": "debit_card",
 }
 
 
 def _load_refunds_agent():
-    module_name = "_test_refunds_workflow_agent"
+    module_name = "_test_refunds_workflow"
     spec = importlib.util.spec_from_file_location(module_name, AGENT_PATH)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = mod
@@ -84,8 +83,8 @@ def test_refunds_agent_has_policy_bridge():
 
 def test_refunds_agent_policy_state_map_configured():
     agent = _load_refunds_agent()
-    assert "validate_policy" in agent.policy_state_map
-    assert "execute_refund" in agent.policy_state_map
+    assert "evaluate_policy" in agent.policy_state_map
+    assert "process_refund" in agent.policy_state_map
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +95,7 @@ def test_refunds_agent_policy_state_map_configured():
 def test_fresh_engine_starts_in_collect_info():
     agent = _load_refunds_agent()
     engine = agent._engine_for("test-init")
-    assert engine.current_state == "collect_info"
+    assert engine.current_state == "start"
 
 
 def test_first_handle_without_event_returns_clarification():
@@ -104,7 +103,7 @@ def test_first_handle_without_event_returns_clarification():
     with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
         result = agent.handle({"query": "I need a refund", "thread_id": "t-init"})
     assert result["action"] == "request_clarification"
-    assert result["current_state"] == "collect_info"
+    assert result["current_state"] == "start"
 
 
 def test_clarification_lists_required_slots():
@@ -112,7 +111,7 @@ def test_clarification_lists_required_slots():
     with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
         result = agent.handle({"query": "I need a refund", "thread_id": "t-missing"})
     missing = result.get("missing_slots", [])
-    for slot in ("customer_id", "amount", "currency", "payment_method"):
+    for slot in ("case_id", "customer_id", "amount", "payment_method"):
         assert slot in missing, f"Expected {slot!r} in missing_slots"
 
 
@@ -126,7 +125,7 @@ def test_full_flow_reaches_completed():
     agent = _load_refunds_agent()
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("info_provided", FULL_SLOTS),
+        return_value=_mapper_json("validated", FULL_SLOTS),
     ):
         result = agent.handle(
             {
@@ -134,7 +133,7 @@ def test_full_flow_reaches_completed():
                 "thread_id": "t-happy-001",
             }
         )
-    assert result["current_state"] == "completed"
+    assert result["current_state"] == "notify_customer_success"
     assert result["terminal"] is True
 
 
@@ -148,7 +147,7 @@ def test_full_flow_slots_contain_user_provided_data():
     agent = _load_refunds_agent()
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("info_provided", FULL_SLOTS),
+        return_value=_mapper_json("validated", FULL_SLOTS),
     ):
         result = agent.handle(
             {
@@ -159,7 +158,6 @@ def test_full_flow_slots_contain_user_provided_data():
     # User-provided slots should be preserved
     assert result["slots"].get("customer_id") == "CUST-001"
     assert result["slots"].get("amount") == 1000.0
-    assert result["slots"].get("currency") == "EUR"
 
 
 def test_full_flow_auto_chain_reported_in_mapper():
@@ -167,7 +165,7 @@ def test_full_flow_auto_chain_reported_in_mapper():
     agent = _load_refunds_agent()
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("info_provided", FULL_SLOTS),
+        return_value=_mapper_json("validated", FULL_SLOTS),
     ):
         result = agent.handle(
             {
@@ -186,12 +184,12 @@ def test_full_flow_auto_chain_reported_in_mapper():
 # ---------------------------------------------------------------------------
 
 
-def test_partial_slots_stay_in_collect_info():
+def test_partial_slots_stay_in_start():
     """If required slots are missing, event is forced to None — stays in collect_info."""
     agent = _load_refunds_agent()
-    partial = {"customer_id": "C1", "request_id": "R1"}  # missing amount, currency, payment_method
+    partial = {"customer_id": "C1"}  # missing case_id, amount, payment_method
     with patch(
-        "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json("info_provided", partial)
+        "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json("validated", partial)
     ):
         result = agent.handle(
             {
@@ -199,14 +197,14 @@ def test_partial_slots_stay_in_collect_info():
                 "thread_id": "t-partial-001",
             }
         )
-    assert result["current_state"] == "collect_info"
+    assert result["current_state"] == "start"
 
 
 def test_partial_slots_action_is_request_clarification():
     agent = _load_refunds_agent()
     partial = {"customer_id": "C1"}
     with patch(
-        "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json("info_provided", partial)
+        "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json("validated", partial)
     ):
         result = agent.handle({"query": "refund", "thread_id": "t-partial-002"})
     assert result["action"] == "request_clarification"
@@ -217,22 +215,21 @@ def test_partial_slots_action_is_request_clarification():
 # ---------------------------------------------------------------------------
 
 
-def test_declined_request_id_allows_progress():
+def test_all_required_slots_advance_from_start():
     """
     If user declines request_id ('N/A'), the hard guard treats it as satisfied.
     The workflow should advance past collect_info.
     """
     agent = _load_refunds_agent()
     slots_with_na = {
+        "case_id": "CASE-001",
         "customer_id": "CUST-001",
-        "request_id": "N/A",
         "amount": 500.0,
-        "currency": "EUR",
         "payment_method": "debit_card",
     }
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("info_provided", slots_with_na),
+        return_value=_mapper_json("validated", slots_with_na),
     ):
         result = agent.handle(
             {
@@ -240,21 +237,20 @@ def test_declined_request_id_allows_progress():
                 "thread_id": "t-declined-001",
             }
         )
-    assert result["current_state"] != "collect_info"
+    assert result["current_state"] != "start"
 
 
-def test_declined_request_id_reaches_completed():
+def test_all_required_slots_reach_notify_success():
     agent = _load_refunds_agent()
     slots_with_na = {
+        "case_id": "CASE-001",
         "customer_id": "CUST-001",
-        "request_id": "N/A",
         "amount": 500.0,
-        "currency": "EUR",
         "payment_method": "debit_card",
     }
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("info_provided", slots_with_na),
+        return_value=_mapper_json("validated", slots_with_na),
     ):
         result = agent.handle(
             {
@@ -262,7 +258,7 @@ def test_declined_request_id_reaches_completed():
                 "thread_id": "t-declined-002",
             }
         )
-    assert result["current_state"] == "completed"
+    assert result["current_state"] == "notify_customer_success"
     assert result["terminal"] is True
 
 
@@ -283,19 +279,18 @@ def test_multi_turn_slots_accumulate():
     ):
         r1 = agent.handle({"query": "I need a refund", "thread_id": tid})
 
-    assert r1["current_state"] == "collect_info"
+    assert r1["current_state"] == "start"
     assert agent.engines[tid].slots["customer_id"] == "CUST-001"
 
     # Turn 2: remaining slots + event
     remaining = {
-        "request_id": "REQ-001",
+        "case_id": "CASE-001",
         "amount": 500.0,
-        "currency": "EUR",
         "payment_method": "debit_card",
     }
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("info_provided", remaining),
+        return_value=_mapper_json("validated", remaining),
     ):
         r2 = agent.handle(
             {
@@ -304,7 +299,7 @@ def test_multi_turn_slots_accumulate():
             }
         )
 
-    assert r2["current_state"] == "completed"
+    assert r2["current_state"] == "notify_customer_success"
     assert r2["terminal"] is True
 
 
@@ -334,7 +329,7 @@ def test_thread_isolation_separate_states():
 
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("info_provided", FULL_SLOTS),
+        return_value=_mapper_json("validated", FULL_SLOTS),
     ):
         r_a = agent.handle({"query": "full request", "thread_id": "t-iso-A"})
 
@@ -344,8 +339,8 @@ def test_thread_isolation_separate_states():
     ):
         r_b = agent.handle({"query": "partial request", "thread_id": "t-iso-B"})
 
-    assert r_a["current_state"] == "completed"
-    assert r_b["current_state"] == "collect_info"
+    assert r_a["current_state"] == "notify_customer_success"
+    assert r_b["current_state"] == "start"
 
 
 def test_thread_isolation_slots_not_shared():
@@ -378,18 +373,18 @@ def test_completed_state_returns_terminal_on_second_call():
 
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("info_provided", FULL_SLOTS),
+        return_value=_mapper_json("validated", FULL_SLOTS),
     ):
         agent.handle({"query": "refund", "thread_id": tid})
 
     # Second call on same thread — should return terminal
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("info_provided", FULL_SLOTS),
+        return_value=_mapper_json("validated", FULL_SLOTS),
     ):
         result = agent.handle({"query": "another request", "thread_id": tid})
 
-    assert result["current_state"] == "completed"
+    assert result["current_state"] == "notify_customer_success"
     assert result["terminal"] is True
 
 
@@ -401,7 +396,7 @@ def test_completed_state_returns_terminal_on_second_call():
 def test_refunds_agent_metadata():
     agent = _load_refunds_agent()
     meta = agent.metadata()
-    assert meta["id"] == "refunds_workflow_agent"
+    assert meta["id"] == "refunds_workflow"
     assert meta["type"] == "workflow_runner"
     assert meta["ready"] is True
     assert "multi_turn" in meta["capabilities"]
