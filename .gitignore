@@ -13,10 +13,6 @@ build/
 # VSCode
 .vscode/
 
-# local config
-.env
-.env.*
-
 # data
 data/
 *.csv
@@ -27,7 +23,6 @@ data/
 
 # Environment & secrets
 .env
-.env.*
 !env.example
 # Local configs / keys
 *.key
