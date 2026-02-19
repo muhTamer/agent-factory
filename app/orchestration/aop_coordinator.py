@@ -66,6 +66,7 @@ class AOPCoordinator:
         completeness: Optional[CompletenessDetector] = None,
         model: str = "gpt-5-mini",
         max_retries: int = 1,
+        memory: Optional[Any] = None,
     ):
         self.registry = registry
         self.store = performance_store
@@ -73,6 +74,7 @@ class AOPCoordinator:
         self.completeness = completeness or CompletenessDetector(model=model)
         self.model = model
         self.max_retries = max_retries
+        self.memory = memory  # ConversationMemory for multi-turn context
 
     def orchestrate(
         self,
@@ -94,8 +96,17 @@ class AOPCoordinator:
                 "orchestration_pattern": "hierarchical_delegation",
             }
 
+        # Retrieve conversation history for multi-turn context
+        conversation_history: List[Dict[str, Any]] = []
+        if self.memory:
+            try:
+                thread_id = context.get("thread_id", "default")
+                conversation_history = self.memory.get_conversation_context(thread_id, limit=5)
+            except Exception:
+                pass
+
         # ── Step 1: Task Decomposition ──
-        subtask_strs = self._decompose(query, agent_catalog)
+        subtask_strs = self._decompose(query, agent_catalog, conversation_history)
         if trace:
             trace.add("aop_decompose", subtasks=subtask_strs)
 
@@ -175,7 +186,12 @@ class AOPCoordinator:
 
     # ── Step 1: Task Decomposition ──────────────────────────────────
 
-    def _decompose(self, query: str, agent_catalog: Dict[str, Dict[str, Any]]) -> List[str]:
+    def _decompose(
+        self,
+        query: str,
+        agent_catalog: Dict[str, Dict[str, Any]],
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[str]:
         """Use LLM to decompose a multi-intent query into atomic subtasks."""
         catalog_summary = []
         for aid, meta in agent_catalog.items():
@@ -183,6 +199,25 @@ class AOPCoordinator:
             desc = meta.get("description", "")
             catalog_summary.append(f"  - {aid}: {desc} (capabilities: {', '.join(caps)})")
         catalog_str = "\n".join(catalog_summary)
+
+        # Build conversation context string for multi-turn awareness
+        history_str = ""
+        if conversation_history:
+            turns = []
+            for turn in conversation_history[-5:]:
+                q = turn.get("query", "")
+                a = turn.get("answer", "")
+                if q:
+                    turns.append(f"  User: {q}")
+                if a:
+                    summary = a[:200] + "..." if len(a) > 200 else a
+                    turns.append(f"  Assistant: {summary}")
+            if turns:
+                history_str = (
+                    "\n\nConversation history (for context — "
+                    "the current query may reference topics from earlier turns):\n"
+                    + "\n".join(turns)
+                )
 
         messages = [
             {
@@ -194,13 +229,17 @@ class AOPCoordinator:
                     "Rules:\n"
                     "- Each subtask must be self-contained and actionable.\n"
                     "- Do NOT create subtasks for things no agent can handle.\n"
-                    "- Return 1-5 subtasks (prefer fewer).\n\n"
+                    "- Return 1-5 subtasks (prefer fewer).\n"
+                    "- If conversation history is provided, use it to resolve references "
+                    "(e.g., 'the refund' refers to the product/topic from a previous turn).\n"
+                    "- Each subtask description must include the specific topic/product "
+                    "from context so agents can handle it without seeing the history.\n\n"
                     'Return STRICT JSON: {"subtasks": ["subtask description 1", ...]}'
                 ),
             },
             {
                 "role": "user",
-                "content": f"Query: {query}\n\nAvailable agents:\n{catalog_str}",
+                "content": f"Query: {query}\n\nAvailable agents:\n{catalog_str}{history_str}",
             },
         ]
 
