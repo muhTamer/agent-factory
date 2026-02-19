@@ -19,6 +19,8 @@ from app.runtime.policy_pack import PolicyPack
 from app.runtime.policy_guardrails import PolicyGuardrails
 from app.runtime.tools import DEFAULT_REGISTRY, build_registry
 from app.runtime.tools.registry import ToolRegistry
+from app.orchestration.performance_store import PerformanceStore
+from app.orchestration.aop_coordinator import AOPCoordinator
 
 router: LLMRouter | None = None
 spine: RuntimeSpine | None = None
@@ -97,7 +99,13 @@ def startup_event():
     llm_router = LLMRouter(registry=registry)
     router = LLMRouterAdapter(llm_router) if registry.all_ids() else DefaultRouter(registry)
 
-    spine = RuntimeSpine(registry=registry, router=router, guardrails=guardrails)
+    # AOP coordinator (hierarchical delegation for multi-intent queries)
+    perf_store = PerformanceStore()
+    aop = AOPCoordinator(registry=registry, performance_store=perf_store)
+
+    spine = RuntimeSpine(
+        registry=registry, router=router, guardrails=guardrails, aop_coordinator=aop
+    )
 
     print(f"[BOOT] All agents loaded: {registry.all_ids()}")
 
