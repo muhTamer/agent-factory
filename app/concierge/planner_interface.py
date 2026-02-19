@@ -19,14 +19,67 @@ class PlannerInterface:
     from app.infer_capabilities import InferCapabilities
 
     def generate_plan_preview(self, use_llm: bool = True, model: str = "gpt-5-mini") -> dict:
-        infer = InferCapabilities(model=model or "gpt-5-mini")
-        plan = infer.infer(
-            data_dir=self.data_dir,
-            vertical=self.vertical,
-            user_goals=getattr(self, "user_goals", "") or "",
-            max_agents=6,
-        )
-        return plan
+        if use_llm:
+            infer = InferCapabilities(model=model or "gpt-5-mini")
+            raw = infer.infer(
+                data_dir=self.data_dir,
+                vertical=self.vertical,
+                user_goals=getattr(self, "user_goals", "") or "",
+                max_agents=6,
+            )
+            agents = raw.get("agents", [])
+        else:
+            agents = self._heuristic_agents()
+
+        return {
+            "type": "factory_plan_preview",
+            "vertical": self.vertical,
+            "agents": agents,
+            "actions": self._suggested_actions(agents),
+        }
+
+    def _heuristic_agents(self) -> list:
+        """No-LLM fallback: always include spine agents, detect RAG/workflow from files."""
+        from app.infer_capabilities import InferCapabilities as IC
+
+        ic = IC()
+        files = ic._list_user_files(self.data_dir)
+
+        agents = [
+            {
+                "id": "guardrails",
+                "agent_kind": "guardrails",
+                "status": "ready",
+                "description": "Policy guardrails",
+            },
+            {"id": "qa", "agent_kind": "qa", "status": "ready", "description": "Quality evaluator"},
+        ]
+
+        kb_files = [f.name for f in files if f.suffix.lower() in {".csv", ".tsv"}]
+        if kb_files:
+            agents.append(
+                {
+                    "id": "customer_qa_rag",
+                    "agent_kind": "rag",
+                    "status": "ready",
+                    "description": "FAQ / knowledge-base agent",
+                    "docs_detected": kb_files,
+                }
+            )
+
+        pol_files = [f.name for f in files if f.suffix.lower() in {".yaml", ".yml"}]
+        if pol_files:
+            agents.append(
+                {
+                    "id": "refunds_workflow",
+                    "agent_kind": "workflow",
+                    "status": "partial",
+                    "description": "Refund / complaint workflow",
+                    "docs_detected": pol_files,
+                }
+            )
+
+        return agents
 
     def _format_for_ui(self, plan: Dict[str, Any]) -> Dict[str, Any]:
         """
