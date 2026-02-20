@@ -311,8 +311,8 @@ def test_all_scenarios_pass():
     metrics = run_evaluation(output_dir)
 
     assert (
-        metrics["total_scenarios"] == 20
-    ), f"Expected 20 scenarios, got {metrics['total_scenarios']}"
+        metrics["total_scenarios"] == 25
+    ), f"Expected 25 scenarios, got {metrics['total_scenarios']}"
     assert (
         metrics["orchestration_accuracy"] >= 0.80
     ), f"Orchestration accuracy {metrics['orchestration_accuracy']:.1%} < 80% target"
