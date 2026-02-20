@@ -1,0 +1,397 @@
+[
+  {
+    "id": "simple_01",
+    "category": "simple_routing",
+    "description": "FAQ: Current Account transfer between branches",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "Can I transfer my Current Account from one branch to another?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["transfer", "branch"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+  {
+    "id": "simple_02",
+    "category": "simple_routing",
+    "description": "FAQ: Outstation cheque clearing time",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "What is the time taken to realize outstation cheques?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["cheque", "days"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+  {
+    "id": "simple_03",
+    "category": "simple_routing",
+    "description": "FAQ: Premium Current Account features",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "How is M&N Bank Premium CA different from a regular CA?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["premium", "account"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+  {
+    "id": "simple_04",
+    "category": "simple_routing",
+    "description": "FAQ: EEFC Account for SEZ units",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "Can EEFC Account be opened by Special Economic Zone units?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["SEZ"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+  {
+    "id": "simple_05",
+    "category": "simple_routing",
+    "description": "FAQ: Flexi Account initial deposit",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "What is the initial deposit amount required to open the Flexi Account?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["75,000"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+  {
+    "id": "fsm_01",
+    "category": "fsm_workflow",
+    "description": "Refund workflow: simple eligible refund under EUR 5000",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want a refund for a EUR 200 charge on my account",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": ["refund"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-001", "amount": 200, "payment_method": "card", "reason": "overcharge"}}
+    }
+  },
+  {
+    "id": "fsm_02",
+    "category": "fsm_workflow",
+    "description": "Refund workflow: customer provides transaction details",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I need a refund for order number 12345, charged EUR 150 on my card",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": ["refund"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-002", "amount": 150, "payment_method": "card", "reason": "order cancellation"}}
+    }
+  },
+  {
+    "id": "fsm_03",
+    "category": "fsm_workflow",
+    "description": "Refund workflow: large amount requiring approval",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I need a refund of EUR 8000 for a failed wire transfer",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": ["refund"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-003", "amount": 8000, "payment_method": "wire", "reason": "failed transfer"}}
+    }
+  },
+  {
+    "id": "fsm_04",
+    "category": "fsm_workflow",
+    "description": "Refund workflow: missing customer information",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want my money back",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"reason": "general complaint"}}
+    }
+  },
+  {
+    "id": "fsm_05",
+    "category": "fsm_workflow",
+    "description": "Refund workflow: duplicate charge complaint",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I was charged twice for the same transaction of EUR 75, please refund one",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": ["refund"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-005", "amount": 75, "payment_method": "card", "reason": "duplicate charge"}}
+    }
+  },
+  {
+    "id": "fsm_06",
+    "category": "fsm_workflow",
+    "description": "Refund workflow: refund for subscription cancellation",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I cancelled my premium subscription last week but was still charged EUR 29.99",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-006", "amount": 29.99, "payment_method": "card", "reason": "subscription cancelled"}}
+    }
+  },
+  {
+    "id": "fsm_07",
+    "category": "fsm_workflow",
+    "description": "Refund workflow: international transaction dispute",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "There is an unauthorized EUR 500 charge from a foreign merchant on my account",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-007", "amount": 500, "payment_method": "card", "reason": "unauthorized foreign charge"}}
+    }
+  },
+  {
+    "id": "fsm_08",
+    "category": "fsm_workflow",
+    "description": "Refund workflow: ATM withdrawal not dispensed",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "The ATM debited EUR 300 from my account but did not dispense any cash",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-008", "amount": 300, "payment_method": "atm", "reason": "ATM failed dispensation"}}
+    }
+  },
+  {
+    "id": "deleg_01",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: refund AND policy question",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I need a refund for order #123 AND what is your return window?",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": ["refund"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Process refund for order #123", "Answer FAQ about return window policy"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Both intents covered: refund processing and policy inquiry."}
+    }
+  },
+  {
+    "id": "deleg_02",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: account inquiry AND cheque status",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "What is my account balance and also tell me the cheque clearing time?",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Look up current account balance", "Answer FAQ about cheque clearing time"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Both intents addressed."}
+    }
+  },
+  {
+    "id": "deleg_03",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: refund AND address change",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want a refund for the duplicate charge and also update my mailing address",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Process refund for duplicate charge", "Help customer update mailing address"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Refund and address change both covered."}
+    }
+  },
+  {
+    "id": "deleg_04",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: cancel subscription AND explain charges",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "Cancel my premium subscription and explain the charges on my last statement",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Cancel premium subscription", "Explain charges on latest account statement"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Cancellation and charge explanation both addressed."}
+    }
+  },
+  {
+    "id": "deleg_05",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: open new account AND close existing one",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want to open a Premium Current Account and close my Regular Current Account",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Provide information on opening Premium Current Account", "Process closure of Regular Current Account"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Account opening and closure both covered."}
+    }
+  },
+  {
+    "id": "hitl_01",
+    "category": "hitl_escalation",
+    "description": "Escalation: large disputed amount with fraud suspicion",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "Someone has stolen EUR 25000 from my account through multiple unauthorized transactions over the past month and I need all of it back immediately",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Investigate unauthorized transactions totalling EUR 25000", "Process urgent refund for fraud-related losses"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Investigation and refund both planned."}
+    }
+  },
+  {
+    "id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "Your bank has been charging hidden fees on my account for months and I want a full refund plus I am filing a complaint with the financial ombudsman",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Review and explain account fees charged over recent months", "Process refund for any unauthorized or hidden fees"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Fee review and refund processing both addressed."}
+    }
+  }
+]

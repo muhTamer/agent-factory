@@ -287,6 +287,9 @@ class RuntimeSpine:
         trace.add("request_received")
 
         try:
+            post = {}  # Initialized for memory recording in finally block
+            _effective_q = q  # May be expanded for AOP follow-ups
+
             # 1️⃣ ROUTE FIRST (with sticky workflow routing)
             pinned = ctx.get("pinned_agent_id")
             pinned_type = ctx.get("pinned_agent_type")
@@ -316,12 +319,39 @@ class RuntimeSpine:
 
             # 0.5️⃣ AOP PATTERN CLASSIFICATION (before normal routing)
             elif self.aop_coordinator is not None:
-                pattern = self._classify_orchestration_pattern(q)
+                # ── AOP follow-up expansion (PMPA memory-aware) ──
+                # Short queries after AOP delegation get expanded with
+                # context so the classifier and router understand the follow-up.
+                if self.memory:
+                    try:
+                        _last_turn = self.memory.get_last_turn(thread_id)
+                        if (
+                            _last_turn
+                            and isinstance(_last_turn.response, dict)
+                            and _last_turn.response.get("orchestration_pattern")
+                            == "hierarchical_delegation"
+                            and len(q.split()) <= 4
+                        ):
+                            _prev = (
+                                _last_turn.response.get("answer")
+                                or _last_turn.response.get("text")
+                                or ""
+                            )[:500]
+                            _effective_q = (
+                                f"Follow-up to previous request: '{_last_turn.query}'. "
+                                f"Previous response summary: {_prev}\n"
+                                f"User now says: {q}"
+                            )
+                            trace.add("aop_followup_expanded", original=q)
+                    except Exception:
+                        pass
+
+                pattern = self._classify_orchestration_pattern(_effective_q)
                 trace.add("orchestration_pattern", pattern=pattern)
 
                 if pattern == "hierarchical_delegation":
                     print(f"[AOP] hierarchical delegation for: {q[:80]}")
-                    aop_resp = self.aop_coordinator.orchestrate(q, ctx, trace)
+                    aop_resp = self.aop_coordinator.orchestrate(_effective_q, ctx, trace)
                     aop_resp["request_id"] = rid
 
                     # Voice rendering — produce customer-friendly chat text
@@ -352,9 +382,9 @@ class RuntimeSpine:
                     return post
 
                 # pattern == "direct" -> fall through to normal routing
-                plan = self._route(q)
+                plan = self._route(_effective_q)
             else:
-                plan = self._route(q)
+                plan = self._route(_effective_q)
 
             trace.add(
                 "route",
@@ -398,7 +428,7 @@ class RuntimeSpine:
             trace.add("guard_pre_ok", intent=ctx.get("intent"))
 
             # 4️⃣ EXECUTE
-            results = self._execute_candidates(plan, q, ctx)
+            results = self._execute_candidates(plan, _effective_q, ctx)
             trace.add(
                 "execute",
                 results=[{"agent_id": r["agent_id"], "score": r["score"]} for r in results],
@@ -621,9 +651,13 @@ class RuntimeSpine:
             # Record turn in conversation memory
             if self.memory:
                 try:
+                    # Try post first — set in both AOP and direct paths.
+                    # resp is only set in the direct path (NameError in AOP path).
                     _resp = (
-                        resp if isinstance(resp, dict) else (post if isinstance(post, dict) else {})
-                    )  # noqa: F841
+                        post
+                        if (isinstance(post, dict) and post)
+                        else (resp if isinstance(resp, dict) else {})
+                    )
                 except Exception:
                     _resp = {}
                 try:

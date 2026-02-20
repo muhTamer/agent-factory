@@ -32,6 +32,11 @@ class AgentRegistry:
             base = self._agents[agent_id].metadata() or {}
         except Exception:
             base = {}
+        # Merge registered meta (e.g. blueprint_meta from factory spec)
+        # over generic agent defaults — rich descriptions take priority.
+        stored = self._meta.get(agent_id, {})
+        if stored:
+            base.update(stored)
         base.update({"id": agent_id})
         return base
 

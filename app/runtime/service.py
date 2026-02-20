@@ -92,7 +92,7 @@ def startup_event():
 
             agent = registry.import_generated_agent(a_id, gen_dir)
             agent.load(agent_spec)
-            registry.register(a_id, agent)
+            registry.register(a_id, agent, meta=agent_spec.get("blueprint_meta"))
             print(f"[BOOT] Agent ready: {a_id}")
         else:
             print(f"[BOOT] Skipping unrecognized type {a_type} ({a_id})")
