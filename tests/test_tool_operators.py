@@ -44,8 +44,11 @@ def _load_tool_agent(agent_id: str):
 
 # Maps agent directory name → tool name it wraps
 TOOL_AGENTS = [
-    ("refund_executor_tool", "initiate_refund"),
-    ("ticket_manager_tool", "create_ticket"),
+    ("initiate_refund_tool", "initiate_refund"),
+    ("create_ticket_tool", "create_ticket"),
+    ("lookup_payment_tool", "lookup_payment"),
+    ("verify_identity_tool", "verify_identity"),
+    ("handoff_tool", "handoff_to_human"),
 ]
 
 AGENT_IDS = [agent_id for agent_id, _ in TOOL_AGENTS]
@@ -101,8 +104,8 @@ def test_tool_operator_handle_includes_tool_name(agent_id, tool_name):
 # ---------------------------------------------------------------------------
 
 
-def test_refund_executor_returns_refund_id():
-    agent = _load_tool_agent("refund_executor_tool")
+def test_initiate_refund_tool_returns_refund_id():
+    agent = _load_tool_agent("initiate_refund_tool")
     result = agent.handle({})
     stub = STUB_RESPONSES["initiate_refund"]
     assert result.get("refund_id") == stub["refund_id"]
@@ -110,8 +113,8 @@ def test_refund_executor_returns_refund_id():
     assert result.get("status") == stub["status"]
 
 
-def test_ticket_manager_returns_ticket_id():
-    agent = _load_tool_agent("ticket_manager_tool")
+def test_create_ticket_tool_returns_ticket_id():
+    agent = _load_tool_agent("create_ticket_tool")
     result = agent.handle({})
     stub = STUB_RESPONSES["create_ticket"]
     assert result.get("ticket_id") == stub["ticket_id"]

@@ -3,18 +3,18 @@
 Happy-path end-to-end tests for refunds_workflow_agent.
 
 Refunds workflow state machine:
-  collect_info  →  validate_policy  →  execute_refund  →  completed
-     (user)           (policy auto)       (tool auto)      (terminal)
+  start  →  eligibility_check  →  determine_approval_path  →  execute_refund  →  completed
+  (user)       (policy auto)          (policy auto)            (tool auto)      (terminal)
 
 Strategy:
   - Mock `app.runtime.workflow_mapper.chat_json` so the LLM mapper
     returns a predictable dict without a real API call.
   - The real map_query_to_event_and_slots() parses that dict into a MapResult.
   - The agent's hard guard enforces required slots before transitioning.
-  - After the user-driven transition (collect_info → validate_policy),
-    the auto-chain loop advances through the two system states automatically.
+  - After the user-driven transition (start → eligibility_check),
+    the auto-chain loop advances through the system states automatically.
 
-All required slots: customer_id, request_id, amount, currency, payment_method
+All required slots: customer_id, payment_id, amount
 """
 import importlib.util
 import sys
@@ -37,10 +37,9 @@ pytestmark = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 
 FULL_SLOTS = {
-    "case_id": "CASE-001",
     "customer_id": "CUST-001",
+    "payment_id": "PAY-001",
     "amount": 1000.0,
-    "payment_method": "debit_card",
 }
 
 
@@ -77,14 +76,14 @@ def test_refunds_agent_loads_without_error():
 
 def test_refunds_agent_has_policy_bridge():
     agent = _load_refunds_agent()
-    # Policy bridge loads from compiled pack — should be set if pack exists
     assert agent.policy_bridge is not None
 
 
 def test_refunds_agent_policy_state_map_configured():
     agent = _load_refunds_agent()
-    assert "evaluate_policy" in agent.policy_state_map
-    assert "process_refund" in agent.policy_state_map
+    assert "eligibility_check" in agent.policy_state_map
+    assert "determine_approval_path" in agent.policy_state_map
+    assert "execute_refund" in agent.policy_state_map
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +91,7 @@ def test_refunds_agent_policy_state_map_configured():
 # ---------------------------------------------------------------------------
 
 
-def test_fresh_engine_starts_in_collect_info():
+def test_fresh_engine_starts_in_start():
     agent = _load_refunds_agent()
     engine = agent._engine_for("test-init")
     assert engine.current_state == "start"
@@ -111,7 +110,7 @@ def test_clarification_lists_required_slots():
     with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
         result = agent.handle({"query": "I need a refund", "thread_id": "t-missing"})
     missing = result.get("missing_slots", [])
-    for slot in ("case_id", "customer_id", "amount", "payment_method"):
+    for slot in ("customer_id", "payment_id", "amount"):
         assert slot in missing, f"Expected {slot!r} in missing_slots"
 
 
@@ -129,21 +128,16 @@ def test_full_flow_reaches_completed():
     ):
         result = agent.handle(
             {
-                "query": "Refund EUR 1000 for CUST-001 debit card REQ-001",
+                "query": "Refund EUR 1000 for CUST-001 payment PAY-001",
                 "thread_id": "t-happy-001",
             }
         )
-    assert result["current_state"] == "notify_customer_success"
+    assert result["current_state"] == "completed"
     assert result["terminal"] is True
 
 
 def test_full_flow_slots_contain_user_provided_data():
-    """
-    After completion, FSM slots should still hold user-provided values.
-    Note: execute_refund uses symbolic actions (not call:initiate_refund),
-    so the stub tool does NOT write refund_id into slots — auto-chain fires
-    the refund_success event deterministically without invoking the tool callable.
-    """
+    """After completion, FSM slots should still hold user-provided values."""
     agent = _load_refunds_agent()
     with patch(
         "app.runtime.workflow_mapper.chat_json",
@@ -155,7 +149,6 @@ def test_full_flow_slots_contain_user_provided_data():
                 "thread_id": "t-slots-001",
             }
         )
-    # User-provided slots should be preserved
     assert result["slots"].get("customer_id") == "CUST-001"
     assert result["slots"].get("amount") == 1000.0
 
@@ -176,7 +169,7 @@ def test_full_flow_auto_chain_reported_in_mapper():
     mapper = result.get("mapper", {})
     assert "auto_chain" in mapper
     chain = mapper["auto_chain"]
-    assert len(chain) > 0  # at least one auto-chain step
+    assert len(chain) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -185,9 +178,9 @@ def test_full_flow_auto_chain_reported_in_mapper():
 
 
 def test_partial_slots_stay_in_start():
-    """If required slots are missing, event is forced to None — stays in collect_info."""
+    """If required slots are missing, event is forced to None — stays in start."""
     agent = _load_refunds_agent()
-    partial = {"customer_id": "C1"}  # missing case_id, amount, payment_method
+    partial = {"customer_id": "C1"}  # missing payment_id and amount
     with patch(
         "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json("validated", partial)
     ):
@@ -211,54 +204,39 @@ def test_partial_slots_action_is_request_clarification():
 
 
 # ---------------------------------------------------------------------------
-# Declined sentinel (N/A)
+# Full required slots — advance and complete
 # ---------------------------------------------------------------------------
 
 
 def test_all_required_slots_advance_from_start():
-    """
-    If user declines request_id ('N/A'), the hard guard treats it as satisfied.
-    The workflow should advance past collect_info.
-    """
+    """All required slots provided → workflow advances past start."""
     agent = _load_refunds_agent()
-    slots_with_na = {
-        "case_id": "CASE-001",
-        "customer_id": "CUST-001",
-        "amount": 500.0,
-        "payment_method": "debit_card",
-    }
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("validated", slots_with_na),
+        return_value=_mapper_json("validated", FULL_SLOTS),
     ):
         result = agent.handle(
             {
-                "query": "I don't have a request ID",
-                "thread_id": "t-declined-001",
+                "query": "I need a refund for payment PAY-001",
+                "thread_id": "t-full-001",
             }
         )
     assert result["current_state"] != "start"
 
 
-def test_all_required_slots_reach_notify_success():
+def test_all_required_slots_reach_completed():
     agent = _load_refunds_agent()
-    slots_with_na = {
-        "case_id": "CASE-001",
-        "customer_id": "CUST-001",
-        "amount": 500.0,
-        "payment_method": "debit_card",
-    }
     with patch(
         "app.runtime.workflow_mapper.chat_json",
-        return_value=_mapper_json("validated", slots_with_na),
+        return_value=_mapper_json("validated", FULL_SLOTS),
     ):
         result = agent.handle(
             {
-                "query": "no request id available",
-                "thread_id": "t-declined-002",
+                "query": "refund payment PAY-001 amount 1000",
+                "thread_id": "t-full-002",
             }
         )
-    assert result["current_state"] == "notify_customer_success"
+    assert result["current_state"] == "completed"
     assert result["terminal"] is True
 
 
@@ -284,9 +262,8 @@ def test_multi_turn_slots_accumulate():
 
     # Turn 2: remaining slots + event
     remaining = {
-        "case_id": "CASE-001",
+        "payment_id": "PAY-001",
         "amount": 500.0,
-        "payment_method": "debit_card",
     }
     with patch(
         "app.runtime.workflow_mapper.chat_json",
@@ -294,12 +271,12 @@ def test_multi_turn_slots_accumulate():
     ):
         r2 = agent.handle(
             {
-                "query": "500 EUR debit card REQ-001",
+                "query": "payment PAY-001 amount 500",
                 "thread_id": tid,
             }
         )
 
-    assert r2["current_state"] == "notify_customer_success"
+    assert r2["current_state"] == "completed"
     assert r2["terminal"] is True
 
 
@@ -313,7 +290,6 @@ def test_multi_turn_customer_id_persists():
     ):
         agent.handle({"query": "hi", "thread_id": tid})
 
-    # Second turn: customer_id should still be set in engine
     engine = agent.engines[tid]
     assert engine.slots["customer_id"] == "CUST-999"
 
@@ -339,7 +315,7 @@ def test_thread_isolation_separate_states():
     ):
         r_b = agent.handle({"query": "partial request", "thread_id": "t-iso-B"})
 
-    assert r_a["current_state"] == "notify_customer_success"
+    assert r_a["current_state"] == "completed"
     assert r_b["current_state"] == "start"
 
 
@@ -377,14 +353,13 @@ def test_completed_state_returns_terminal_on_second_call():
     ):
         agent.handle({"query": "refund", "thread_id": tid})
 
-    # Second call on same thread — should return terminal
     with patch(
         "app.runtime.workflow_mapper.chat_json",
         return_value=_mapper_json("validated", FULL_SLOTS),
     ):
         result = agent.handle({"query": "another request", "thread_id": tid})
 
-    assert result["current_state"] == "notify_customer_success"
+    assert result["current_state"] == "completed"
     assert result["terminal"] is True
 
 
