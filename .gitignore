@@ -37,6 +37,7 @@ generated/
 .factory/factory_spec.json
 .factory/performance_history.json
 .factory/test_performance_history.json
+.factory/test_policy_pack.json
 .workspace/
 .claude/
 
