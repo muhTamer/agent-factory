@@ -30,7 +30,12 @@ tool_registry: ToolRegistry = DEFAULT_REGISTRY  # replaced at startup if config 
 app = FastAPI(title="Agent Factory Runtime", version="1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8501", "http://127.0.0.1:8501"],
+    allow_origins=[
+        "http://localhost:8501",
+        "http://127.0.0.1:8501",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
