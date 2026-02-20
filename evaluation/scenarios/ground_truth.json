@@ -393,5 +393,102 @@
       "decompose": {"subtasks": ["Review and explain account fees charged over recent months", "Process refund for any unauthorized or hidden fees"]},
       "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Fee review and refund processing both addressed."}
     }
+  },
+  {
+    "id": "fail_01",
+    "category": "simple_routing",
+    "description": "Out-of-domain: quantum physics question (no agent can handle)",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "Explain the Heisenberg uncertainty principle in quantum mechanics",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["uncertainty", "quantum"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+  {
+    "id": "fail_02",
+    "category": "fsm_workflow",
+    "description": "Refund for fictitious product (agent cannot match expected keywords)",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want a refund for my flying car purchase from last Tuesday",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": ["flying car", "not eligible"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+  {
+    "id": "fail_03",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent with impossible subtask (Mars branch transfer)",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "Transfer my account to the Mars branch and explain intergalactic banking regulations",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": ["Mars", "intergalactic"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Transfer account to Mars branch", "Explain intergalactic banking regulations"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Both aspects covered."}
+    }
+  },
+  {
+    "id": "fail_04",
+    "category": "simple_routing",
+    "description": "Out-of-domain: mortgage rates in foreign country",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "What are the current mortgage interest rates for properties in Iceland",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["mortgage", "Iceland", "interest rate"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+  {
+    "id": "fail_05",
+    "category": "hitl_escalation",
+    "description": "Legal threat requiring immediate human intervention",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I am suing your bank for negligence and demand my lawyer speaks with your CEO immediately",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": ["lawyer", "CEO", "legal department"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Connect customer with legal department", "Arrange CEO contact per complaint escalation"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Legal escalation paths covered."}
+    }
   }
 ]
