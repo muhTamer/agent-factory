@@ -11,78 +11,62 @@ This demonstrates:
 import json
 import sys
 from pathlib import Path
+import pytest
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
-def test_refunds_policy_compilation():
-    """Test compiling the refunds policy."""
-    print("=" * 80)
-    print("POLICY COMPILATION TEST")
-    print("=" * 80)
-    print()
+@pytest.fixture(scope="module")
+def pack():
+    """Fixture to compile and provide the policy pack for all tests."""
 
-    # Mock LLM client (for the example - you'd use your real client)
     class MockLLMClient:
         def chat_json(self, messages, model):
-            # For this test, we're using YAML so LLM not actually needed
             return {"rules": []}
 
     from app.runtime.policy.policy_compiler import PolicyCompiler
 
     llm_client = MockLLMClient()
-
-    # Create compiler
     compiler = PolicyCompiler(
         llm_client=llm_client,
         domain="fintech",
         model="gpt-4o-mini",
     )
 
-    # Compile the refunds policy
     policy_file = Path("data/refunds_policy.yaml")
-
     if not policy_file.exists():
-        print(f"❌ Policy file not found: {policy_file}")
-        print("   Please ensure refunds_policy.yaml is in the data/ directory")
-        return False
+        pytest.skip(f"Policy file not found: {policy_file}")
 
-    print(f"📄 Compiling policy: {policy_file}")
-    print()
-
-    pack = compiler.compile_policies(
+    compiled_pack = compiler.compile_policies(
         policy_files=[policy_file],
         policy_id="refunds_policy_test",
         version="1.0",
     )
 
-    print("✅ Compiled successfully!")
-    print(f"   - Rules: {len(pack.rules)}")
-    print(f"   - Slots: {len(pack.slot_schema)}")
-    print()
+    output_path = Path(".factory/test_policy_pack.json")
+    output_path.parent.mkdir(exist_ok=True)
+    compiler.save_pack(compiled_pack, output_path)
 
-    # Show rules by type
+    return compiled_pack
+
+
+def test_refunds_policy_compilation(pack):
+    """Test compiling the refunds policy."""
+    # The fixture already compiles the policy, so just verify it worked
+    assert pack is not None
+    assert len(pack.rules) > 0
+    assert len(pack.slot_schema) > 0
+
+    # Verify basic structure
     from collections import defaultdict
 
     rules_by_type = defaultdict(list)
     for rule in pack.rules:
         rules_by_type[rule.rule_type].append(rule)
 
-    print("📋 Rules by type:")
-    for rule_type, rules in sorted(rules_by_type.items()):
-        print(f"   {rule_type.value}: {len(rules)} rules")
-    print()
-
-    # Save pack
-    output_path = Path(".factory/test_policy_pack.json")
-    output_path.parent.mkdir(exist_ok=True)
-    compiler.save_pack(pack, output_path)
-
-    print(f"💾 Saved to: {output_path}")
-    print()
-
-    return pack, output_path
+    # Ensure we have various rule types
+    assert len(rules_by_type) > 0
 
 
 def test_rule_evaluation(pack):
@@ -293,6 +277,66 @@ def test_workflow_integration(pack):
     print()
 
 
+def _compile_for_standalone():
+    """Helper function to compile policy for standalone execution."""
+    print("=" * 80)
+    print("POLICY COMPILATION TEST")
+    print("=" * 80)
+    print()
+
+    class MockLLMClient:
+        def chat_json(self, messages, model):
+            return {"rules": []}
+
+    from app.runtime.policy.policy_compiler import PolicyCompiler
+
+    llm_client = MockLLMClient()
+    compiler = PolicyCompiler(
+        llm_client=llm_client,
+        domain="fintech",
+        model="gpt-4o-mini",
+    )
+
+    policy_file = Path("data/refunds_policy.yaml")
+    if not policy_file.exists():
+        print(f"❌ Policy file not found: {policy_file}")
+        return None, None
+
+    print(f"📄 Compiling policy: {policy_file}")
+    print()
+
+    pack = compiler.compile_policies(
+        policy_files=[policy_file],
+        policy_id="refunds_policy_test",
+        version="1.0",
+    )
+
+    print("✅ Compiled successfully!")
+    print(f"   - Rules: {len(pack.rules)}")
+    print(f"   - Slots: {len(pack.slot_schema)}")
+    print()
+
+    from collections import defaultdict
+
+    rules_by_type = defaultdict(list)
+    for rule in pack.rules:
+        rules_by_type[rule.rule_type].append(rule)
+
+    print("📋 Rules by type:")
+    for rule_type, rules in sorted(rules_by_type.items()):
+        print(f"   {rule_type.value}: {len(rules)} rules")
+    print()
+
+    output_path = Path(".factory/test_policy_pack.json")
+    output_path.parent.mkdir(exist_ok=True)
+    compiler.save_pack(pack, output_path)
+
+    print(f"💾 Saved to: {output_path}")
+    print()
+
+    return pack, output_path
+
+
 def main():
     """Run all tests."""
     print()
@@ -300,7 +344,7 @@ def main():
     print()
 
     # Test 1: Compilation
-    pack, pack_path = test_refunds_policy_compilation()
+    pack, pack_path = _compile_for_standalone()
 
     if not pack:
         print("❌ Compilation failed, aborting tests")

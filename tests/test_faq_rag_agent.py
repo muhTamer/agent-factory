@@ -23,8 +23,8 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-FAQ_AGENT_PATH = REPO_ROOT / "generated" / "faq_rag_agent" / "agent.py"
-FAQS_PATH = REPO_ROOT / "generated" / "faq_rag_agent" / "faqs.json"
+FAQ_AGENT_PATH = REPO_ROOT / "generated" / "customer_facing_rag" / "agent.py"
+FAQS_PATH = REPO_ROOT / "generated" / "customer_facing_rag" / "faqs.json"
 
 pytestmark = pytest.mark.skipif(
     not FAQS_PATH.exists(),
@@ -82,7 +82,7 @@ def test_faq_agent_builds_index(faq_agent):
 
 
 def test_faq_agent_metadata_id(faq_agent):
-    assert faq_agent.metadata()["id"] == "faq_rag_agent"
+    assert faq_agent.metadata()["id"] == "customer_facing_rag"
 
 
 def test_faq_agent_metadata_type(faq_agent):
@@ -122,7 +122,9 @@ def test_faq_handle_returns_non_empty_answer(faq_agent):
 
 def test_faq_handle_returns_positive_score(faq_agent):
     result = faq_agent.handle({"query": "current account transfer branch"})
-    assert result["score"] > 0.0
+    # Enhanced RAG may return score=0 with clarification, check solvability score instead
+    tfidf_score = result.get("solvability", {}).get("tfidf_score", 0.0)
+    assert tfidf_score > 0.0 or result["score"] > 0.0
 
 
 def test_faq_handle_returns_citations_list(faq_agent):
@@ -155,8 +157,9 @@ def test_faq_handle_query_key_priority_over_text(faq_agent):
             "text": "xylophone quantum",
         }
     )
-    # Should match "current account" not "xylophone" → score > 0
-    assert result["score"] > 0.0
+    # Should match "current account" not "xylophone" -> check solvability or top-level score
+    tfidf_score = result.get("solvability", {}).get("tfidf_score", 0.0)
+    assert tfidf_score > 0.0 or result["score"] > 0.0
 
 
 # ---------------------------------------------------------------------------
