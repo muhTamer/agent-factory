@@ -8,7 +8,7 @@ interface QuickRepliesProps {
 export function QuickReplies({ replies, onSelect }: QuickRepliesProps) {
   if (!replies.length) return null;
   return (
-    <div className="flex flex-wrap gap-2 px-4 pb-2">
+    <div className="mx-auto w-full max-w-3xl flex flex-wrap gap-2 px-4 pb-2">
       {replies.map((r) => (
         <button
           key={r}

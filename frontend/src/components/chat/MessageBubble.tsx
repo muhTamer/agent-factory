@@ -30,7 +30,7 @@ export function MessageBubble({ message }: Props) {
   if (message.role === "user") {
     return (
       <div className="flex justify-end mb-4">
-        <div className="max-w-[75%] rounded-xl rounded-br-sm bg-blue-500 px-4 py-2.5 text-white">
+        <div className="max-w-[85%] sm:max-w-[70%] rounded-xl rounded-br-sm bg-blue-500 px-4 py-2.5 text-white">
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         </div>
       </div>
@@ -40,7 +40,7 @@ export function MessageBubble({ message }: Props) {
   if (message.role === "system") {
     return (
       <div className="flex justify-center mb-4">
-        <div className="max-w-[85%] rounded-lg bg-red-50 border border-red-200 px-4 py-2.5">
+        <div className="max-w-[90%] sm:max-w-[80%] rounded-lg bg-red-50 border border-red-200 px-4 py-2.5">
           <p className="text-sm text-red-700">{message.content}</p>
         </div>
       </div>
@@ -83,12 +83,11 @@ export function MessageBubble({ message }: Props) {
   const score = raw?.score;
   const mapper = raw?.mapper;
   const history = raw?.history;
-  const quickReplies = raw?.chat?.quick_replies;
 
   return (
     <div className="flex items-start gap-2 mb-4 group">
       <div
-        className="max-w-[80%]"
+        className="max-w-[92%] sm:max-w-[80%]"
         onClick={() => debugMode && setSelectedMessageId(message.id)}
       >
         <AgentAvatar iconName={display.icon} label={display.label} />
@@ -265,19 +264,6 @@ export function MessageBubble({ message }: Props) {
             <HierarchicalResults data={message.aopData} />
           )}
 
-          {/* Quick replies */}
-          {Array.isArray(quickReplies) && quickReplies.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {quickReplies.map((reply: string) => (
-                <span
-                  key={reply}
-                  className="inline-block rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
-                >
-                  {reply}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Router plan (expandable — always shown when available) */}
