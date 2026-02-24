@@ -103,6 +103,14 @@ def _inputs_from_blueprint(bp: Dict[str, Any], data_dir: Path) -> Dict[str, Any]
             if Path(rp).exists():
                 resolved_policies.append(_abs(rp))
 
+    # Detect whether this agent is internal (guardrails/compliance) or customer-facing
+    _internal_keywords = {"guardrail", "compliance", "internal", "policy_checker", "regulatory"}
+    _agent_id_lower = str(bp.get("id", "")).lower()
+    _agent_desc_lower = str(bp.get("description", "")).lower()
+    _is_internal_agent = any(
+        kw in _agent_id_lower or kw in _agent_desc_lower for kw in _internal_keywords
+    )
+
     # If blueprint didn't explicitly set docs, use resolved docs for RAG
     if agent_kind == "knowledge_rag":
         if "docs" not in inputs or not inputs.get("docs"):
@@ -116,6 +124,15 @@ def _inputs_from_blueprint(bp: Dict[str, Any], data_dir: Path) -> Dict[str, Any]
                     if f.is_file() and f.suffix.lower() in {".csv", ".md", ".txt"}
                 ]
                 inputs["docs"] = [_abs(f) for f in candidates] if candidates else []
+
+        # Policy YAML/YML files are internal documents — strip them from customer-facing agents.
+        # Internal agents (guardrails, compliance) keep them; customer-facing agents only get
+        # customer-appropriate formats (CSV FAQ files, markdown, plain text).
+        if not _is_internal_agent and "docs" in inputs:
+            _policy_suffixes = {".yaml", ".yml"}
+            inputs["docs"] = [
+                d for d in inputs["docs"] if Path(d).suffix.lower() not in _policy_suffixes
+            ]
 
     # For workflow_runner, always pass workflow_spec through (already LLM-generated dict)
     # plus attach docs/policies if available (useful for future checks)
@@ -151,10 +168,12 @@ def _inputs_from_blueprint(bp: Dict[str, Any], data_dir: Path) -> Dict[str, Any]
                     if rp:
                         new_list.append(rp)
                     else:
-                        # resolve relative to data_dir if looks like a path
-                        if ("/" in item) or ("\\" in item):
-                            p = Path(item)
-                            new_list.append(_abs(p) if p.is_absolute() else _abs(data_dir / p))
+                        # resolve relative to data_dir
+                        p = Path(item)
+                        if p.is_absolute():
+                            new_list.append(_abs(p))
+                        elif (data_dir / p).exists():
+                            new_list.append(_abs(data_dir / p))
                         else:
                             new_list.append(item)
                 else:

@@ -289,6 +289,7 @@ class RuntimeSpine:
         try:
             post = {}  # Initialized for memory recording in finally block
             _effective_q = q  # May be expanded for AOP follow-ups
+            ctx["original_query"] = q  # For post-guardrail checks
 
             # 1️⃣ ROUTE FIRST (with sticky workflow routing)
             pinned = ctx.get("pinned_agent_id")
@@ -350,6 +351,14 @@ class RuntimeSpine:
                 trace.add("orchestration_pattern", pattern=pattern)
 
                 if pattern == "hierarchical_delegation":
+                    # Pre-guardrails apply to AOP path too
+                    ok_pre, pre_result = self._guard_pre(_effective_q, ctx)
+                    if not ok_pre:
+                        trace.add("guard_pre_block", reason=pre_result.get("reason", ""))
+                        pre_result["request_id"] = rid
+                        return pre_result
+                    trace.add("guard_pre_ok", intent="hierarchical_delegation")
+
                     print(f"[AOP] hierarchical delegation for: {q[:80]}")
                     aop_resp = self.aop_coordinator.orchestrate(_effective_q, ctx, trace)
                     aop_resp["request_id"] = rid

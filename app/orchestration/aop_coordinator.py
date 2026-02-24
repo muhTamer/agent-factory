@@ -16,6 +16,7 @@ Integration with RuntimeSpine:
 """
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -224,16 +225,26 @@ class AOPCoordinator:
                 "role": "system",
                 "content": (
                     "You are a task decomposition module for an AOP multi-agent system.\n"
-                    "Given a user query and available agents, break the query into atomic subtasks.\n"
-                    "Each subtask should be a single, independent unit of work that one agent can handle.\n\n"
+                    "Given a user query and available agents, break the query into atomic subtasks.\n\n"
                     "Rules:\n"
-                    "- Each subtask must be self-contained and actionable.\n"
-                    "- Do NOT create subtasks for things no agent can handle.\n"
                     "- Return 1-5 subtasks (prefer fewer).\n"
-                    "- If conversation history is provided, use it to resolve references "
-                    "(e.g., 'the refund' refers to the product/topic from a previous turn).\n"
-                    "- Each subtask description must include the specific topic/product "
-                    "from context so agents can handle it without seeing the history.\n\n"
+                    "- If conversation history is provided, use it to resolve references.\n"
+                    "- Each subtask description must include the specific topic from context.\n\n"
+                    "CRITICAL — Keep subtask descriptions SHORT and factual:\n"
+                    "- Write subtasks as SIMPLE RETRIEVAL QUERIES or SIMPLE ACTION REQUESTS.\n"
+                    "- Do NOT include formatting instructions, lists of what to include, or\n"
+                    "  instructions like 'provide customer-facing explanation with A, B, C, D'.\n"
+                    "- Good: 'cancellation policy for bank transactions'\n"
+                    "- Bad: 'Provide a comprehensive customer-facing explanation of cancellation "
+                    "policy including timelines, fees, exceptions, and cite policy references...'\n\n"
+                    "CRITICAL — Distinguish INFORMATIONAL vs ACTION queries:\n"
+                    '- "I need help with a refund" or "tell me about refund policy" = INFORMATIONAL.\n'
+                    "  Route to faq_rag. Do NOT start a refund workflow.\n"
+                    '- "I want a refund for order #123" or "refund EUR 50 for transaction X" = ACTION.\n'
+                    "  Route to refunds_workflow ONLY when the user provides specific transaction details.\n"
+                    "- NEVER initiate a workflow unless the user explicitly requests an action "
+                    "with concrete details (order number, amount, transaction ID).\n"
+                    "- When in doubt, prefer faq_rag lookup over workflow.\n\n"
                     'Return STRICT JSON: {"subtasks": ["subtask description 1", ...]}'
                 ),
             },
@@ -317,6 +328,19 @@ class AOPCoordinator:
 
     # ── Step 4: Execution ───────────────────────────────────────────
 
+    # Workflow agents that require concrete user-provided details before execution
+    _ACTION_AGENT_KINDS = {"workflow_runner"}
+    # Signals that the user provided concrete transaction/action data
+    _ACTION_SIGNALS = re.compile(
+        r"(order\s*#?\d|transaction\s*#?\d|EUR\s*\d|USD\s*\d|\$\d|refund\s+(?:for|of)\s+\w+\s*#?\d)",
+        re.IGNORECASE,
+    )
+
+    def _is_action_agent(self, agent_id: str) -> bool:
+        """Check if an agent is a workflow/action agent that needs concrete details."""
+        meta = self.registry.all_meta().get(agent_id, {})
+        return meta.get("agent_kind") in self._ACTION_AGENT_KINDS
+
     def _execute_subtasks(
         self,
         subtasks: List[Subtask],
@@ -334,6 +358,23 @@ class AOPCoordinator:
                 st.success = False
                 st.result = {"error": f"Agent {st.assigned_agent_id} not found in registry"}
                 continue
+
+            # Per-subtask guardrail: block workflow agents without concrete details
+            if self._is_action_agent(st.assigned_agent_id):
+                if not self._ACTION_SIGNALS.search(st.description):
+                    st.success = False
+                    st.result = {
+                        "error": "guardrail_blocked",
+                        "message": (
+                            "I'd be happy to help with a refund. Could you please provide "
+                            "your order/transaction number and the amount so I can look into it?"
+                        ),
+                    }
+                    print(
+                        f"[AOP-GUARD] Blocked workflow agent {st.assigned_agent_id} — "
+                        "no concrete transaction details in subtask"
+                    )
+                    continue
 
             t0 = _now_ms()
             try:
@@ -454,6 +495,10 @@ class AOPCoordinator:
             if st.result and not st.result.get("error"):
                 text = self._extract_readable_text(st.result)
                 answers.append(f"[{st.assigned_agent_id}] {text}")
+            elif st.result and st.result.get("error") == "guardrail_blocked":
+                # Surface the helpful message from the guardrail, not the error code
+                msg = st.result.get("message", "This action requires more details.")
+                answers.append(f"[{st.assigned_agent_id}] {msg}")
             else:
                 err = st.result.get("error", "unknown error") if st.result else "no result"
                 answers.append(f"[{st.assigned_agent_id}] Unable to complete: {err}")

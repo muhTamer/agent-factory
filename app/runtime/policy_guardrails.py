@@ -1,9 +1,19 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Dict
 
 from app.runtime.guardrails import GuardResult, Guardrails
 from app.runtime.policy_pack import PolicyPack
+
+# Patterns indicating a refund/action was executed (not just discussed)
+_REFUND_INITIATED_PATTERN = re.compile(
+    r"(refund\s+(has been|was|is)\s+(initiated|processed|approved|completed)"
+    r"|refund_id\s*[:=]"
+    r"|successfully\s+refunded"
+    r"|refund\s+of\s+(EUR|USD|\$)\s*\d+.*(?:initiated|processed))",
+    re.IGNORECASE,
+)
 
 
 class PolicyGuardrails(Guardrails):
@@ -31,4 +41,28 @@ class PolicyGuardrails(Guardrails):
         return GuardResult(allowed=True)
 
     def post(self, response: Dict[str, Any], context: Dict[str, Any]) -> GuardResult:
+        # Check for blocked phrases in response text
+        text = response.get("text", "") or response.get("answer", "") or ""
+        for phrase in self.pack.blocked_phrases:
+            if phrase.lower() in text.lower():
+                return GuardResult(
+                    allowed=False,
+                    reason=f"blocked_phrase:{phrase}",
+                )
+
+        # Check for unauthorized refund initiation (hallucinated actions)
+        # If the orchestration was informational (no concrete transaction in query),
+        # block responses that claim a refund was actually processed.
+        original_query = context.get("original_query", "")
+        if original_query and not re.search(
+            r"(order\s*#?\d|transaction\s*#?\d|EUR\s*\d|USD\s*\d|\$\d)",
+            original_query,
+            re.IGNORECASE,
+        ):
+            if _REFUND_INITIATED_PATTERN.search(text):
+                return GuardResult(
+                    allowed=False,
+                    reason="refund_initiated_without_transaction_details",
+                )
+
         return GuardResult(allowed=True)

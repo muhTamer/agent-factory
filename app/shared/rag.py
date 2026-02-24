@@ -352,14 +352,54 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
             return out
         return out
 
+    # Resolve doc paths: try as-is, then relative to .workspace/
+    _workspace = Path(__file__).resolve().parents[2] / ".workspace"
     for d in docs:
         p = Path(d)
         if not p.exists() or not p.is_file():
+            # Fallback: resolve plain filenames against .workspace/
+            p = _workspace / p.name
+            if not p.exists() or not p.is_file():
+                continue
+
+        if p.suffix.lower() in {".yaml", ".yml"}:
+            # Internal policy/config files: flatten into Q&A chunks from YAML structure.
+            # These are INTERNAL only — customer-facing agents should not receive YAML docs.
+            try:
+                raw = yaml.safe_load(p.read_text(encoding="utf-8", errors="ignore")) or {}
+
+                def _flatten_yaml(obj, prefix=""):
+                    """Recursively flatten YAML into (key_path, value) pairs."""
+                    pairs = []
+                    if isinstance(obj, dict):
+                        for k, v in obj.items():
+                            full_key = f"{prefix}.{k}" if prefix else str(k)
+                            pairs.extend(_flatten_yaml(v, full_key))
+                    elif isinstance(obj, list):
+                        for i, item in enumerate(obj):
+                            pairs.extend(_flatten_yaml(item, f"{prefix}[{i}]"))
+                    else:
+                        val = str(obj).strip()
+                        if val and len(val) > 2:
+                            pairs.append((prefix, val))
+                    return pairs
+
+                for key_path, value in _flatten_yaml(raw):
+                    # Only keep meaningful entries (descriptions, rules, values)
+                    if len(value) > 5:
+                        faqs.append(
+                            {
+                                "q": key_path.replace("_", " ").replace(".", " → "),
+                                "a": value,
+                                "source": p.name,
+                            }
+                        )
+            except Exception:
+                pass
             continue
 
         if p.suffix.lower() != ".csv":
-            # For now we only normalize CSV Q/A into faqs.json.
-            # (MD/YAML can be handled later as "kb chunks" blueprint if you want.)
+            # MD/TXT can be handled later as "kb chunks" blueprint if needed.
             continue
 
         headers, sample_rows = _read_csv_sample(p, max_rows=25)
@@ -673,11 +713,15 @@ class Agent(IAgent):
 
         best_score = hits[0]["score"] if hits else 0.0
 
-        # Relevance gate (tunable)
+        # Grounding gate: only answer from retrieved docs, never from LLM general knowledge.
+        # If no doc is relevant enough, say so honestly rather than hallucinating.
         if best_score < 0.12:
             return {
                 "intent": "faq",
-                "answer": "I couldn't find that in the provided documents.",
+                "answer": (
+                    "I don't have specific information about that in our documentation. "
+                    "Please contact our support team for assistance."
+                ),
                 "score": float(best_score),
                 "citations": [],
                 "_hits": hits,
