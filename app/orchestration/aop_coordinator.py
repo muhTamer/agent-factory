@@ -68,6 +68,7 @@ class AOPCoordinator:
         model: str = "gpt-5-mini",
         max_retries: int = 1,
         memory: Optional[Any] = None,
+        action_signals: Optional[re.Pattern] = None,
     ):
         self.registry = registry
         self.store = performance_store
@@ -76,6 +77,12 @@ class AOPCoordinator:
         self.model = model
         self.max_retries = max_retries
         self.memory = memory  # ConversationMemory for multi-turn context
+        # Regex that matches concrete transaction identifiers in a user query.
+        # Override per-vertical via the action_signals constructor argument.
+        self._action_signals = action_signals or re.compile(
+            r"(order\s*#?\d|transaction\s*#?\d|[A-Z]{3}\s*\d|\$\d)",
+            re.IGNORECASE,
+        )
 
     def orchestrate(
         self,
@@ -133,10 +140,10 @@ class AOPCoordinator:
             subtasks.append(st)
 
         # ── Step 3: Completeness Check ──
-        # Bypass for informational queries: the completeness LLM has no concept of
-        # INFORMATIONAL vs ACTION and will incorrectly add action requirements (e.g.
-        # "missing: actionable refund initiation") for queries like "help with a refund".
-        if self._is_informational_query(query, subtask_strs):
+        # Bypass when the decomposer labeled all subtasks INFORMATIONAL — the
+        # completeness LLM would otherwise invent action requirements the user
+        # never requested (e.g. "missing: actionable refund initiation").
+        if self._all_informational(subtask_strs):
             comp_result = CompletenessResult(
                 complete=True,
                 missing=[],
@@ -355,44 +362,26 @@ class AOPCoordinator:
 
     # ── Step 4: Execution ───────────────────────────────────────────
 
-    # Workflow agents that require concrete user-provided details before execution
-    _ACTION_AGENT_KINDS = {"workflow_runner"}
-    # Signals that the user provided concrete transaction/action data
-    _ACTION_SIGNALS = re.compile(
-        r"(order\s*#?\d|transaction\s*#?\d|EUR\s*\d|USD\s*\d|\$\d|refund\s+(?:for|of)\s+\w+\s*#?\d)",
-        re.IGNORECASE,
-    )
-    # Action-indicating agent ID patterns (covers executor tool_operators too)
-    _ACTION_AGENT_IDS = re.compile(
-        r"(refund_exec|execute_refund|initiate_refund|process_refund)",
-        re.IGNORECASE,
-    )
-
     def _is_action_agent(self, agent_id: str) -> bool:
-        """Check if an agent is a workflow/action agent that needs concrete details."""
-        meta = self.registry.all_meta().get(agent_id, {})
-        if meta.get("agent_kind") in self._ACTION_AGENT_KINDS:
-            return True
-        # Also catch executor-type tool_operators by ID pattern
-        if self._ACTION_AGENT_IDS.search(agent_id):
-            return True
-        return False
+        """Return True if the agent requires concrete user-provided transaction context.
 
-    def _is_informational_query(self, query: str, subtask_strs: List[str]) -> bool:
-        """Return True if the query is purely informational — no concrete transaction details.
-
-        Informational queries must NOT trigger the completeness check LLM because it will
-        incorrectly add 'missing: actionable refund initiation' requirements for queries
-        like 'I need help with a refund' that are just asking for information.
+        Driven entirely by the agent's blueprint_meta.requires_user_context flag,
+        which is set at factory-spec generation time. No naming conventions or
+        hardcoded kind sets here — add the flag to any new agent type as needed.
         """
-        # Action signals in original query → not purely informational
-        if self._ACTION_SIGNALS.search(query):
-            return False
-        # Any subtask that itself contains action signals → not purely informational
-        for st in subtask_strs:
-            if self._ACTION_SIGNALS.search(st):
-                return False
-        return True
+        meta = self.registry.all_meta().get(agent_id, {})
+        return bool(meta.get("requires_user_context"))
+
+    @staticmethod
+    def _all_informational(subtask_strs: List[str]) -> bool:
+        """Return True when the decomposer labeled every subtask as INFORMATIONAL.
+
+        Uses the LLM's own classification output rather than re-running regex
+        against the raw query — the decomposer already understood the intent.
+        """
+        return bool(subtask_strs) and all(
+            s.upper().startswith("INFORMATIONAL:") for s in subtask_strs
+        )
 
     def _execute_subtasks(
         self,
@@ -412,25 +401,32 @@ class AOPCoordinator:
                 st.result = {"error": f"Agent {st.assigned_agent_id} not found in registry"}
                 continue
 
-            # Per-subtask guardrail: block action/workflow agents without concrete details.
-            # Check the ORIGINAL user query (most reliable signal), not the subtask
-            # description (which after re-decompose may contain action language without
-            # actually having real transaction details from the user).
+            # Per-subtask guardrail: block action agents when the user hasn't provided
+            # concrete transaction details.
+            #
+            # Primary signal — the decomposer's own label: if the LLM already marked
+            # this subtask INFORMATIONAL, never route it to an action agent regardless.
+            #
+            # Fallback — for unlabeled subtasks (e.g. from re-decompose): check the
+            # original query using the configurable _action_signals pattern.
             if self._is_action_agent(st.assigned_agent_id):
+                labeled_informational = st.description.upper().startswith("INFORMATIONAL:")
                 original_query = context.get("original_query", "") or ""
-                check_text = original_query if original_query else st.description
-                if not self._ACTION_SIGNALS.search(check_text):
+                has_transaction = self._action_signals.search(
+                    original_query if original_query else st.description
+                )
+                if labeled_informational or not has_transaction:
+                    agent_meta = self.registry.all_meta().get(st.assigned_agent_id, {})
+                    msg = agent_meta.get("missing_context_message") or (
+                        "To help with this I'll need a few more details — "
+                        "could you share your order or transaction reference?"
+                    )
                     st.success = False
-                    st.result = {
-                        "error": "guardrail_blocked",
-                        "message": (
-                            "I'd be happy to help with a refund. Could you please provide "
-                            "your order/transaction number and the amount so I can look into it?"
-                        ),
-                    }
+                    st.result = {"error": "guardrail_blocked", "message": msg}
                     print(
                         f"[AOP-GUARD] Blocked action agent {st.assigned_agent_id} — "
-                        "no concrete transaction details in original query"
+                        f"labeled_informational={labeled_informational}, "
+                        f"has_transaction={bool(has_transaction)}"
                     )
                     continue
 

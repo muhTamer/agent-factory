@@ -15,6 +15,12 @@ import textwrap
 
 _WORD = re.compile(r"[A-Za-z0-9]+")
 
+# Minimum TF-IDF cosine similarity to answer from retrieved docs.
+# Below this threshold we return an honest "no information" message rather
+# than letting the LLM synthesise from general knowledge.
+# Override per agent by passing min_score to build_agent().
+_DEFAULT_MIN_SCORE = 0.12
+
 
 def _tok(s: str) -> List[str]:
     return [t.lower() for t in _WORD.findall(s or "")]
@@ -241,7 +247,12 @@ def synthesize_answer(query: str, hits: List[Tuple[float, CorpusItem]]) -> Dict[
 # ---------------------------
 # Generator entrypoint
 # ---------------------------
-def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
+def build_agent(
+    agent_id: str,
+    inputs: dict,
+    gen_dir: Path,
+    min_score: float = _DEFAULT_MIN_SCORE,
+) -> Path:
     """
     FAQ RAG-style agent generator (dependency-free, but can use LLM for schema mapping).
 
@@ -254,6 +265,11 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
       - Generated agent loads faqs.json (not raw CSV) and builds TF-IDF index
       - Answers questions with TF-IDF cosine similarity + relevance gate
       - Exposes metadata for router
+
+    Args:
+        min_score: Minimum retrieval score to answer from docs; below this the
+                   agent returns an honest "no information" message.
+                   Defaults to _DEFAULT_MIN_SCORE (0.12).
     """
     import json
     import textwrap
@@ -275,6 +291,7 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
     cfg = {
         "id": agent_id,
         "docs": docs,
+        "min_score": min_score,
         "solvability": {
             "answer_threshold": 0.55,
             "delegate_threshold": 0.20,
@@ -471,6 +488,7 @@ import json, math, re, yaml
 from app.runtime.interfaces import IAgent
 
 _WORD = re.compile(r"[A-Za-z0-9]+")
+_DEFAULT_MIN_SCORE = 0.12
 
 def _tok(s: str) -> List[str]:
     return [t.lower() for t in _WORD.findall(s or "")]
@@ -538,6 +556,11 @@ class Agent(IAgent):
                 self.cfg["id"] = "__AGENT_ID__"
             if "docs" not in self.cfg:
                 self.cfg["docs"] = []
+        # Grounding gate threshold — read from config so it can be tuned per agent
+        try:
+            self._min_score = float(self.cfg.get("min_score", _DEFAULT_MIN_SCORE))
+        except (TypeError, ValueError):
+            self._min_score = _DEFAULT_MIN_SCORE
 
     def _load_faqs(self) -> None:
         data_path = Path(__file__).parent / "faqs.json"
@@ -715,7 +738,7 @@ class Agent(IAgent):
 
         # Grounding gate: only answer from retrieved docs, never from LLM general knowledge.
         # If no doc is relevant enough, say so honestly rather than hallucinating.
-        if best_score < 0.12:
+        if best_score < self._min_score:
             return {
                 "intent": "faq",
                 "answer": (

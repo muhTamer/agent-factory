@@ -103,13 +103,10 @@ def _inputs_from_blueprint(bp: Dict[str, Any], data_dir: Path) -> Dict[str, Any]
             if Path(rp).exists():
                 resolved_policies.append(_abs(rp))
 
-    # Detect whether this agent is internal (guardrails/compliance) or customer-facing
-    _internal_keywords = {"guardrail", "compliance", "internal", "policy_checker", "regulatory"}
-    _agent_id_lower = str(bp.get("id", "")).lower()
-    _agent_desc_lower = str(bp.get("description", "")).lower()
-    _is_internal_agent = any(
-        kw in _agent_id_lower or kw in _agent_desc_lower for kw in _internal_keywords
-    )
+    # knowledge_rag agents are always customer-facing — driven by agent_kind, not
+    # keyword matching on IDs or descriptions (fragile, doesn't scale to new verticals).
+    _CUSTOMER_FACING_KINDS = {"knowledge_rag"}
+    _is_customer_facing = agent_kind in _CUSTOMER_FACING_KINDS
 
     # If blueprint didn't explicitly set docs, use resolved docs for RAG
     if agent_kind == "knowledge_rag":
@@ -126,9 +123,7 @@ def _inputs_from_blueprint(bp: Dict[str, Any], data_dir: Path) -> Dict[str, Any]
                 inputs["docs"] = [_abs(f) for f in candidates] if candidates else []
 
         # Policy YAML/YML files are internal documents — strip them from customer-facing agents.
-        # Internal agents (guardrails, compliance) keep them; customer-facing agents only get
-        # customer-appropriate formats (CSV FAQ files, markdown, plain text).
-        if not _is_internal_agent and "docs" in inputs:
+        if _is_customer_facing and "docs" in inputs:
             _policy_suffixes = {".yaml", ".yml"}
             inputs["docs"] = [
                 d for d in inputs["docs"] if Path(d).suffix.lower() not in _policy_suffixes
@@ -460,6 +455,11 @@ def build_factory_spec(
                     "capabilities": bp.get("capabilities", []),
                     "tools": bp.get("tools", []),
                     "vertical": bp.get("vertical", bp_plan.vertical),
+                    # Agents that must not execute without concrete user-provided transaction
+                    # details (order ID, amount, etc.).  The AOPCoordinator reads this flag
+                    # to decide whether to block execution until the user supplies context.
+                    # Add new action agent kinds here as the platform grows.
+                    "requires_user_context": agent_kind in {"workflow_runner"},
                 },
             }
         )
