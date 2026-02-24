@@ -133,13 +133,32 @@ class AOPCoordinator:
             subtasks.append(st)
 
         # ── Step 3: Completeness Check ──
-        comp_result = self._check_completeness(query, subtask_strs, solv_result.assignments)
-        if trace:
-            trace.add(
-                "aop_completeness",
-                complete=comp_result.complete,
-                missing=comp_result.missing,
+        # Bypass for informational queries: the completeness LLM has no concept of
+        # INFORMATIONAL vs ACTION and will incorrectly add action requirements (e.g.
+        # "missing: actionable refund initiation") for queries like "help with a refund".
+        if self._is_informational_query(query, subtask_strs):
+            comp_result = CompletenessResult(
+                complete=True,
+                missing=[],
+                redundant=[],
+                coverage_ratio=1.0,
+                reasoning="informational query — action coverage not required",
             )
+            if trace:
+                trace.add(
+                    "aop_completeness",
+                    complete=True,
+                    missing=[],
+                    info="informational_bypass",
+                )
+        else:
+            comp_result = self._check_completeness(query, subtask_strs, solv_result.assignments)
+            if trace:
+                trace.add(
+                    "aop_completeness",
+                    complete=comp_result.complete,
+                    missing=comp_result.missing,
+                )
 
         # If incomplete and retries remain, re-decompose with hints
         if not comp_result.complete and self.max_retries > 0:
@@ -284,6 +303,14 @@ class AOPCoordinator:
                 "content": (
                     "You are a task decomposition module. A previous decomposition was incomplete.\n"
                     "Re-decompose the query, making sure to address the missing aspects.\n\n"
+                    "CRITICAL — Keep subtask descriptions SHORT and factual.\n"
+                    "CRITICAL — Distinguish INFORMATIONAL vs ACTION queries:\n"
+                    '- "I need help with a refund" or "tell me about refund policy" = INFORMATIONAL.\n'
+                    "  Route to faq_rag. Do NOT initiate a refund workflow or executor.\n"
+                    '- "I want a refund for order #123" or "refund EUR 50 for transaction X" = ACTION.\n'
+                    "  Route to workflow ONLY when the user provides specific transaction details.\n"
+                    "- NEVER create subtasks that initiate, execute, or process a refund unless the\n"
+                    "  user provided an order number, transaction ID, or specific amount.\n\n"
                     'Return STRICT JSON: {"subtasks": ["subtask description 1", ...]}'
                 ),
             },
@@ -335,11 +362,37 @@ class AOPCoordinator:
         r"(order\s*#?\d|transaction\s*#?\d|EUR\s*\d|USD\s*\d|\$\d|refund\s+(?:for|of)\s+\w+\s*#?\d)",
         re.IGNORECASE,
     )
+    # Action-indicating agent ID patterns (covers executor tool_operators too)
+    _ACTION_AGENT_IDS = re.compile(
+        r"(refund_exec|execute_refund|initiate_refund|process_refund)",
+        re.IGNORECASE,
+    )
 
     def _is_action_agent(self, agent_id: str) -> bool:
         """Check if an agent is a workflow/action agent that needs concrete details."""
         meta = self.registry.all_meta().get(agent_id, {})
-        return meta.get("agent_kind") in self._ACTION_AGENT_KINDS
+        if meta.get("agent_kind") in self._ACTION_AGENT_KINDS:
+            return True
+        # Also catch executor-type tool_operators by ID pattern
+        if self._ACTION_AGENT_IDS.search(agent_id):
+            return True
+        return False
+
+    def _is_informational_query(self, query: str, subtask_strs: List[str]) -> bool:
+        """Return True if the query is purely informational — no concrete transaction details.
+
+        Informational queries must NOT trigger the completeness check LLM because it will
+        incorrectly add 'missing: actionable refund initiation' requirements for queries
+        like 'I need help with a refund' that are just asking for information.
+        """
+        # Action signals in original query → not purely informational
+        if self._ACTION_SIGNALS.search(query):
+            return False
+        # Any subtask that itself contains action signals → not purely informational
+        for st in subtask_strs:
+            if self._ACTION_SIGNALS.search(st):
+                return False
+        return True
 
     def _execute_subtasks(
         self,
@@ -359,9 +412,14 @@ class AOPCoordinator:
                 st.result = {"error": f"Agent {st.assigned_agent_id} not found in registry"}
                 continue
 
-            # Per-subtask guardrail: block workflow agents without concrete details
+            # Per-subtask guardrail: block action/workflow agents without concrete details.
+            # Check the ORIGINAL user query (most reliable signal), not the subtask
+            # description (which after re-decompose may contain action language without
+            # actually having real transaction details from the user).
             if self._is_action_agent(st.assigned_agent_id):
-                if not self._ACTION_SIGNALS.search(st.description):
+                original_query = context.get("original_query", "") or ""
+                check_text = original_query if original_query else st.description
+                if not self._ACTION_SIGNALS.search(check_text):
                     st.success = False
                     st.result = {
                         "error": "guardrail_blocked",
@@ -371,8 +429,8 @@ class AOPCoordinator:
                         ),
                     }
                     print(
-                        f"[AOP-GUARD] Blocked workflow agent {st.assigned_agent_id} — "
-                        "no concrete transaction details in subtask"
+                        f"[AOP-GUARD] Blocked action agent {st.assigned_agent_id} — "
+                        "no concrete transaction details in original query"
                     )
                     continue
 

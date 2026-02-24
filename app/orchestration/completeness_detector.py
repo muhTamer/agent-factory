@@ -98,6 +98,12 @@ class CompletenessDetector:
             "evaluate:\n"
             "1. COMPLETENESS: Does the plan address ALL aspects/intents in the query?\n"
             "2. NON-REDUNDANCY: Are there subtask pairs that overlap in scope?\n\n"
+            "IMPORTANT — INFORMATIONAL vs ACTION:\n"
+            "If the query is asking for information (policy, eligibility rules, process explanation) "
+            "WITHOUT providing specific transaction details (order number, transaction ID, amount), "
+            "then the plan does NOT need to include action steps like initiating refunds, executing "
+            "payments, or creating tickets. Do NOT flag missing action coverage for informational "
+            "queries — that would be incorrect and would cause hallucination.\n\n"
             "Return STRICT JSON with these keys:\n"
             '  "complete": true/false,\n'
             '  "missing": ["aspect not covered", ...],  (empty list if complete)\n'
