@@ -52,7 +52,59 @@ def _abs(p: Path | str) -> str:
 # ------------------------------------------------------------
 # 🧠 Helper: build inputs from a Blueprint (NOT hardcoded per capability)
 # ------------------------------------------------------------
-def _inputs_from_blueprint(bp: Dict[str, Any], data_dir: Path) -> Dict[str, Any]:
+def _is_internal(filename: str, doc_visibility: Optional[Dict[str, str]]) -> bool:
+    """
+    Returns True if a file should be treated as internal (excluded from customer-facing RAG).
+
+    When the user has provided an explicit visibility map (from the onboarding wizard), that
+    takes precedence.  If the file is not in the map, or no map was provided, we fall back to
+    a sensible default: YAML/YML → internal, everything else → customer-facing.
+    """
+    if doc_visibility:
+        vis = doc_visibility.get(filename, "").lower()
+        if vis == "internal":
+            return True
+        if vis == "customer_facing":
+            return False
+    # Default: YAML files are internal policy/config documents
+    return Path(filename).suffix.lower() in {".yaml", ".yml"}
+
+
+# Signals in an agent's description/capabilities that indicate it's an
+# internal agent (compliance, guardrails, auditing) — NOT customer-facing.
+_INTERNAL_AGENT_SIGNALS = {
+    "compliance",
+    "guardrails",
+    "internal",
+    "validation",
+    "audit",
+    "blocking",
+}
+
+
+def _is_customer_facing_agent(bp: Dict[str, Any]) -> bool:
+    """Determine if a knowledge_rag agent is customer-facing (vs internal).
+
+    Only knowledge_rag agents can be customer-facing.  Among those, agents
+    whose description or capabilities mention compliance/guardrails/audit
+    are classified as internal — they need access to policy docs.
+
+    NOTE: The LLM-provided ``customer_facing`` flag is intentionally ignored.
+    LLMs frequently misclassify this; the description-based heuristic is
+    more reliable.
+    """
+    if bp.get("agent_kind") != "knowledge_rag":
+        return False
+    # Always use description-based heuristic (LLM flag is unreliable)
+    desc = (bp.get("description") or "").lower()
+    caps = " ".join(str(c).lower() for c in (bp.get("capabilities") or []))
+    combined = desc + " " + caps
+    return not any(sig in combined for sig in _INTERNAL_AGENT_SIGNALS)
+
+
+def _inputs_from_blueprint(
+    bp: Dict[str, Any], data_dir: Path, doc_visibility: Optional[Dict[str, str]] = None
+) -> Dict[str, Any]:
     """
     Build runtime 'inputs' for an AgentBlueprint.
 
@@ -103,10 +155,10 @@ def _inputs_from_blueprint(bp: Dict[str, Any], data_dir: Path) -> Dict[str, Any]
             if Path(rp).exists():
                 resolved_policies.append(_abs(rp))
 
-    # knowledge_rag agents are always customer-facing — driven by agent_kind, not
-    # keyword matching on IDs or descriptions (fragile, doesn't scale to new verticals).
-    _CUSTOMER_FACING_KINDS = {"knowledge_rag"}
-    _is_customer_facing = agent_kind in _CUSTOMER_FACING_KINDS
+    # Determine if this specific agent is customer-facing.
+    # Not all knowledge_rag agents are — e.g. compliance/guardrails RAG agents
+    # are internal and need access to policy docs.
+    _is_customer_facing = _is_customer_facing_agent(bp)
 
     # If blueprint didn't explicitly set docs, use resolved docs for RAG
     if agent_kind == "knowledge_rag":
@@ -122,12 +174,25 @@ def _inputs_from_blueprint(bp: Dict[str, Any], data_dir: Path) -> Dict[str, Any]
                 ]
                 inputs["docs"] = [_abs(f) for f in candidates] if candidates else []
 
-        # Policy YAML/YML files are internal documents — strip them from customer-facing agents.
-        if _is_customer_facing and "docs" in inputs:
-            _policy_suffixes = {".yaml", ".yml"}
-            inputs["docs"] = [
-                d for d in inputs["docs"] if Path(d).suffix.lower() not in _policy_suffixes
-            ]
+        # Strip internal documents from customer-facing agents.
+        # Uses the user-provided visibility map when available; falls back to
+        # extension-based defaults (YAML/YML → internal).
+        if _is_customer_facing:
+            for _doc_key in ("docs", "policies", "procedures"):
+                if _doc_key in inputs and isinstance(inputs[_doc_key], list):
+                    inputs[_doc_key] = [
+                        d
+                        for d in inputs[_doc_key]
+                        if not _is_internal(Path(d).name, doc_visibility)
+                    ]
+        else:
+            # Internal knowledge_rag agents (policy enforcement, compliance):
+            # ensure they have policy docs so they can enforce rules.
+            if resolved_policies:
+                existing = set(inputs.get("policies") or [])
+                for rp in resolved_policies:
+                    if rp not in existing:
+                        inputs.setdefault("policies", []).append(rp)
 
     # For workflow_runner, always pass workflow_spec through (already LLM-generated dict)
     # plus attach docs/policies if available (useful for future checks)
@@ -369,6 +434,42 @@ def _build_policy_config(workflow_spec: Dict[str, Any], base_dir: Path) -> Dict[
     }
 
 
+def _compile_policy_files(base_dir: Path, factory_dir: Path) -> None:
+    """Compile policy YAML files into a JSON policy pack for workflow agents.
+
+    The compiled pack is stored at .factory/compiled_policies/ where
+    _build_policy_config() can find it and inject policy_pack_path into
+    the workflow agent config.  Without this step, the policy bridge
+    never loads and internal states (eligibility, approval) can't
+    auto-resolve — causing the workflow to ask the customer about
+    internal process decisions.
+    """
+    policy_files = list(base_dir.glob("*.yaml")) + list(base_dir.glob("*.yml"))
+    if not policy_files:
+        return
+
+    try:
+        from app.runtime.policy.policy_compiler import PolicyCompiler
+    except ImportError:
+        print("[SPEC] PolicyCompiler not available — skipping policy compilation")
+        return
+
+    out_dir = factory_dir / "compiled_policies"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        compiler = PolicyCompiler(domain="fintech")
+        pack = compiler.compile_policies(policy_files)
+        out_path = out_dir / f"{pack.policy_id}.json"
+        compiler.save_pack(pack, out_path)
+        print(
+            f"[SPEC] Compiled {len(policy_files)} policy files -> {out_path.name} "
+            f"({len(pack.rules)} rules)"
+        )
+    except Exception as e:
+        print(f"[SPEC] Policy compilation failed: {e}")
+
+
 # ------------------------------------------------------------
 # 🧰 Spec Builder (NEW: uses LLM-generated AgentBlueprints, not per-capability hardcoding)
 # ------------------------------------------------------------
@@ -377,6 +478,7 @@ def build_factory_spec(
     data_dir: str,
     dry_run: bool = True,
     llm_client: Optional[object] = None,
+    doc_visibility: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """
     Convert Concierge plan preview → runtime factory_spec.json.
@@ -394,8 +496,9 @@ def build_factory_spec(
     factory_dir.mkdir(parents=True, exist_ok=True)
     spec_path = factory_dir / "factory_spec.json"
 
-    # optional: legacy blueprint directory (still useful later)
-    # bp_dir = Path("factory/blueprints")
+    # Compile policy YAML files into .factory/compiled_policies/ so that
+    # workflow agents can load the policy bridge for auto-event resolution.
+    _compile_policy_files(base_dir, factory_dir)
 
     # Always include guardrails (spine requirement)
     agents_block: List[Dict[str, Any]] = [
@@ -447,7 +550,7 @@ def build_factory_spec(
                 "type": "autogen",
                 "blueprint": blueprint_id,
                 "status": "ready",  # this is plan-level; can be refined later
-                "inputs": _inputs_from_blueprint(bp, base_dir),
+                "inputs": _inputs_from_blueprint(bp, base_dir, doc_visibility),
                 "blueprint_meta": {
                     # keep the whole declarative blueprint for routing + explainability
                     "agent_kind": agent_kind,
@@ -460,6 +563,13 @@ def build_factory_spec(
                     # to decide whether to block execution until the user supplies context.
                     # Add new action agent kinds here as the platform grows.
                     "requires_user_context": agent_kind in {"workflow_runner"},
+                    "customer_facing": _is_customer_facing_agent(bp),
+                    # Declarative AOP eligibility: set by the planning LLMs
+                    # (infer_capabilities → blueprint_creator).  AOPCoordinator
+                    # uses this to decide which agents can receive user-facing
+                    # subtasks.  When absent (legacy specs), AOP falls back to
+                    # a description-based heuristic.
+                    "aop_eligible": bp.get("aop_eligible"),
                 },
             }
         )

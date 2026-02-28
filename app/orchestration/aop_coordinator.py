@@ -54,6 +54,89 @@ class AOPResult:
     orchestration_pattern: str = "hierarchical_delegation"
 
 
+@dataclass
+class AOPPlan:
+    """A prepared but not-yet-executed AOP plan, stored in thread context."""
+
+    query: str
+    subtasks: List[Subtask] = field(default_factory=list)
+    completeness: Optional[CompletenessResult] = None
+    solvability: Optional[SolvabilityResult] = None
+    created_ts_ms: int = 0
+
+    def pending_subtasks(self) -> List[Subtask]:
+        """Return subtasks that have not been executed yet."""
+        return [st for st in self.subtasks if st.result is None]
+
+    def to_serializable(self) -> Dict[str, Any]:
+        """Convert to a JSON-safe dict for storage in THREAD_CTX."""
+        return {
+            "query": self.query,
+            "subtasks": [
+                {
+                    "description": st.description,
+                    "assigned_agent_id": st.assigned_agent_id,
+                    "solvability_score": st.solvability_score,
+                    "result": st.result,
+                    "success": st.success,
+                    "latency_ms": st.latency_ms,
+                }
+                for st in self.subtasks
+            ],
+            "completeness": {
+                "complete": self.completeness.complete if self.completeness else True,
+                "missing": self.completeness.missing if self.completeness else [],
+                "coverage_ratio": self.completeness.coverage_ratio if self.completeness else 1.0,
+                "reasoning": self.completeness.reasoning if self.completeness else "",
+            },
+            "solvability": {
+                "assignments": self.solvability.assignments if self.solvability else {},
+                "assignment_scores": (
+                    {k: round(v, 4) for k, v in self.solvability.assignment_scores.items()}
+                    if self.solvability
+                    else {}
+                ),
+            },
+            "created_ts_ms": self.created_ts_ms,
+        }
+
+    @classmethod
+    def from_serializable(cls, data: Dict[str, Any]) -> "AOPPlan":
+        """Reconstruct from THREAD_CTX stored dict."""
+        subtasks = [
+            Subtask(
+                description=s["description"],
+                assigned_agent_id=s.get("assigned_agent_id"),
+                solvability_score=s.get("solvability_score", 0.0),
+                result=s.get("result"),
+                success=s.get("success", False),
+                latency_ms=s.get("latency_ms", 0),
+            )
+            for s in data.get("subtasks", [])
+        ]
+        comp_data = data.get("completeness", {})
+        comp = CompletenessResult(
+            complete=comp_data.get("complete", True),
+            missing=comp_data.get("missing", []),
+            redundant=[],
+            coverage_ratio=comp_data.get("coverage_ratio", 1.0),
+            reasoning=comp_data.get("reasoning", ""),
+        )
+        solv_data = data.get("solvability", {})
+        solv = SolvabilityResult(
+            assignments=solv_data.get("assignments", {}),
+            scores=[],
+            assignment_scores=solv_data.get("assignment_scores", {}),
+        )
+        return cls(
+            query=data.get("query", ""),
+            subtasks=subtasks,
+            completeness=comp,
+            solvability=solv,
+            created_ts_ms=data.get("created_ts_ms", 0),
+        )
+
+
 class AOPCoordinator:
     """
     Meta-agent implementing the 5-step Agent-Oriented Planning cycle.
@@ -96,7 +179,7 @@ class AOPCoordinator:
         Returns dict compatible with spine's response format.
         """
         start_ms = _now_ms()
-        agent_catalog = self.registry.all_meta()
+        agent_catalog = self._aop_candidate_catalog()
 
         if not agent_catalog:
             return {
@@ -211,7 +294,190 @@ class AOPCoordinator:
             query, subtasks, comp_result, solv_result, total_ms
         )
 
+    # ── Sequential multi-task helpers ────────────────────────────────
+
+    def plan_only(
+        self,
+        query: str,
+        context: Dict[str, Any],
+        trace: Optional[Trace] = None,
+    ) -> Optional[AOPPlan]:
+        """
+        Execute steps 1-3 of the AOP cycle (decompose, solvability, completeness)
+        WITHOUT executing subtasks.  Returns an AOPPlan for deferred execution.
+        """
+        agent_catalog = self._aop_candidate_catalog()
+        if not agent_catalog:
+            return None
+
+        conversation_history: List[Dict[str, Any]] = []
+        if self.memory:
+            try:
+                thread_id = context.get("thread_id", "default")
+                conversation_history = self.memory.get_conversation_context(thread_id, limit=5)
+            except Exception:
+                pass
+
+        # Step 1: Decompose
+        subtask_strs = self._decompose(query, agent_catalog, conversation_history)
+        if trace:
+            trace.add("aop_decompose", subtasks=subtask_strs)
+        if not subtask_strs:
+            return None
+
+        # Step 2: Solvability
+        solv_result = self._select_agents(subtask_strs, agent_catalog)
+        if trace:
+            trace.add("aop_solvability", assignments=solv_result.assignments)
+
+        subtasks = [
+            Subtask(
+                description=st_str,
+                assigned_agent_id=solv_result.assignments.get(st_str),
+                solvability_score=solv_result.assignment_scores.get(st_str, 0.0),
+            )
+            for st_str in subtask_strs
+        ]
+
+        # Step 3: Completeness
+        if self._all_informational(subtask_strs):
+            comp_result = CompletenessResult(
+                complete=True,
+                missing=[],
+                redundant=[],
+                coverage_ratio=1.0,
+                reasoning="informational query — action coverage not required",
+            )
+            if trace:
+                trace.add(
+                    "aop_completeness",
+                    complete=True,
+                    missing=[],
+                    info="informational_bypass",
+                )
+        else:
+            comp_result = self._check_completeness(query, subtask_strs, solv_result.assignments)
+            if trace:
+                trace.add(
+                    "aop_completeness",
+                    complete=comp_result.complete,
+                    missing=comp_result.missing,
+                )
+
+        # Re-decompose if incomplete
+        if not comp_result.complete and self.max_retries > 0:
+            subtask_strs = self._re_decompose(query, agent_catalog, comp_result.missing)
+            if subtask_strs:
+                solv_result = self._select_agents(subtask_strs, agent_catalog)
+                subtasks = [
+                    Subtask(
+                        description=st,
+                        assigned_agent_id=solv_result.assignments.get(st),
+                        solvability_score=solv_result.assignment_scores.get(st, 0.0),
+                    )
+                    for st in subtask_strs
+                ]
+                comp_result = self._check_completeness(query, subtask_strs, solv_result.assignments)
+                if trace:
+                    trace.add(
+                        "aop_redecompose",
+                        subtasks=subtask_strs,
+                        complete=comp_result.complete,
+                    )
+
+        if trace:
+            trace.add("aop_plan_ready", subtask_count=len(subtasks))
+
+        return AOPPlan(
+            query=query,
+            subtasks=subtasks,
+            completeness=comp_result,
+            solvability=solv_result,
+            created_ts_ms=_now_ms(),
+        )
+
+    def execute_single_subtask(
+        self,
+        plan: AOPPlan,
+        subtask_index: int,
+        context: Dict[str, Any],
+        trace: Optional[Trace] = None,
+    ) -> Dict[str, Any]:
+        """
+        Execute a single subtask from a previously prepared plan.
+        Returns a response dict for that subtask only.
+        """
+        if subtask_index < 0 or subtask_index >= len(plan.subtasks):
+            return {"error": f"Invalid subtask index: {subtask_index}"}
+
+        st = plan.subtasks[subtask_index]
+
+        # Execute just this one subtask
+        executed = self._execute_subtasks([st], context)
+        st = executed[0]
+
+        # Record feedback
+        self._record_feedback([st])
+
+        if trace:
+            trace.add(
+                "aop_execute_single",
+                subtask=st.description,
+                agent=st.assigned_agent_id,
+                success=st.success,
+                index=subtask_index,
+            )
+
+        # Build response
+        text = self._extract_readable_text(st.result) if st.result else ""
+        remaining = [
+            {
+                "index": i,
+                "subtask": s.description,
+                "agent_id": s.assigned_agent_id,
+            }
+            for i, s in enumerate(plan.subtasks)
+            if s.result is None and i != subtask_index
+        ]
+
+        return {
+            "text": text,
+            "answer": text,
+            "score": st.solvability_score,
+            "orchestration_pattern": "aop_task_result",
+            "executed_subtask": {
+                "subtask": st.description,
+                "agent_id": st.assigned_agent_id,
+                "success": st.success,
+                "solvability_score": st.solvability_score,
+                "latency_ms": st.latency_ms,
+                "result": st.result,
+            },
+            "remaining_subtasks": remaining,
+            "plan_query": plan.query,
+        }
+
     # ── Step 1: Task Decomposition ──────────────────────────────────
+
+    @staticmethod
+    def _clean_subtask(raw: str, agent_catalog: Dict[str, Dict[str, Any]]) -> str:
+        """Strip agent-name prefixes the LLM sometimes embeds in subtask text.
+
+        e.g. 'customer_qa_rag - INFORMATIONAL: ...' → 'INFORMATIONAL: ...'
+             'customer_qa_rag: ...' → '...'
+        """
+        s = raw.strip()
+        if not s:
+            return s
+        for aid in agent_catalog:
+            # "agent_id - rest" or "agent_id: rest"
+            for sep in (" - ", ": ", " — "):
+                prefix = aid + sep
+                if s.startswith(prefix):
+                    s = s[len(prefix) :].strip()
+                elif s.lower().startswith(prefix.lower()):
+                    s = s[len(prefix) :].strip()
+        return s
 
     def _decompose(
         self,
@@ -260,9 +526,11 @@ class AOPCoordinator:
                     "- Write subtasks as SIMPLE RETRIEVAL QUERIES or SIMPLE ACTION REQUESTS.\n"
                     "- Do NOT include formatting instructions, lists of what to include, or\n"
                     "  instructions like 'provide customer-facing explanation with A, B, C, D'.\n"
-                    "- Good: 'cancellation policy for bank transactions'\n"
+                    "- Good: 'INFORMATIONAL: cancellation policy for bank transactions'\n"
+                    "- Bad: 'customer_qa_rag - INFORMATIONAL: cancellation policy...'\n"
                     "- Bad: 'Provide a comprehensive customer-facing explanation of cancellation "
-                    "policy including timelines, fees, exceptions, and cite policy references...'\n\n"
+                    "policy including timelines, fees, exceptions, and cite policy references...'\n"
+                    "- Do NOT include agent names in subtask descriptions. Agent assignment is separate.\n\n"
                     "CRITICAL — Distinguish INFORMATIONAL vs ACTION queries:\n"
                     '- "I need help with a refund" or "tell me about refund policy" = INFORMATIONAL.\n'
                     "  Route to faq_rag. Do NOT start a refund workflow.\n"
@@ -284,7 +552,8 @@ class AOPCoordinator:
             raw = chat_json(messages=messages, model=self.model, temperature=1.0)
             subtasks = raw.get("subtasks", [])
             if isinstance(subtasks, list):
-                return [str(s).strip() for s in subtasks if str(s).strip()]
+                cleaned = [self._clean_subtask(str(s), agent_catalog) for s in subtasks]
+                return [s for s in cleaned if s]
             return []
         except Exception as e:
             print(f"[AOP] decompose failed: {e}")
@@ -310,6 +579,9 @@ class AOPCoordinator:
                 "content": (
                     "You are a task decomposition module. A previous decomposition was incomplete.\n"
                     "Re-decompose the query, making sure to address the missing aspects.\n\n"
+                    "Rules:\n"
+                    "- Return 1-5 subtasks MAXIMUM (prefer fewer). Merge related aspects into a single subtask.\n"
+                    "- Do NOT create one subtask per missing aspect — group them logically.\n\n"
                     "CRITICAL — Keep subtask descriptions SHORT and factual.\n"
                     "CRITICAL — Distinguish INFORMATIONAL vs ACTION queries:\n"
                     '- "I need help with a refund" or "tell me about refund policy" = INFORMATIONAL.\n'
@@ -336,10 +608,104 @@ class AOPCoordinator:
             raw = chat_json(messages=messages, model=self.model, temperature=1.0)
             subtasks = raw.get("subtasks", [])
             if isinstance(subtasks, list):
-                return [str(s).strip() for s in subtasks if str(s).strip()]
+                result = [str(s).strip() for s in subtasks if str(s).strip()]
+                return result[:5]  # Hard cap — never exceed 5 subtasks
             return []
         except Exception:
             return []
+
+    # ── AOP candidate filtering ────────────────────────────────────
+
+    # Agent kinds that are internal (leaf-level) and should never be
+    # assigned top-level AOP subtasks.  Only primary agents (RAG,
+    # workflow runners) should be candidates.
+    _EXCLUDED_KINDS = frozenset({"tool_operator", "guardrails"})
+
+    # ── Description-based heuristic (FALLBACK ONLY) ──────────────
+    # Used only when the declarative ``aop_eligible`` attribute is
+    # absent (legacy factory specs that predate the attribute).
+    _ROUTING_SIGNALS = frozenset(
+        {
+            "routes them to",
+            "route requests to",
+            "routes to the appropriate",
+            "classifies incoming",
+            "classify and route",
+        }
+    )
+    _CUSTOMER_SERVING_SIGNALS = frozenset(
+        {
+            "customer-facing",
+            "user-facing",
+            "frontline",
+            "answer customer",
+            "answers customer",
+            "answer question",
+            "answers question",
+            "orchestrates end-to-end",
+            "end-to-end",
+            "collect required",
+            "from the customer",
+        }
+    )
+    _INTERNAL_SIGNALS = frozenset(
+        {
+            "compliance",
+            "guardrails",
+            "validation",
+            "audit",
+            "blocking",
+            "so other agents",
+            "for other agents",
+            "policy snippets",
+        }
+    )
+
+    @classmethod
+    def _is_aop_eligible(cls, meta: Dict[str, Any]) -> bool:
+        """Return True if an agent should be an AOP subtask candidate.
+
+        Primary: uses the declarative ``aop_eligible`` attribute set at
+        build time by the planning LLMs (infer_capabilities →
+        blueprint_creator → spec_builder).
+
+        Fallback: for legacy specs without the attribute, falls back to
+        a description-based heuristic.
+        """
+        # ── Primary: declarative attribute ──
+        flag = meta.get("aop_eligible")
+        if isinstance(flag, bool):
+            return flag
+
+        # ── Fallback: description-based heuristic (legacy specs) ──
+        desc = (meta.get("description") or "").lower()
+        caps = " ".join(str(c).lower() for c in (meta.get("capabilities") or []))
+        combined = desc + " " + caps
+
+        if any(sig in combined for sig in cls._ROUTING_SIGNALS):
+            return False
+        if any(sig in combined for sig in cls._CUSTOMER_SERVING_SIGNALS):
+            return True
+        if any(sig in combined for sig in cls._INTERNAL_SIGNALS):
+            return False
+
+        return True
+
+    def _aop_candidate_catalog(self) -> Dict[str, Dict[str, Any]]:
+        """Return only primary agents eligible for AOP subtask assignment.
+
+        Filters out:
+        - tool_operator / guardrails (leaf agents invoked by workflows)
+        - Internal knowledge_rag agents (compliance checkers, not user-facing)
+        """
+        all_meta = self.registry.all_meta()
+        return {
+            aid: meta
+            for aid, meta in all_meta.items()
+            if meta.get("agent_kind") not in self._EXCLUDED_KINDS
+            and meta.get("type") not in self._EXCLUDED_KINDS
+            and self._is_aop_eligible(meta)
+        }
 
     # ── Step 2: Agent Selection ─────────────────────────────────────
 
@@ -372,16 +738,26 @@ class AOPCoordinator:
         meta = self.registry.all_meta().get(agent_id, {})
         return bool(meta.get("requires_user_context"))
 
-    @staticmethod
-    def _all_informational(subtask_strs: List[str]) -> bool:
-        """Return True when the decomposer labeled every subtask as INFORMATIONAL.
+    def _all_informational(self, subtask_strs: List[str]) -> bool:
+        """Return True when all subtasks are informational (no action needed).
 
-        Uses the LLM's own classification output rather than re-running regex
-        against the raw query — the decomposer already understood the intent.
+        Detection (in priority order):
+        1. LLM label: any subtask containing 'INFORMATIONAL' (prefix or mid-string)
+           is classified as informational.  If ALL have the label → True.
+        2. Action-signal fallback: if no subtask contains concrete transaction
+           identifiers (order#, transaction#, amounts), treat as informational.
         """
-        return bool(subtask_strs) and all(
-            s.upper().startswith("INFORMATIONAL:") for s in subtask_strs
-        )
+        if not subtask_strs:
+            return False
+
+        # Check 1: LLM-provided INFORMATIONAL labels (flexible — not just prefix)
+        all_labeled_info = all("INFORMATIONAL" in s.upper() for s in subtask_strs)
+        any_labeled_action = any("ACTION" in s.upper() for s in subtask_strs)
+        if all_labeled_info and not any_labeled_action:
+            return True
+
+        # Check 2: no action signals in any subtask → informational
+        return not any(self._action_signals.search(s) for s in subtask_strs)
 
     def _execute_subtasks(
         self,
@@ -430,10 +806,19 @@ class AOPCoordinator:
                     )
                     continue
 
+            # Strip the decomposer's INFORMATIONAL:/ACTION: prefix before
+            # passing to the agent — these are internal AOP labels that add
+            # noise to TF-IDF search and confuse downstream agents.
+            agent_query = st.description
+            for _prefix in ("INFORMATIONAL: ", "ACTION: "):
+                if agent_query.startswith(_prefix):
+                    agent_query = agent_query[len(_prefix) :]
+                    break
+
             t0 = _now_ms()
             try:
                 result = agent.handle(
-                    {"query": st.description, "text": st.description, "context": context}
+                    {"query": agent_query, "text": agent_query, "context": context}
                 )
                 st.result = result
                 st.success = not result.get("error")

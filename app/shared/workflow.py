@@ -332,6 +332,17 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                             merged_ctx[k] = v
 
                 engine.context = merged_ctx
+
+                # Pre-populate engine slots from accumulated cross-agent context.
+                # When a previous agent (e.g. router-intent) already extracted
+                # customer_id or transaction_id, carry those forward so the
+                # workflow doesn't re-ask the user for information they already provided.
+                _acc = merged_ctx.get("_accumulated_slots")
+                if isinstance(_acc, dict) and _acc:
+                    for k, v in _acc.items():
+                        if k in (engine.slot_defs or {}) and not engine.slots.get(k):
+                            engine.slots[k] = v
+
                 allowed_events = self._allowed_events(engine)
 
                 # ── Policy auto-event: deterministic resolution for policy-evaluation states ──

@@ -19,9 +19,18 @@ const STATUS_LABEL: Record<string, string> = {
 
 interface AgentCardProps {
   agent: PlanAgent;
+  docVisibility?: Record<string, "customer_facing" | "internal">;
 }
 
-export function AgentCard({ agent }: AgentCardProps) {
+export function AgentCard({ agent, docVisibility }: AgentCardProps) {
+  // Only RAG/knowledge agents filter out internal docs — other agents
+  // (router, workflow, etc.) need access to all documents including internal ones
+  const isKnowledgeAgent = agent.agent_kind === "rag" || agent.agent_kind === "knowledge_rag";
+  const visibleDocs =
+    docVisibility && isKnowledgeAgent
+      ? agent.docs_detected.filter((f) => docVisibility[f] !== "internal")
+      : agent.docs_detected;
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
@@ -42,13 +51,13 @@ export function AgentCard({ agent }: AgentCardProps) {
       <CardContent className="space-y-3">
         <ConfidenceBar value={agent.confidence} />
 
-        {agent.docs_detected.length > 0 && (
+        {visibleDocs.length > 0 && (
           <div>
             <span className="text-xs font-medium text-slate-500">
               Detected:{" "}
             </span>
             <span className="text-xs text-slate-700">
-              {agent.docs_detected.join(", ")}
+              {visibleDocs.join(", ")}
             </span>
           </div>
         )}

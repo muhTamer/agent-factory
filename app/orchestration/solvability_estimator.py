@@ -95,7 +95,28 @@ class SolvabilityEstimator:
 
     Fully deterministic — no LLM calls.  Uses TF-IDF cosine similarity for
     textual matching and PerformanceStore for historical performance.
+
+    Intent-aware: the AOP decomposer labels subtasks with INFORMATIONAL: or
+    ACTION: prefixes.  This estimator uses those labels to apply a penalty
+    when the intent mismatches the agent type, preventing workflow agents
+    from capturing FAQ-style questions and vice versa.
     """
+
+    # Prefix labels emitted by the AOP decomposer.
+    _INFORMATIONAL_PREFIX = "informational:"
+    _ACTION_PREFIX = "action:"
+
+    # Penalty multiplier applied to mismatched (subtask, agent) pairs.
+    # 0.3 → the mismatched score becomes 30% of its base value.
+    _ACTION_PENALTY = 0.3
+
+    # Additive bonus for intent–agent_kind alignment.
+    # When TF-IDF scores are near-zero (no stemming, "account"≠"accounts"),
+    # the multiplicative penalty alone is ineffective.  This bonus ensures
+    # the right agent TYPE is preferred even with negligible textual overlap.
+    #   INFORMATIONAL subtask + knowledge_rag agent → +bonus
+    #   ACTION subtask + workflow_runner agent → +bonus
+    _INTENT_KIND_BONUS = 0.15
 
     def __init__(
         self,
@@ -143,15 +164,69 @@ class SolvabilityEstimator:
             best_agent = ""
             best_combined = -1.0
 
+            # Determine intent from the decomposer's prefix label.
+            # The decomposer emits "INFORMATIONAL: ..." or "ACTION: ...".
+            # If no label is present, treat as unknown (no penalty applied).
+            lower = subtask.lower().lstrip()
+            if lower.startswith(self._INFORMATIONAL_PREFIX):
+                subtask_intent = "informational"
+            elif lower.startswith(self._ACTION_PREFIX):
+                subtask_intent = "action"
+            else:
+                subtask_intent = "unknown"
+
             for aid, meta in agent_catalog.items():
                 txt_sim = _cosine(sub_vec, agent_vecs[aid])
                 hist_perf = self._historical_performance(aid)
                 combined = self.alpha * txt_sim + self.beta * hist_perf
 
+                # Intent-aware scoring adjustment:
+                #
+                # (a) Penalty (multiplicative): penalise mismatched (subtask, agent) pairs.
+                #     INFORMATIONAL subtask + action agent → ×0.3
+                #     ACTION subtask + knowledge agent → ×0.3
+                #
+                # (b) Bonus (additive): reward intent–agent_kind alignment.
+                #     INFORMATIONAL subtask + knowledge_rag → +0.15
+                #     ACTION subtask + workflow_runner → +0.15
+                #     This ensures correct assignment even when TF-IDF scores are
+                #     near-zero (e.g. "account"≠"accounts" — no stemming).
+                agent_kind = meta.get("agent_kind", "")
+                penalty_applied = False
+                bonus_applied = False
+
+                if subtask_intent == "informational":
+                    if meta.get("requires_user_context"):
+                        combined *= self._ACTION_PENALTY
+                        penalty_applied = True
+                    if agent_kind == "knowledge_rag":
+                        combined += self._INTENT_KIND_BONUS
+                        bonus_applied = True
+                elif subtask_intent == "action":
+                    if not meta.get("requires_user_context"):
+                        combined *= self._ACTION_PENALTY
+                        penalty_applied = True
+                    if agent_kind == "workflow_runner":
+                        combined += self._INTENT_KIND_BONUS
+                        bonus_applied = True
+
+                modifiers = ""
+                if penalty_applied:
+                    direction = (
+                        "info→action_agent"
+                        if subtask_intent == "informational"
+                        else "action→knowledge_agent"
+                    )
+                    modifiers += f" [penalty={self._ACTION_PENALTY} {direction}]"
+                if bonus_applied:
+                    direction = (
+                        "info→knowledge" if subtask_intent == "informational" else "action→workflow"
+                    )
+                    modifiers += f" [bonus=+{self._INTENT_KIND_BONUS} {direction}]"
                 reasoning = (
                     f"textual={txt_sim:.3f} (α={self.alpha}), "
                     f"historical={hist_perf:.3f} (β={self.beta}), "
-                    f"combined={combined:.3f}"
+                    f"combined={combined:.3f}" + modifiers
                 )
 
                 score = SolvabilityScore(
@@ -214,4 +289,9 @@ class SolvabilityEstimator:
         atype = agent_meta.get("type", "")
         if atype:
             parts.append(str(atype))
+        # Include agent_kind (e.g. "knowledge_rag", "workflow_runner") —
+        # helps TF-IDF distinguish informational vs action agents.
+        akind = agent_meta.get("agent_kind", "")
+        if akind and akind != atype:
+            parts.append(str(akind))
         return " ".join(parts)

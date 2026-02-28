@@ -91,6 +91,7 @@ class PlannerInterface:
             ui_agents.append(
                 {
                     "id": cap["id"],
+                    "agent_kind": cap.get("agent_kind", "other"),
                     "display_name": self._pretty_name(cap["id"]),
                     "status": cap["status"],
                     "confidence": cap["confidence"],

@@ -380,39 +380,11 @@ def build_agent(
                 continue
 
         if p.suffix.lower() in {".yaml", ".yml"}:
-            # Internal policy/config files: flatten into Q&A chunks from YAML structure.
-            # These are INTERNAL only — customer-facing agents should not receive YAML docs.
-            try:
-                raw = yaml.safe_load(p.read_text(encoding="utf-8", errors="ignore")) or {}
-
-                def _flatten_yaml(obj, prefix=""):
-                    """Recursively flatten YAML into (key_path, value) pairs."""
-                    pairs = []
-                    if isinstance(obj, dict):
-                        for k, v in obj.items():
-                            full_key = f"{prefix}.{k}" if prefix else str(k)
-                            pairs.extend(_flatten_yaml(v, full_key))
-                    elif isinstance(obj, list):
-                        for i, item in enumerate(obj):
-                            pairs.extend(_flatten_yaml(item, f"{prefix}[{i}]"))
-                    else:
-                        val = str(obj).strip()
-                        if val and len(val) > 2:
-                            pairs.append((prefix, val))
-                    return pairs
-
-                for key_path, value in _flatten_yaml(raw):
-                    # Only keep meaningful entries (descriptions, rules, values)
-                    if len(value) > 5:
-                        faqs.append(
-                            {
-                                "q": key_path.replace("_", " ").replace(".", " → "),
-                                "a": value,
-                                "source": p.name,
-                            }
-                        )
-            except Exception:
-                pass
+            # YAML file explicitly passed (customer marked it customer-facing).
+            # Index as readable text chunks so the RAG can answer questions from it.
+            txt = _read_text(p, limit=12000)
+            for ch in _markdown_chunks(txt):
+                faqs.append({"q": ch[:80].strip(), "a": ch, "source": p.name})
             continue
 
         if p.suffix.lower() != ".csv":

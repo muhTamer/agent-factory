@@ -103,14 +103,178 @@ class RuntimeSpine:
                 if d not in ctx["docs"]:
                     ctx["docs"].append(d)
 
-        # Safe fallback: if user didn’t configure anything, include refunds policy if present
-        # (keeps it generic enough for your POC; you can remove once env/config is set)
-        if not ctx["policies"]:
-            default_refunds = "data/refunds_policy.yaml"
-            if os.path.exists(default_refunds):
-                ctx["policies"].append(default_refunds)
+    # -------------------------
+    # -------------------------
+    # AOP slot propagation
+    # -------------------------
+    @staticmethod
+    def _accumulate_aop_slots(aop_resp: Dict[str, Any], ctx: Dict[str, Any]) -> None:
+        """Extract slots from AOP subtask results and carry them forward.
+
+        When AOP handles a multi-intent query, action subtasks executed by
+        workflow agents may produce slot data (order_id, amount, etc.).
+        This data must be accumulated in the thread context so that
+        subsequent turns (e.g. user says "initiate the refund") don't
+        re-ask for information already provided.
+        """
+        subtask_results = aop_resp.get("subtask_results")
+        if not isinstance(subtask_results, list):
+            return
+        accumulated = ctx.setdefault("_accumulated_slots", {})
+        for sr in subtask_results:
+            result = sr.get("result")
+            if not isinstance(result, dict):
+                continue
+            # Workflow agents return slots in their response
+            slots = result.get("slots")
+            if isinstance(slots, dict):
+                for k, v in slots.items():
+                    if v is not None:
+                        accumulated[k] = v
 
     # -------------------------
+    # Sequential AOP task helpers
+    # -------------------------
+    @staticmethod
+    def _match_aop_task_selection(query: str, pending_aop: Dict[str, Any]) -> Optional[int]:
+        """
+        Check if the user is selecting a pending AOP task.
+        Returns the subtask index (into the plan's subtask list) or None.
+        """
+        subtasks = pending_aop.get("subtasks", [])
+        # Build list of pending (unexecuted) indices
+        pending_indices = [i for i, s in enumerate(subtasks) if s.get("result") is None]
+        if not pending_indices:
+            return None
+
+        q = query.strip()
+        ql = q.lower()
+
+        # Strategy 1: Exact quick-reply match (numbered labels)
+        for menu_pos, orig_idx in enumerate(pending_indices):
+            desc = subtasks[orig_idx]["description"]
+            # Strip INFORMATIONAL:/ACTION: prefix for display matching
+            display = desc
+            for prefix in ("INFORMATIONAL: ", "ACTION: "):
+                if display.startswith(prefix):
+                    display = display[len(prefix) :]
+                    break
+            label = f"{menu_pos + 1}. {display[:60]}"
+            if q == label or q == desc or ql == label.lower() or ql == desc.lower():
+                return orig_idx
+
+        # Strategy 2: Numeric / ordinal selection ("1", "2", "first", "second")
+        _ORDINALS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5}
+        try:
+            num = int(q)
+            if 1 <= num <= len(pending_indices):
+                return pending_indices[num - 1]
+        except ValueError:
+            for word, idx in _ORDINALS.items():
+                if word in ql and 1 <= idx <= len(pending_indices):
+                    return pending_indices[idx - 1]
+
+        # Strategy 3: "yes" / "continue" / "next" → select the first pending task
+        _CONTINUE_PHRASES = {
+            "yes",
+            "yes please",
+            "sure",
+            "ok",
+            "okay",
+            "go ahead",
+            "continue",
+            "next",
+            "proceed",
+            "yes continue",
+            "yeah",
+            "yep",
+            "y",
+        }
+        if ql in _CONTINUE_PHRASES:
+            return pending_indices[0]
+
+        # Strategy 4: Check if query contains a significant substring of a pending subtask
+        for menu_pos, orig_idx in enumerate(pending_indices):
+            desc = subtasks[orig_idx]["description"].lower()
+            # Remove prefix for matching
+            for prefix in ("informational: ", "action: "):
+                if desc.startswith(prefix):
+                    desc = desc[len(prefix) :]
+                    break
+            # If user's query overlaps significantly with subtask description
+            q_words = set(ql.split())
+            desc_words = set(desc.split())
+            common = q_words & desc_words
+            # Require at least 2 meaningful words in common (skip very short words)
+            meaningful = {w for w in common if len(w) > 2}
+            if len(meaningful) >= 2:
+                return orig_idx
+
+        return None
+
+    @staticmethod
+    def _is_decline(query: str) -> bool:
+        """Check if the user is declining remaining tasks."""
+        _DECLINE_PHRASES = {
+            "no",
+            "no thanks",
+            "no thank you",
+            "nah",
+            "skip",
+            "that's all",
+            "thats all",
+            "i'm good",
+            "im good",
+            "nothing else",
+            "never mind",
+            "nevermind",
+            "done",
+            "that's it",
+            "thats it",
+            "all good",
+            "nope",
+            "no more",
+            "nothing more",
+            "not now",
+        }
+        return query.strip().lower() in _DECLINE_PHRASES
+
+    @staticmethod
+    def _build_task_menu_response(plan: Any, rid: str) -> Dict[str, Any]:
+        """Build a response presenting the AOP task menu to the user."""
+        pending = plan.pending_subtasks()
+        task_list = []
+        for i, st in enumerate(pending):
+            task_list.append(
+                {
+                    "index": i,
+                    "subtask": st.description,
+                    "agent_id": st.assigned_agent_id,
+                    "solvability_score": st.solvability_score,
+                }
+            )
+
+        return {
+            "text": "",  # Filled by voice rendering
+            "orchestration_pattern": "aop_task_menu",
+            "task_menu": task_list,
+            "plan_query": plan.query,
+            "completeness": {
+                "complete": plan.completeness.complete if plan.completeness else True,
+                "missing": plan.completeness.missing if plan.completeness else [],
+                "coverage_ratio": (plan.completeness.coverage_ratio if plan.completeness else 1.0),
+            },
+            "solvability": {
+                "assignments": plan.solvability.assignments if plan.solvability else {},
+                "assignment_scores": (
+                    {k: round(v, 4) for k, v in plan.solvability.assignment_scores.items()}
+                    if plan.solvability
+                    else {}
+                ),
+            },
+            "request_id": rid,
+        }
+
     # Guardrails stages
     # -------------------------
     def _guard_pre(self, query: str, context: dict) -> Tuple[bool, Any]:
@@ -206,13 +370,19 @@ class RuntimeSpine:
                     }
                 )
 
-                # Prefer agent-provided score ONLY if it's present and valid; otherwise use router score
+                # Score resolution:
+                # 1. Agent returned a positive score → use it (agent found a match).
+                # 2. Agent returned score=0.0 (no match) → fall back to 80% of the
+                #    router score so the router's intent is preserved and a high-
+                #    confidence primary isn't overridden by a workflow with any stub
+                #    positive score.
+                # 3. Agent returned no score key → use router score directly.
                 try:
-                    score = (
-                        float(res["score"])
-                        if isinstance(res, dict) and "score" in res
-                        else float(cand.score)
-                    )
+                    if isinstance(res, dict) and "score" in res:
+                        agent_score = float(res["score"])
+                        score = agent_score if agent_score > 0 else float(cand.score) * 0.8
+                    else:
+                        score = float(cand.score)
                 except Exception:
                     score = float(cand.score)
 
@@ -291,6 +461,136 @@ class RuntimeSpine:
             _effective_q = q  # May be expanded for AOP follow-ups
             ctx["original_query"] = q  # For post-guardrail checks
 
+            # 0️⃣ PENDING AOP PLAN — check if user is selecting a task
+            pending_aop = ctx.get("_pending_aop")
+            if pending_aop and self.aop_coordinator is not None:
+                from app.orchestration.aop_coordinator import AOPPlan
+
+                # If an agent is pinned (non-terminal), the user is following up
+                # on an in-progress subtask (e.g. answering a clarification question).
+                # Skip task selection — let sticky routing handle the follow-up.
+                _pinned_for_aop = ctx.get("pinned_agent_id")
+                _pinned_terminal = ctx.get("pinned_terminal")
+                if _pinned_for_aop and _pinned_terminal is False:
+                    pass  # Fall through to sticky routing (step 1️⃣)
+
+                elif (selected_idx := self._match_aop_task_selection(q, pending_aop)) is not None:
+                    # User selected a task → execute only that one
+                    aop_plan = AOPPlan.from_serializable(pending_aop)
+                    trace.add("aop_task_selected", index=selected_idx)
+
+                    aop_resp = self.aop_coordinator.execute_single_subtask(
+                        aop_plan, selected_idx, ctx, trace
+                    )
+                    aop_resp["request_id"] = rid
+
+                    # Propagate slots from the executed subtask
+                    executed_result = aop_resp.get("executed_subtask", {}).get("result")
+                    if isinstance(executed_result, dict):
+                        slots = executed_result.get("slots")
+                        if isinstance(slots, dict):
+                            accumulated = ctx.setdefault("_accumulated_slots", {})
+                            for k, v in slots.items():
+                                if v is not None:
+                                    accumulated[k] = v
+
+                    # Pin agent if subtask needs follow-up turns.
+                    # Some agents pin themselves via context mutation; only add
+                    # fallback pinning if they didn't.
+                    _exec_result = aop_resp.get("executed_subtask", {}).get("result") or {}
+                    if not ctx.get("pinned_agent_id") and isinstance(_exec_result, dict):
+                        _agent = aop_resp.get("executed_subtask", {}).get("agent_id")
+
+                        # RAG clarification → pin for follow-up answer
+                        if (
+                            _exec_result.get("rag_clarification")
+                            or _exec_result.get("rag_state") == "CLARIFY"
+                            or _exec_result.get("action") == "clarify"
+                        ):
+                            if _agent:
+                                ctx["pinned_agent_id"] = _agent
+                                ctx["pinned_agent_type"] = "rag_fsm"
+                                ctx["pinned_terminal"] = False
+                                trace.add("rag_pinned", agent_id=_agent)
+
+                        # Workflow non-terminal → pin for slot collection
+                        elif _exec_result.get("workflow_id") and not _exec_result.get(
+                            "terminal", False
+                        ):
+                            if _agent:
+                                ctx["pinned_agent_id"] = _agent
+                                ctx["pinned_agent_type"] = "workflow_runner"
+                                ctx["pinned_terminal"] = False
+                                trace.add(
+                                    "workflow_pinned_from_aop",
+                                    agent_id=_agent,
+                                    state=_exec_result.get("current_state"),
+                                )
+
+                    # Update the stored plan
+                    updated = aop_plan.to_serializable()
+                    remaining = aop_plan.pending_subtasks()
+
+                    if remaining:
+                        ctx["_pending_aop"] = updated
+                    else:
+                        ctx.pop("_pending_aop", None)
+                        trace.add("aop_plan_complete")
+
+                    # Voice render
+                    try:
+                        voice_thread = str(ctx.get("thread_id") or "default")
+                        vertical = ctx.get("domain") or ctx.get("vertical")
+                        chat = self.voice.render(
+                            user_query=q,
+                            thread_id=voice_thread,
+                            vertical=vertical,
+                            structured=aop_resp,
+                        )
+                        if isinstance(aop_resp, dict):
+                            aop_resp["chat"] = chat
+                            if isinstance(chat, dict) and chat.get("messages"):
+                                aop_resp["text"] = chat["messages"][0]
+                    except Exception as e:
+                        trace.add("voice_chat_failed", error=str(e))
+
+                    ok, post = self._guard_post(aop_resp, ctx)
+                    if not ok:
+                        trace.add("guard_post_block", reason=post.get("reason", ""))
+                        post["request_id"] = rid
+                        return post
+                    trace.add("guard_post_ok")
+                    return post
+
+                elif self._is_decline(q):
+                    # User declined remaining tasks
+                    ctx.pop("_pending_aop", None)
+                    trace.add("aop_plan_declined")
+
+                    decline_resp: Dict[str, Any] = {
+                        "text": "",
+                        "orchestration_pattern": "aop_plan_declined",
+                        "request_id": rid,
+                    }
+                    try:
+                        chat = self.voice.render(
+                            user_query=q,
+                            thread_id=str(ctx.get("thread_id") or "default"),
+                            vertical=ctx.get("domain") or ctx.get("vertical"),
+                            structured=decline_resp,
+                        )
+                        decline_resp["chat"] = chat
+                        if isinstance(chat, dict) and chat.get("messages"):
+                            decline_resp["text"] = chat["messages"][0]
+                    except Exception:
+                        decline_resp["text"] = "No problem! Let me know if you need anything else."
+                    return decline_resp
+
+                else:
+                    # Unrelated query — clear pending plan, fall through to normal routing
+                    ctx.pop("_pending_aop", None)
+                    trace.add("aop_plan_cleared_unrelated")
+
             # 1️⃣ ROUTE FIRST (with sticky workflow routing)
             pinned = ctx.get("pinned_agent_id")
             pinned_type = ctx.get("pinned_agent_type")
@@ -326,11 +626,15 @@ class RuntimeSpine:
                 if self.memory:
                     try:
                         _last_turn = self.memory.get_last_turn(thread_id)
+                        _aop_patterns = {
+                            "hierarchical_delegation",
+                            "aop_task_menu",
+                            "aop_task_result",
+                        }
                         if (
                             _last_turn
                             and isinstance(_last_turn.response, dict)
-                            and _last_turn.response.get("orchestration_pattern")
-                            == "hierarchical_delegation"
+                            and _last_turn.response.get("orchestration_pattern") in _aop_patterns
                             and len(q.split()) <= 4
                         ):
                             _prev = (
@@ -360,8 +664,30 @@ class RuntimeSpine:
                     trace.add("guard_pre_ok", intent="hierarchical_delegation")
 
                     print(f"[AOP] hierarchical delegation for: {q[:80]}")
-                    aop_resp = self.aop_coordinator.orchestrate(_effective_q, ctx, trace)
-                    aop_resp["request_id"] = rid
+
+                    # Plan first (decompose + solvability + completeness, NO execution)
+
+                    aop_plan = self.aop_coordinator.plan_only(_effective_q, ctx, trace)
+                    if aop_plan is None:
+                        return {
+                            "error": "Failed to plan subtasks.",
+                            "request_id": rid,
+                            "orchestration_pattern": "hierarchical_delegation",
+                        }
+
+                    if len(aop_plan.subtasks) <= 1:
+                        # Single subtask → execute immediately (unchanged behavior)
+                        aop_resp = self.aop_coordinator.orchestrate(_effective_q, ctx, trace)
+                        aop_resp["request_id"] = rid
+                        self._accumulate_aop_slots(aop_resp, ctx)
+                    else:
+                        # Multiple subtasks → store plan, present task menu
+                        ctx["_pending_aop"] = aop_plan.to_serializable()
+                        trace.add(
+                            "aop_plan_stored",
+                            subtask_count=len(aop_plan.subtasks),
+                        )
+                        aop_resp = self._build_task_menu_response(aop_plan, rid)
 
                     # Voice rendering — produce customer-friendly chat text
                     try:
@@ -550,6 +876,14 @@ class RuntimeSpine:
                 _slots = _res.get("slots")
                 if isinstance(_slots, dict):
                     _fsm_event["slots"] = {k: v for k, v in _slots.items() if v is not None}
+                    # Accumulate slots across agents for cross-turn handoff.
+                    # When agent A (e.g. router-intent) extracts customer_id and
+                    # agent B (e.g. workflow-refund-orch) needs it later, the
+                    # accumulated slots bridge the gap via THREAD_CTX.
+                    accumulated = ctx.setdefault("_accumulated_slots", {})
+                    for k, v in _slots.items():
+                        if v is not None:
+                            accumulated[k] = v
                 _missing = _res.get("missing_slots")
                 if _missing:
                     _fsm_event["missing_slots"] = _missing
@@ -591,6 +925,54 @@ class RuntimeSpine:
                 ctx.pop("pinned_agent_type", None)
                 ctx.pop("pinned_terminal", None)
                 trace.add("rag_unpinned")
+
+            # Detect transition from pinned → unpinned (covers both
+            # spine-detected unpin AND agent self-unpin via context mutation).
+            # If remaining AOP tasks exist, inject them into the response.
+            _was_rag_pinned = (
+                pinned and pinned_type in ("rag_fsm", "faq_rag") and pinned_terminal is False
+            )
+            _now_unpinned = not ctx.get("pinned_agent_id")
+            if (
+                _was_rag_pinned
+                and _now_unpinned
+                and isinstance(resp, dict)
+                and ctx.get("_pending_aop")
+            ):
+                _remaining_aop = ctx["_pending_aop"]
+                _remaining_subtasks = [
+                    {
+                        "index": i,
+                        "subtask": s["description"],
+                        "agent_id": s.get("assigned_agent_id"),
+                    }
+                    for i, s in enumerate(_remaining_aop.get("subtasks", []))
+                    if s.get("result") is None
+                ]
+                if _remaining_subtasks:
+                    resp["remaining_subtasks"] = _remaining_subtasks
+                    # Build quick_replies for remaining tasks directly
+                    # (no full voice rendering — preserve the agent's answer text)
+                    _qr = []
+                    for _rs in _remaining_subtasks:
+                        _desc = _rs["subtask"]
+                        for _pfx in ("INFORMATIONAL: ", "ACTION: "):
+                            if _desc.startswith(_pfx):
+                                _desc = _desc[len(_pfx) :]
+                                break
+                        _qr.append(f"{_rs['index'] + 1}. {_desc[:60]}")
+                    _qr.append("No thanks")
+                    if not resp.get("chat"):
+                        resp["chat"] = {"messages": [], "quick_replies": _qr}
+                    else:
+                        # Preserve the agent's answer-specific quick replies,
+                        # then append remaining-task options.
+                        _existing_qr = resp.get("chat", {}).get("quick_replies", [])
+                        resp.setdefault("chat", {})["quick_replies"] = _existing_qr + _qr
+                    trace.add(
+                        "aop_remaining_offered",
+                        count=len(_remaining_subtasks),
+                    )
 
             trace.add("response_ready", agent_id=resp.get("agent_id"), score=resp.get("score"))
 

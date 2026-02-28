@@ -288,7 +288,24 @@ class InferCapabilities:
             "  By default, DO NOT attach off_vertical documents to agents.\n"
             "  If there are NO on-vertical documents for a needed bucket, you may attach off_vertical docs,\n"
             "  but then set status='partial' and explain the mismatch in notes.\n"
-            "- If a policy doc exists and is on-vertical, share it across relevant agents.\n"
+            "- Policy documents (doc_type='policy') are INTERNAL process documents (eligibility rules, "
+            "compliance criteria, refund thresholds, KYC requirements). They tell agents what to do, "
+            "NOT what to show customers.\n"
+            "  - Internal agents (policy enforcement, compliance, guardrails) MUST receive policy documents.\n"
+            "  - Customer-facing agents (FAQ answering, general Q&A) must NOT receive policy documents.\n"
+            "    Only give them knowledge_base documents (FAQs, help articles, product guides).\n"
+            "- If a knowledge_base doc is on-vertical, share it with all agents that need it.\n"
+            "AOP ELIGIBILITY — aop_eligible field:\n"
+            "Each agent MUST include an 'aop_eligible' boolean field.\n"
+            "aop_eligible=true means the agent can be assigned user-facing subtasks by the orchestrator.\n"
+            "Set aop_eligible=true for:\n"
+            "  - Customer-facing FAQ/QA agents (answer user questions directly)\n"
+            "  - Primary workflow handlers (refund processing, account changes — end-to-end)\n"
+            "Set aop_eligible=false for:\n"
+            "  - Routing/classification agents (they dispatch, not handle)\n"
+            "  - Internal support agents (compliance checkers, policy lookup for other agents)\n"
+            "  - Tool operators (invoked by workflows, not directly by the orchestrator)\n"
+            "  - Guardrails agents\n\n"
             "Return STRICT JSON with this shape:\n"
             "{\n"
             '  "agents": [\n'
@@ -296,6 +313,7 @@ class InferCapabilities:
             '      "id": string,\n'
             '      "agent_kind": one of [rag, workflow, tool, router, qa, guardrails, other],\n'
             '      "description": string,\n'
+            '      "aop_eligible": boolean,\n'
             '      "status": one of [ready, partial, missing_docs],\n'
             '      "inputs": {\n'
             '        "knowledge_base": [doc_name...],\n'
@@ -407,11 +425,23 @@ class InferCapabilities:
                 "tools": typed["tool_spec"],
             }
 
+            # aop_eligible: declarative flag from LLM (default True for
+            # backward compat — the spec_builder/aop_coordinator apply
+            # their own fallback logic when the flag is absent).
+            aop_eligible = a.get("aop_eligible")
+            if isinstance(aop_eligible, bool):
+                pass  # keep as-is
+            elif isinstance(aop_eligible, str):
+                aop_eligible = aop_eligible.lower() in ("true", "1", "yes")
+            else:
+                aop_eligible = None  # unknown — let downstream decide
+
             agents.append(
                 {
                     "id": agent_id,
                     "agent_kind": agent_kind,
                     "description": description,
+                    "aop_eligible": aop_eligible,
                     "status": status,
                     # Keep both for transparency/debugging
                     "inputs_typed": typed,
@@ -458,6 +488,7 @@ class InferCapabilities:
                 "id": "customer_service_assistant",
                 "agent_kind": "rag" if kb else "other",
                 "description": "Generic customer service assistant grounded in available documents.",
+                "aop_eligible": True,  # generic fallback is always eligible
                 "status": "partial" if documents else "missing_docs",
                 "inputs_typed": {
                     "knowledge_base": kb,

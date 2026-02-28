@@ -196,3 +196,89 @@ def test_custom_alpha_beta(tmp_path):
     for score in result.scores:
         # With beta=0, historical_performance shouldn't affect combined
         assert abs(score.combined_score - score.textual_similarity) < 1e-6
+
+
+# ── Intent-aware penalty tests ──────────────────────────────────
+
+
+def _catalog_with_intent():
+    """Catalog where refund_agent has requires_user_context=True (action agent)
+    and faq_agent does not (knowledge agent)."""
+    return {
+        "refund_agent": {
+            "id": "refund_agent",
+            "type": "workflow_runner",
+            "description": "Handles refund requests and processes returns",
+            "capabilities": ["refund_processing", "return_handling"],
+            "requires_user_context": True,
+        },
+        "faq_agent": {
+            "id": "faq_agent",
+            "type": "faq_rag",
+            "description": "Answers customer FAQs about refund policies and products",
+            "capabilities": ["faq_answering", "policy_lookup", "refund_info"],
+            "requires_user_context": False,
+        },
+    }
+
+
+def test_informational_label_penalises_action_agent(tmp_path):
+    """INFORMATIONAL: prefix should penalise action agents (requires_user_context=True)."""
+    store = _make_store(tmp_path)
+    est = SolvabilityEstimator(store)
+    catalog = _catalog_with_intent()
+
+    subtask = "INFORMATIONAL: what is the refund policy for transfers over EUR 500?"
+    result = est.estimate([subtask], catalog)
+
+    refund_score = next(s for s in result.scores if s.agent_id == "refund_agent")
+    faq_score = next(s for s in result.scores if s.agent_id == "faq_agent")
+
+    # The action agent should be penalised, knowledge agent preferred
+    assert faq_score.combined_score > refund_score.combined_score
+    assert "penalty" in refund_score.reasoning
+    assert "penalty" not in faq_score.reasoning
+
+
+def test_action_label_penalises_knowledge_agent(tmp_path):
+    """ACTION: prefix should penalise knowledge agents (requires_user_context=False)."""
+    store = _make_store(tmp_path)
+    est = SolvabilityEstimator(store)
+    catalog = _catalog_with_intent()
+
+    subtask = "ACTION: initiate refund for order #4821 — EUR 120 charged twice"
+    result = est.estimate([subtask], catalog)
+
+    refund_score = next(s for s in result.scores if s.agent_id == "refund_agent")
+    faq_score = next(s for s in result.scores if s.agent_id == "faq_agent")
+
+    # The knowledge agent should be penalised, action agent preferred
+    assert refund_score.combined_score > faq_score.combined_score
+    assert "penalty" in faq_score.reasoning
+    assert "penalty" not in refund_score.reasoning
+
+
+def test_no_label_no_penalty(tmp_path):
+    """Subtask without INFORMATIONAL:/ACTION: prefix should apply no penalty."""
+    store = _make_store(tmp_path)
+    est = SolvabilityEstimator(store)
+    catalog = _catalog_with_intent()
+
+    subtask = "refund for order #4821"
+    result = est.estimate([subtask], catalog)
+
+    for score in result.scores:
+        assert "penalty" not in score.reasoning
+
+
+def test_informational_with_amount_routes_to_faq(tmp_path):
+    """An INFORMATIONAL question mentioning EUR amounts should still go to FAQ,
+    not the workflow agent — this was the bug with the old regex approach."""
+    store = _make_store(tmp_path)
+    est = SolvabilityEstimator(store)
+    catalog = _catalog_with_intent()
+
+    subtask = "INFORMATIONAL: what is the fee for transfers over EUR 500?"
+    result = est.estimate([subtask], catalog)
+
+    assert result.assignments[subtask] == "faq_agent"

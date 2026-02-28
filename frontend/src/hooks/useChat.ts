@@ -8,6 +8,7 @@ import {
   extractDisplayText,
   extractWorkflowSnapshot,
   extractAopSnapshot,
+  extractAopTaskMenu,
 } from "@/lib/classify";
 import { getAgentDisplay } from "@/lib/constants";
 import type { ChatMessage } from "@/types/chat";
@@ -55,6 +56,7 @@ export function useChat() {
         const displayText = extractDisplayText(data);
         const workflowState = extractWorkflowSnapshot(data);
         const aopData = extractAopSnapshot(data);
+        const aopTaskMenu = extractAopTaskMenu(data);
 
         // Agent name resolution
         const agentId = data.agent_id || "";
@@ -75,6 +77,7 @@ export function useChat() {
           latencyMs,
           workflowState,
           aopData,
+          aopTaskMenu,
         };
         store.addMessage(agentMsg);
 

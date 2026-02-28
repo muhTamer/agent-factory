@@ -44,7 +44,7 @@ class ConciergeAgent:
             return self._generate_placeholders()
 
         if event_type == "user_action" and action in {"approve_deploy_dry", "approve_deploy_live"}:
-            return self._approve_deploy(action)
+            return self._approve_deploy(action, doc_visibility=event.get("doc_visibility"))
 
         return self._help_message()
 
@@ -109,7 +109,9 @@ class ConciergeAgent:
     # -----------------------------
     # Approve deployment (safe gate)
     # -----------------------------
-    def _approve_deploy(self, action: str) -> Dict[str, Any]:
+    def _approve_deploy(
+        self, action: str, doc_visibility: Dict[str, str] | None = None
+    ) -> Dict[str, Any]:
         mode = "dry" if "dry" in action else "live"
 
         # 1) ensure we have a plan (robust across Streamlit reruns)
@@ -135,6 +137,7 @@ class ConciergeAgent:
             data_dir=str(self.data_dir),
             dry_run=(mode == "dry"),
             llm_client=self.llm_client,  # enables LLM blueprint creation
+            doc_visibility=doc_visibility,
         )
 
         # 2.5) Pre-generate agents NOW (so uvicorn doesn't need to)
@@ -271,6 +274,7 @@ class ConciergeAgent:
 
             # agent_kind comes from infer; fallback to type/id if missing
             kind = str(a.get("agent_kind") or a.get("type") or "other").lower()
+            a["agent_kind"] = kind
 
             # icon
             a.setdefault("icon", kind_to_icon.get(kind, "🤖"))

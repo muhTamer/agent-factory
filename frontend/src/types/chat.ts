@@ -9,6 +9,8 @@ export type ResponseKind =
   | "workflow_progress"
   | "workflow_complete"
   | "hierarchical"
+  | "aop_task_menu"
+  | "aop_task_result"
   | "guardrails_block"
   | "error";
 
@@ -37,6 +39,16 @@ export interface AopSnapshot {
   };
 }
 
+export interface AopTaskMenuSnapshot {
+  taskMenu: Array<{
+    index: number;
+    subtask: string;
+    agentId: string | null;
+    solvabilityScore: number;
+  }>;
+  planQuery: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -51,4 +63,5 @@ export interface ChatMessage {
   latencyMs?: number;
   workflowState?: WorkflowSnapshot;
   aopData?: AopSnapshot;
+  aopTaskMenu?: AopTaskMenuSnapshot;
 }

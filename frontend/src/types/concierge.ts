@@ -9,6 +9,7 @@ export type WizardStep =
 
 export interface PlanAgent {
   id: string;
+  agent_kind?: string;
   display_name: string;
   icon: string;
   status: "ready" | "partial" | "missing_docs";

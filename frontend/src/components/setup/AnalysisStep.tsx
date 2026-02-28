@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useSetupStore } from "@/store/setupStore";
 import { deployFactory } from "@/lib/concierge-api";
 import { AgentCard } from "./AgentCard";
@@ -17,12 +18,25 @@ export function AnalysisStep() {
   const setStep = useSetupStore((s) => s.setStep);
   const setError = useSetupStore((s) => s.setError);
   const isQuickstart = useSetupStore((s) => s.isQuickstart);
+  const docVisibility = useSetupStore((s) => s.docVisibility);
+  const initDocVisibilityDefaults = useSetupStore((s) => s.initDocVisibilityDefaults);
+
+  // Ensure visibility defaults are set for all plan-detected docs
+  // (covers quickstart flow where UploadStep is skipped)
+  useEffect(() => {
+    if (plan) {
+      const allDocs = plan.agents.flatMap((a) => a.docs_detected);
+      if (allDocs.length > 0) {
+        initDocVisibilityDefaults(allDocs);
+      }
+    }
+  }, [plan]);
 
   async function handleDeploy() {
     setError(null);
     setDeploying(true);
     try {
-      const res = await deployFactory("dry");
+      const res = await deployFactory("dry", docVisibility);
       setDeployment(res.deployment_request);
       setDeployMessage(res.text);
       setStep("deploy");
@@ -64,7 +78,7 @@ export function AnalysisStep() {
       {/* Agent cards */}
       <div className="grid gap-4 md:grid-cols-2">
         {plan.agents.map((agent) => (
-          <AgentCard key={agent.id} agent={agent} />
+          <AgentCard key={agent.id} agent={agent} docVisibility={docVisibility} />
         ))}
       </div>
 

@@ -16,6 +16,9 @@ import {
   Clock,
   Layers,
   ChevronRight,
+  ChevronDown,
+  Info,
+  ListChecks,
 } from "lucide-react";
 import { useChatStore } from "@/store/chatStore";
 
@@ -116,49 +119,61 @@ export function MessageBubble({ message }: Props) {
 
           {/* Agent ID + Score bar (for FAQ/answer responses) */}
           {kind === "faq" && (agentId || score != null) && (
-            <div className="mt-2 flex items-center gap-3 rounded-md bg-white/60 px-2.5 py-1.5 text-xs">
-              {agentId && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-700">
-                  <Layers size={10} />
-                  {agentId}
-                </span>
-              )}
-              {score != null && (
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  Score:
-                  <span className="font-mono font-medium">
-                    {Number(score).toFixed(3)}
+            <details className="mt-2">
+              <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                <Layers size={12} />
+                Agent &amp; Score
+              </summary>
+              <div className="mt-1 flex items-center gap-3 rounded-md bg-white/60 px-2.5 py-1.5 text-xs">
+                {agentId && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-700">
+                    <Layers size={10} />
+                    {agentId}
                   </span>
-                  <div className="h-1.5 w-16 rounded-full bg-slate-200">
-                    <div
-                      className={`h-1.5 rounded-full ${Number(score) >= 0.8 ? "bg-green-500" : Number(score) >= 0.5 ? "bg-amber-500" : "bg-red-400"}`}
-                      style={{ width: `${Math.round(Number(score) * 100)}%` }}
-                    />
-                  </div>
-                </span>
-              )}
-            </div>
+                )}
+                {score != null && (
+                  <span className="flex items-center gap-1.5 text-slate-600">
+                    Retrieval:
+                    <span className="font-mono font-medium">
+                      {Number(score).toFixed(3)}
+                    </span>
+                    <div className="h-1.5 w-16 rounded-full bg-slate-200">
+                      <div
+                        className={`h-1.5 rounded-full ${Number(score) >= 0.8 ? "bg-green-500" : Number(score) >= 0.5 ? "bg-amber-500" : "bg-red-400"}`}
+                        style={{ width: `${Math.round(Number(score) * 100)}%` }}
+                      />
+                    </div>
+                  </span>
+                )}
+              </div>
+            </details>
           )}
 
           {/* Delegation details */}
           {kind === "delegate" && delegateInfo && (
-            <div className="mt-2 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs">
-              <div className="flex items-center gap-2">
-                <ChevronRight size={12} className="text-orange-500" />
-                <span className="text-slate-600">Suggested handler:</span>
-                <span className="rounded bg-orange-200 px-1.5 py-0.5 font-medium text-orange-800">
-                  {delegateInfo.suggested_type || "unknown"}
-                </span>
-              </div>
-              {delegateInfo.suggested_id && (
-                <p className="mt-1 text-slate-500">
-                  Target:{" "}
-                  <span className="font-medium text-slate-700">
-                    {delegateInfo.suggested_id}
+            <details className="mt-2">
+              <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                <ArrowRight size={12} />
+                Delegation Details
+              </summary>
+              <div className="mt-1 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <ChevronRight size={12} className="text-orange-500" />
+                  <span className="text-slate-600">Suggested handler:</span>
+                  <span className="rounded bg-orange-200 px-1.5 py-0.5 font-medium text-orange-800">
+                    {delegateInfo.suggested_type || "unknown"}
                   </span>
-                </p>
-              )}
-            </div>
+                </div>
+                {delegateInfo.suggested_id && (
+                  <p className="mt-1 text-slate-500">
+                    Target:{" "}
+                    <span className="font-medium text-slate-700">
+                      {delegateInfo.suggested_id}
+                    </span>
+                  </p>
+                )}
+              </div>
+            </details>
           )}
 
           {/* Solvability analysis (for clarify/delegate responses) */}
@@ -195,13 +210,19 @@ export function MessageBubble({ message }: Props) {
           {/* Workflow progress */}
           {(kind === "workflow_progress" || kind === "workflow_complete") &&
             message.workflowState && (
-              <>
-                <WorkflowProgressBar snapshot={message.workflowState} />
-                <SlotSummary
-                  slots={message.workflowState.slots}
-                  missingSlots={message.workflowState.missingSlots}
-                />
-              </>
+              <details className="mt-2">
+                <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                  <ListChecks size={12} />
+                  Workflow Progress
+                </summary>
+                <div className="mt-1">
+                  <WorkflowProgressBar snapshot={message.workflowState} />
+                  <SlotSummary
+                    slots={message.workflowState.slots}
+                    missingSlots={message.workflowState.missingSlots}
+                  />
+                </div>
+              </details>
             )}
 
           {/* Workflow mapper (expandable) */}
@@ -261,8 +282,85 @@ export function MessageBubble({ message }: Props) {
 
           {/* Hierarchical/AOP results */}
           {kind === "hierarchical" && message.aopData && (
-            <HierarchicalResults data={message.aopData} />
+            <details className="mt-2">
+              <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                <Brain size={12} />
+                Orchestration Results
+              </summary>
+              <div className="mt-1">
+                <HierarchicalResults data={message.aopData} />
+              </div>
+            </details>
           )}
+
+          {/* AOP Task Menu — numbered task list for sequential execution */}
+          {kind === "aop_task_menu" && message.aopTaskMenu && (
+            <details className="mt-2" open>
+              <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                <Layers size={12} />
+                Task Plan ({message.aopTaskMenu.taskMenu.length} tasks)
+              </summary>
+              <div className="mt-1 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                {message.aopTaskMenu.taskMenu.map((t, i) => {
+                  const display_desc = t.subtask
+                    .replace(/^INFORMATIONAL:\s*/i, "")
+                    .replace(/^ACTION:\s*/i, "")
+                    .replace(/^\[INFORMATIONAL\]\s*/i, "")
+                    .replace(/^\[ACTION\]\s*/i, "");
+                  const agentDisplay = t.agentId ? getAgentDisplay(t.agentId) : null;
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 py-1.5 text-sm text-slate-700"
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-xs font-bold text-blue-700">
+                        {i + 1}
+                      </span>
+                      <span className="flex-1 truncate">{display_desc}</span>
+                      {agentDisplay && (
+                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                          {agentDisplay.label}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
+          )}
+
+          {/* Remaining AOP tasks (shown for any response with remaining_subtasks) */}
+          {Array.isArray(raw?.remaining_subtasks) &&
+            raw!.remaining_subtasks.length > 0 && (
+              <details className="mt-2" open>
+                <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                  <ListChecks size={12} />
+                  Remaining tasks ({raw!.remaining_subtasks.length})
+                </summary>
+                <div className="mt-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                  {raw!.remaining_subtasks.map(
+                    (
+                      r: { index: number; subtask: string; agent_id: string | null },
+                      i: number
+                    ) => {
+                      const desc = r.subtask
+                        .replace(/^INFORMATIONAL:\s*/i, "")
+                        .replace(/^ACTION:\s*/i, "")
+                        .replace(/^\[INFORMATIONAL\]\s*/i, "")
+                        .replace(/^\[ACTION\]\s*/i, "");
+                      return (
+                        <div
+                          key={i}
+                          className="ml-2 mt-1 text-xs text-slate-600"
+                        >
+                          {i + 1}. {desc}
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              </details>
+            )}
 
         </div>
 
@@ -292,7 +390,7 @@ export function MessageBubble({ message }: Props) {
                 <thead>
                   <tr className="border-b border-slate-100 text-left text-[10px] text-slate-400">
                     <th className="pb-1 pr-2 font-medium">Agent</th>
-                    <th className="pb-1 pr-2 font-medium">Score</th>
+                    <th className="pb-1 pr-2 font-medium">Routing score</th>
                     <th className="pb-1 font-medium">Reason</th>
                   </tr>
                 </thead>
@@ -334,19 +432,27 @@ export function MessageBubble({ message }: Props) {
         )}
 
         {/* Metadata row */}
-        <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
-          {message.latencyMs && (
-            <span>{(message.latencyMs / 1000).toFixed(1)}s</span>
-          )}
-          {kind !== "faq" && raw?.score != null && (
-            <span>Score: {Number(raw.score).toFixed(2)}</span>
-          )}
-          {raw?.rag_state && (
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px]">
-              {raw.rag_state}
-            </span>
-          )}
-        </div>
+        {(message.latencyMs || (kind !== "faq" && raw?.score != null) || raw?.rag_state) && (
+          <details className="mt-1 ml-1">
+            <summary className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600">
+              <Info size={10} />
+              Metadata
+            </summary>
+            <div className="mt-0.5 flex items-center gap-3 text-xs text-slate-400">
+              {message.latencyMs && (
+                <span>{(message.latencyMs / 1000).toFixed(1)}s</span>
+              )}
+              {kind !== "faq" && raw?.score != null && (
+                <span>Match: {Number(raw.score).toFixed(2)}</span>
+              )}
+              {raw?.rag_state && (
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px]">
+                  {raw.rag_state}
+                </span>
+              )}
+            </div>
+          </details>
+        )}
       </div>
     </div>
   );

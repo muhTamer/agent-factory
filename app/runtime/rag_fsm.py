@@ -777,9 +777,16 @@ class RAGFiniteStateMachine:
         """Call LLM to synthesize a grounded answer from retrieved passages."""
         system = (
             "You are a helpful customer service assistant. "
-            "Answer the user's question using ONLY the provided passages. "
+            "Answer the user's question using ONLY the exact information stated in "
+            "the provided passages. Do NOT infer, generalize, or add any information "
+            "that is not explicitly written in the passages. "
+            "If the passages only cover specific products or scenarios, say what "
+            "specific information is available — do NOT synthesize a general policy "
+            "from product-specific mentions. "
+            "If the passages do not directly answer the question, say: "
+            "\"I don't have specific information about that in our documentation. "
+            'I can help with [mention what the passages do cover]." '
             "Cite passages by [1], [2], etc. "
-            "If the passages don't contain enough info, say so honestly. "
             'Return JSON: {"answer": "...", "cited_passages": [1, 2]}'
         )
         context = "\n\n".join(

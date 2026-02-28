@@ -55,6 +55,10 @@ interface SetupState {
   isQuickstart: boolean;
   setQuickstart: (v: boolean) => void;
 
+  docVisibility: Record<string, "customer_facing" | "internal">;
+  setDocVisibility: (v: Record<string, "customer_facing" | "internal">) => void;
+  initDocVisibilityDefaults: (filenames: string[]) => void;
+
   reset: () => void;
 }
 
@@ -75,6 +79,7 @@ const INITIAL: Pick<
   | "isStartingRuntime"
   | "error"
   | "isQuickstart"
+  | "docVisibility"
 > = {
   currentStep: "welcome",
   vertical: "retail",
@@ -91,6 +96,7 @@ const INITIAL: Pick<
   isStartingRuntime: false,
   error: null,
   isQuickstart: false,
+  docVisibility: {},
 };
 
 export const useSetupStore = create<SetupState>((set) => ({
@@ -126,6 +132,18 @@ export const useSetupStore = create<SetupState>((set) => ({
 
   setError: (e) => set({ error: e }),
   setQuickstart: (v) => set({ isQuickstart: v }),
+
+  setDocVisibility: (v) => set({ docVisibility: v }),
+  initDocVisibilityDefaults: (filenames) =>
+    set((s) => {
+      const next: Record<string, "customer_facing" | "internal"> = { ...s.docVisibility };
+      for (const name of filenames) {
+        if (next[name]) continue; // keep existing user choice
+        const ext = name.split(".").pop()?.toLowerCase() ?? "";
+        next[name] = ext === "yaml" || ext === "yml" ? "internal" : "customer_facing";
+      }
+      return { docVisibility: next };
+    }),
 
   reset: () => set(INITIAL),
 }));

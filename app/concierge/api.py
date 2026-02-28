@@ -14,6 +14,7 @@ import requests as http_requests
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Dict, Optional
 
 import app.llm_client as llm_client
 from app.concierge.concierge_agent import ConciergeAgent
@@ -93,6 +94,7 @@ class QuickstartRequest(BaseModel):
 
 class DeployRequest(BaseModel):
     mode: str = "dry"
+    doc_visibility: Optional[Dict[str, str]] = None
 
 
 class RuntimeRequest(BaseModel):
@@ -180,6 +182,7 @@ def deploy_factory(req: DeployRequest):
         {
             "type": "user_action",
             "action": action,
+            "doc_visibility": req.doc_visibility,  # None → backend applies extension-based defaults
         }
     )
     return result

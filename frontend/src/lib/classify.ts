@@ -1,9 +1,15 @@
 import type { ChatResponse } from "@/types/api";
-import type { ResponseKind, WorkflowSnapshot, AopSnapshot } from "@/types/chat";
+import type { ResponseKind, WorkflowSnapshot, AopSnapshot, AopTaskMenuSnapshot } from "@/types/chat";
 
 export function classifyResponse(data: ChatResponse): ResponseKind {
   if (data.error) {
     return data.reason ? "guardrails_block" : "error";
+  }
+  if (data.orchestration_pattern === "aop_task_menu") {
+    return "aop_task_menu";
+  }
+  if (data.orchestration_pattern === "aop_task_result") {
+    return "aop_task_result";
   }
   if (data.orchestration_pattern === "hierarchical_delegation") {
     return "hierarchical";
@@ -59,6 +65,25 @@ export function extractWorkflowSnapshot(
     slots: data.slots || {},
     missingSlots: data.missing_slots,
     allStates: historyStates,
+  };
+}
+
+export function extractAopTaskMenu(
+  data: ChatResponse
+): AopTaskMenuSnapshot | undefined {
+  if (data.orchestration_pattern !== "aop_task_menu") return undefined;
+  if (!Array.isArray(data.task_menu)) return undefined;
+
+  return {
+    taskMenu: data.task_menu.map(
+      (t: { index: number; subtask: string; agent_id: string | null; solvability_score: number }) => ({
+        index: t.index,
+        subtask: t.subtask,
+        agentId: t.agent_id,
+        solvabilityScore: t.solvability_score,
+      })
+    ),
+    planQuery: data.plan_query || "",
   };
 }
 

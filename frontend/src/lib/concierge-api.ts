@@ -69,12 +69,13 @@ export async function generateTemplates(): Promise<AnalysisResponse> {
 }
 
 export async function deployFactory(
-  mode: "dry" | "live" = "dry"
+  mode: "dry" | "live" = "dry",
+  docVisibility?: Record<string, "customer_facing" | "internal">
 ): Promise<DeployResponse> {
   const res = await fetch(`${CONCIERGE_API}/concierge/deploy`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode }),
+    body: JSON.stringify({ mode, doc_visibility: docVisibility ?? null }),
   });
   if (!res.ok) throw new Error(`Deploy failed: ${res.status}`);
   return res.json();
