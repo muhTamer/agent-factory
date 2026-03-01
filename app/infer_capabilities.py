@@ -259,6 +259,7 @@ class InferCapabilities:
             ],
             model=self.model,
             temperature=1.0,
+            timeout=120,
         )
 
     # -----------------------------
@@ -357,6 +358,7 @@ class InferCapabilities:
             ],
             model=self.model,
             temperature=1.0,
+            timeout=120,
         )
 
     def _doc_snippet_for_planning(self, d: Dict[str, Any], max_chars: int = 600) -> str:
@@ -547,4 +549,5 @@ class InferCapabilities:
             ],
             model=self.model,
             temperature=1.0,
+            timeout=120,
         )

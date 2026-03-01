@@ -363,6 +363,7 @@ class BlueprintCreatorAgent:
                 {"role": "user", "content": json.dumps(user_payload)},
             ],
             model=self.model,  # always gpt-5-mini
+            timeout=120,
         )
 
     # -------------------------
