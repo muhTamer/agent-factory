@@ -18,14 +18,17 @@ def get_client():
     """Return an OpenAI client object (Azure or regular)."""
     endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     api_key = os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
     if endpoint and api_key:
         # Azure mode
         api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
-        return AzureOpenAI(azure_endpoint=endpoint, api_key=api_key, api_version=api_version)
+        return AzureOpenAI(
+            azure_endpoint=endpoint, api_key=api_key, api_version=api_version, timeout=timeout
+        )
     elif api_key:
         # Regular OpenAI mode
         base_url = os.getenv("OPENAI_BASE_URL")
-        return OpenAI(api_key=api_key, base_url=base_url)
+        return OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
     else:
         raise RuntimeError("No OpenAI or Azure OpenAI credentials found.")
 

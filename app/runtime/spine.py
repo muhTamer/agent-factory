@@ -587,9 +587,10 @@ class RuntimeSpine:
                     return decline_resp
 
                 else:
-                    # Unrelated query — clear pending plan, fall through to normal routing
-                    ctx.pop("_pending_aop", None)
-                    trace.add("aop_plan_cleared_unrelated")
+                    # Query doesn't match a pending task or decline — keep the
+                    # plan alive (user may be following up on a just-answered
+                    # subtask) and fall through to normal routing.
+                    trace.add("aop_plan_preserved_followup")
 
             # 1️⃣ ROUTE FIRST (with sticky workflow routing)
             pinned = ctx.get("pinned_agent_id")
@@ -972,6 +973,44 @@ class RuntimeSpine:
                     trace.add(
                         "aop_remaining_offered",
                         count=len(_remaining_subtasks),
+                    )
+
+            # Also inject remaining tasks after ANY normal-routing response
+            # (not just pinned→unpinned RAG) when _pending_aop is still alive.
+            if (
+                isinstance(resp, dict)
+                and not resp.get("remaining_subtasks")
+                and ctx.get("_pending_aop")
+            ):
+                _remaining_aop2 = ctx["_pending_aop"]
+                _remaining_subtasks2 = [
+                    {
+                        "index": i,
+                        "subtask": s["description"],
+                        "agent_id": s.get("assigned_agent_id"),
+                    }
+                    for i, s in enumerate(_remaining_aop2.get("subtasks", []))
+                    if s.get("result") is None
+                ]
+                if _remaining_subtasks2:
+                    resp["remaining_subtasks"] = _remaining_subtasks2
+                    _qr2 = []
+                    for _rs2 in _remaining_subtasks2:
+                        _desc2 = _rs2["subtask"]
+                        for _pfx2 in ("INFORMATIONAL: ", "ACTION: "):
+                            if _desc2.startswith(_pfx2):
+                                _desc2 = _desc2[len(_pfx2) :]
+                                break
+                        _qr2.append(f"{_rs2['index'] + 1}. {_desc2[:60]}")
+                    _qr2.append("No thanks")
+                    if not resp.get("chat"):
+                        resp["chat"] = {"messages": [], "quick_replies": _qr2}
+                    else:
+                        _existing_qr2 = resp.get("chat", {}).get("quick_replies", [])
+                        resp.setdefault("chat", {})["quick_replies"] = _existing_qr2 + _qr2
+                    trace.add(
+                        "aop_remaining_offered",
+                        count=len(_remaining_subtasks2),
                     )
 
             trace.add("response_ready", agent_id=resp.get("agent_id"), score=resp.get("score"))

@@ -593,8 +593,12 @@ class RAGFiniteStateMachine:
             and len(top_hits) >= self.config.ambiguity_min_hits
             and (solv is None or solv.confidence < self.config.ambiguity_confidence_ceiling)
         ):
-            flatness = self._score_flatness(top_hits)
-            diversity = self._topic_diversity(query, top_hits)
+            # Use only the top ambiguity_min_hits entries for flatness
+            # and diversity — we care whether the *best* matches are
+            # ambiguously close, not whether all top-k are flat.
+            _ambig_subset = top_hits[: self.config.ambiguity_min_hits]
+            flatness = self._score_flatness(_ambig_subset)
+            diversity = self._topic_diversity(query, _ambig_subset)
             if (
                 flatness > self.config.ambiguity_score_flatness_threshold
                 and diversity > self.config.ambiguity_topic_diversity_threshold
