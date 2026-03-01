@@ -68,6 +68,7 @@ def detect_signals_llm(filenames: list[str]) -> dict:
             {"role": "user", "content": user},
         ],
         model="gpt-5-mini",  # or read from env / args
+        timeout=120,
     )
 
 

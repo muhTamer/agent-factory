@@ -33,20 +33,27 @@ def get_client():
         raise RuntimeError("No OpenAI or Azure OpenAI credentials found.")
 
 
-def chat_json(messages, model=None, temperature=1.0):
+def chat_json(messages, model=None, temperature=1.0, timeout=None):
     """
     Send a chat completion request and expect JSON response.
     Returns a Python dict.
+
+    ``timeout`` overrides the client-level default for this single call
+    (useful for heavy generation steps like blueprint planning).
     """
     client = get_client()
     deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT") or model or "gpt-5-mini"
 
-    response = client.chat.completions.create(
+    create_kwargs = dict(
         model=deployment,
         messages=messages,
         temperature=temperature,
         response_format={"type": "json_object"},
     )
+    if timeout is not None:
+        create_kwargs["timeout"] = timeout
+
+    response = client.chat.completions.create(**create_kwargs)
     msg = response.choices[0].message.content
     try:
         return json.loads(msg) if msg else {}
