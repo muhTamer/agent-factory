@@ -1003,14 +1003,16 @@ class RuntimeSpine:
                     resp["remaining_subtasks"] = _remaining_subtasks
                     # Build quick_replies for remaining tasks directly
                     # (no full voice rendering — preserve the agent's answer text)
+                    # Use sequential menu-position numbering (1, 2, …) so the
+                    # labels match _match_aop_task_selection's expectations.
                     _qr = []
-                    for _rs in _remaining_subtasks:
+                    for _menu_pos, _rs in enumerate(_remaining_subtasks):
                         _desc = _rs["subtask"]
                         for _pfx in ("INFORMATIONAL: ", "ACTION: "):
                             if _desc.startswith(_pfx):
                                 _desc = _desc[len(_pfx) :]
                                 break
-                        _qr.append(f"{_rs['index'] + 1}. {_desc[:60]}")
+                        _qr.append(f"{_menu_pos + 1}. {_desc[:60]}")
                     _qr.append("No thanks")
                     if not resp.get("chat"):
                         resp["chat"] = {"messages": [], "quick_replies": _qr}
@@ -1044,13 +1046,13 @@ class RuntimeSpine:
                 if _remaining_subtasks2:
                     resp["remaining_subtasks"] = _remaining_subtasks2
                     _qr2 = []
-                    for _rs2 in _remaining_subtasks2:
+                    for _menu_pos2, _rs2 in enumerate(_remaining_subtasks2):
                         _desc2 = _rs2["subtask"]
                         for _pfx2 in ("INFORMATIONAL: ", "ACTION: "):
                             if _desc2.startswith(_pfx2):
                                 _desc2 = _desc2[len(_pfx2) :]
                                 break
-                        _qr2.append(f"{_rs2['index'] + 1}. {_desc2[:60]}")
+                        _qr2.append(f"{_menu_pos2 + 1}. {_desc2[:60]}")
                     _qr2.append("No thanks")
                     if not resp.get("chat"):
                         resp["chat"] = {"messages": [], "quick_replies": _qr2}
