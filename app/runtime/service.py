@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from pathlib import Path
 
@@ -16,7 +17,8 @@ from app.runtime.spine import RuntimeSpine
 from app.runtime.routing import DefaultRouter
 from app.runtime.router_adapter import LLMRouterAdapter
 from app.runtime.policy_pack import PolicyPack
-from app.runtime.policy_guardrails import PolicyGuardrails
+from app.runtime.governance_config import GovernanceConfig, GovernanceLevel
+from app.runtime.governance_guardrails import GovernanceAwareGuardrails
 from app.runtime.tools import DEFAULT_REGISTRY, build_registry
 from app.runtime.tools.registry import ToolRegistry
 from app.orchestration.performance_store import PerformanceStore
@@ -52,7 +54,16 @@ FACTORY_SPEC_PATH = REPO_ROOT / ".factory" / "factory_spec.json"
 TOOLS_CONFIG_PATH = REPO_ROOT / ".factory" / "tools_config.json"
 
 pack = PolicyPack.load(policy_path) if policy_path.exists() else PolicyPack()
-guardrails = PolicyGuardrails(pack)
+
+# RQ3: Governance level from env var (default: medium = current behaviour)
+_gov_level_str = os.getenv("AF_GOVERNANCE_LEVEL", "medium").lower()
+_gov_level = GovernanceLevel(_gov_level_str)
+_gov_config = GovernanceConfig.for_level(_gov_level)
+guardrails = GovernanceAwareGuardrails(pack, _gov_config)
+print(
+    f"[GOVERNANCE] level={_gov_level.value} pre_checks={_gov_config.pre_checks_enabled} "
+    f"hallucination={_gov_config.hallucination_detection} tone={_gov_config.tone_control_enabled}"
+)
 
 spine = RuntimeSpine(registry=registry, router=router, guardrails=guardrails)
 

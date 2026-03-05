@@ -56,6 +56,7 @@ class ScenarioResult:
     solvability_score: Optional[float] = None
     error: Optional[str] = None
     turns: List[TurnResult] = field(default_factory=list)
+    governance_events: List[Dict[str, Any]] = field(default_factory=list)
 
 
 # ── Harness ─────────────────────────────────────────────────────────
