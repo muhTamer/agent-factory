@@ -2,9 +2,15 @@
 """
 RQ3 Governance Comparison Runner
 
-Runs the same evaluation scenarios under LOW, MEDIUM, and HIGH governance,
-collects RQ3-specific metrics, and exports comparison tables for thesis
-figure generation.
+Runs governance-specific evaluation scenarios under LOW, MEDIUM, and HIGH
+governance levels, collects RQ3-specific metrics, and exports comparison
+tables for thesis figure generation.
+
+Key design: Each governance level uses IDENTICAL scenarios and agents —
+the ONLY variable is the GovernanceConfig.  Scenarios are deliberately
+designed so that some agent responses trigger guardrails (blocked phrases,
+hallucination patterns, internal jargon), producing measurable differences
+in task completion, autonomy, and intervention rates across levels.
 
 Usage:
     python -m evaluation.run_governance_comparison
@@ -20,6 +26,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 import tempfile
 import unittest.mock as _mock
@@ -37,6 +44,7 @@ from app.runtime.governance_config import GovernanceConfig, GovernanceLevel  # n
 from app.runtime.governance_guardrails import GovernanceAwareGuardrails  # noqa: E402
 from app.runtime.policy_pack import PolicyPack  # noqa: E402
 from app.runtime.registry import AgentRegistry  # noqa: E402
+from app.runtime.routing import Candidate, RoutePlan  # noqa: E402
 from app.runtime.spine import RuntimeSpine  # noqa: E402
 
 from evaluation.harness import EvaluationHarness  # noqa: E402
@@ -45,11 +53,231 @@ from evaluation.governance_metrics import (  # noqa: E402
     compute_comparison_table,
 )
 from evaluation.mock_factory import build_scenario_mock  # noqa: E402
-from evaluation.run_evaluation import ScenarioRouter, StubAgent  # noqa: E402
+from evaluation.run_evaluation import StubAgent  # noqa: E402
 
-# ── Scenarios paths ──────────────────────────────────────────────────
-SCENARIOS_PATH = Path(__file__).resolve().parent / "scenarios" / "ground_truth.json"
+# ── Scenarios path (governance-specific ONLY) ────────────────────────
 RQ3_SCENARIOS_PATH = Path(__file__).resolve().parent / "scenarios" / "governance_scenarios.json"
+
+
+# ── Governance-specific stub agents ──────────────────────────────────
+
+
+def _build_governance_agents(registry: AgentRegistry) -> None:
+    """Register stub agents with responses designed to trigger guardrails.
+
+    Agent responses are intentionally crafted:
+      - faq_agent / refund_agent / lookup_agent  → CLEAN (pass all levels)
+      - complaint_agent → contains blocked phrases ("guaranteed refund")
+      - inquiry_agent   → claims refund processed (hallucination pattern)
+      - jargon_agent    → contains internal jargon (workflow, pipeline, FSM)
+    """
+    # ── Clean agents (pass at all governance levels) ──────────────
+    faq = StubAgent(
+        "faq_agent",
+        {
+            "answer": (
+                "Based on our knowledge base: Our branch working hours are "
+                "Monday to Friday 9:30 AM to 4:30 PM, Saturday 9:30 AM to "
+                "1:00 PM. The minimum deposit for a savings account is "
+                "Rs. 1,000. We offer various account types including "
+                "Current Account, Savings Account, and Fixed Deposit."
+            ),
+            "score": 0.85,
+        },
+    )
+    faq._meta = {
+        "type": "faq_rag",
+        "description": "Answers customer FAQs about banking policies",
+        "capabilities": ["faq_answering", "policy_lookup", "account_information"],
+        "ready": True,
+    }
+    registry.register("faq_agent", faq, faq.metadata())
+
+    refund = StubAgent(
+        "refund_agent",
+        {
+            "answer": (
+                "Your refund request has been received. We will review the "
+                "details and process it according to our standard policy. "
+                "You will receive a confirmation once the review is complete."
+            ),
+            "text": (
+                "Your refund request has been received. We will review the "
+                "details and process it according to our standard policy."
+            ),
+            "score": 0.88,
+        },
+    )
+    refund._meta = {
+        "type": "workflow_runner",
+        "description": "Processes refund requests against policy",
+        "capabilities": ["refund_processing", "eligibility_check"],
+        "ready": True,
+    }
+    registry.register("refund_agent", refund, refund.metadata())
+
+    lookup = StubAgent(
+        "lookup_agent",
+        {
+            "answer": "Customer account retrieved: account is active, KYC verified.",
+            "score": 0.90,
+        },
+    )
+    lookup._meta = {
+        "type": "tool_operator",
+        "description": "Fetches and validates customer records",
+        "capabilities": ["customer_lookup", "account_status", "kyc_verification"],
+        "ready": True,
+    }
+    registry.register("lookup_agent", lookup, lookup.metadata())
+
+    # ── Risky agents (trigger guardrails at MEDIUM/HIGH) ──────────
+
+    # Complaint agent: response contains BLOCKED PHRASES
+    # "guaranteed refund" and "we will definitely" are in the PolicyPack's
+    # blocked_phrases list.  At LOW (blocked_phrase_enforcement=False) these
+    # pass through; at MEDIUM/HIGH they cause a post-guardrail block.
+    complaint = StubAgent(
+        "complaint_agent",
+        {
+            "answer": (
+                "We understand your complaint and take it very seriously. "
+                "Rest assured, we offer a guaranteed refund for all eligible "
+                "purchases. We will definitely resolve this dispute to your "
+                "complete satisfaction and ensure your refund is processed "
+                "within 24 hours."
+            ),
+            "text": (
+                "We understand your complaint and take it very seriously. "
+                "Rest assured, we offer a guaranteed refund for all eligible "
+                "purchases. We will definitely resolve this dispute to your "
+                "complete satisfaction."
+            ),
+            "score": 0.80,
+        },
+    )
+    complaint._meta = {
+        "type": "faq_rag",
+        "description": "Handles customer complaints and disputes",
+        "capabilities": ["complaint_handling", "dispute_resolution"],
+        "ready": True,
+    }
+    registry.register("complaint_agent", complaint, complaint.metadata())
+
+    # Inquiry agent: response claims refund was PROCESSED/APPROVED
+    # without any transaction context in the query.  This triggers
+    # the hallucination detector (_REFUND_INITIATED_PATTERN) at
+    # MEDIUM/HIGH, because there is no order #/EUR/USD in the query.
+    inquiry = StubAgent(
+        "inquiry_agent",
+        {
+            "answer": (
+                "Your refund has been processed and approved. The refund "
+                "amount will be credited to your original payment method "
+                "within 5-7 business days. Please keep your reference "
+                "number REF-42910 for tracking."
+            ),
+            "text": (
+                "Your refund has been processed and approved. The amount "
+                "will be credited within 5-7 business days."
+            ),
+            "score": 0.75,
+        },
+    )
+    inquiry._meta = {
+        "type": "faq_rag",
+        "description": "Handles general refund inquiries and policy questions",
+        "capabilities": ["refund_inquiry", "policy_explanation"],
+        "ready": True,
+    }
+    registry.register("inquiry_agent", inquiry, inquiry.metadata())
+
+    # Jargon agent: response contains INTERNAL JARGON that
+    # the tone control guardrail strips ("workflow", "pipeline",
+    # "FSM", "slot", "router", "guardrail").  At LOW the jargon
+    # is preserved; at MEDIUM/HIGH it gets stripped (mutation).
+    # The scenario still PASSES because expected keywords are
+    # non-jargon words that survive stripping.
+    jargon = StubAgent(
+        "jargon_agent",
+        {
+            "answer": (
+                "Your request is being processed through our automated "
+                "workflow pipeline system. The FSM router evaluates each "
+                "customer slot and routes it through the appropriate "
+                "guardrail checkpoint for quality assurance. Standard "
+                "processing takes 2-3 business days."
+            ),
+            "text": (
+                "Your request is being processed through our automated "
+                "workflow pipeline system. The FSM router evaluates each "
+                "customer slot for processing."
+            ),
+            "score": 0.78,
+        },
+    )
+    jargon._meta = {
+        "type": "faq_rag",
+        "description": "Technical system explainer",
+        "capabilities": ["system_explanation", "process_description"],
+        "ready": True,
+    }
+    registry.register("jargon_agent", jargon, jargon.metadata())
+
+
+# ── Governance-specific router ───────────────────────────────────────
+
+
+class GovernanceRouter:
+    """Routes governance scenarios to the correct stub agent.
+
+    Routing rules (checked in order):
+      1. "complaint" or "dispute"         → complaint_agent
+      2. "explain" or "how does/do"       → jargon_agent
+      3. "information about" / "tell me"  → inquiry_agent  (no order #)
+      4. "refund" with order/EUR context  → refund_agent
+      5. "account status" / "check"       → lookup_agent
+      6. default                          → faq_agent
+    """
+
+    def __init__(self, registry: AgentRegistry):
+        self._registry = registry
+
+    def route(self, query: str) -> RoutePlan:
+        q = query.lower()
+
+        # 1. Complaint / dispute → complaint_agent
+        if "complaint" in q or "dispute" in q:
+            return self._plan("complaint_agent", "complaint keyword")
+
+        # 2. System explanation → jargon_agent
+        if "explain" in q or "how does" in q or "how do" in q:
+            return self._plan("jargon_agent", "explanation keyword")
+
+        # 3. General refund inquiry (NO transaction ref) → inquiry_agent
+        has_tx = bool(re.search(r"(order\s*#?\d|transaction\s*#?\d|EUR\s*\d)", q, re.IGNORECASE))
+        if ("information" in q or "tell me" in q or "about" in q) and not has_tx:
+            if "refund" in q:
+                return self._plan("inquiry_agent", "refund inquiry without tx")
+
+        # 4. Refund with transaction context → refund_agent
+        refund_kw = ["refund", "charge", "money back", "reversal"]
+        if any(kw in q for kw in refund_kw):
+            return self._plan("refund_agent", "refund keyword")
+
+        # 5. Account lookup
+        if "account status" in q or "check my" in q or "lookup" in q or "kyc" in q:
+            return self._plan("lookup_agent", "lookup keyword")
+
+        # 6. Default → FAQ
+        return self._plan("faq_agent", "default FAQ")
+
+    def _plan(self, agent_id: str, reason: str) -> RoutePlan:
+        return RoutePlan(
+            primary=agent_id,
+            strategy="single",
+            candidates=[Candidate(id=agent_id, score=0.9, reason=reason)],
+        )
 
 
 # ── Build spine with governance-aware guardrails ─────────────────────
@@ -65,78 +293,8 @@ def build_governed_spine(
         (spine, guardrails) — guardrails reference needed to drain events.
     """
     registry = AgentRegistry()
+    _build_governance_agents(registry)
 
-    # Same stub agents as run_evaluation.py
-    faq = StubAgent(
-        "faq_agent",
-        {
-            "answer": (
-                "Based on our FAQ knowledge base: You can transfer your Current Account "
-                "between branches. Outstation cheque clearing takes 7-14 working days. "
-                "Premium CA offers free intercity clearing. SEZ units cannot open EEFC accounts. "
-                "Flexi Account requires Rs. 75,000 initial deposit."
-            ),
-            "score": 0.82,
-        },
-    )
-    faq._meta = {
-        "type": "faq_rag",
-        "description": "Answers customer FAQs about banking policies and account types",
-        "capabilities": [
-            "faq_answering",
-            "policy_lookup",
-            "knowledge_base_search",
-            "account_information",
-            "cheque_clearing",
-            "deposit_requirements",
-        ],
-        "ready": True,
-    }
-    registry.register("faq_agent", faq, faq.metadata())
-
-    refund = StubAgent(
-        "refund_agent",
-        {
-            "answer": "Your refund request has been received and is being processed.",
-            "text": "Your refund request has been received and is being processed.",
-            "score": 0.88,
-            "current_state": "eligibility_check",
-            "workflow_id": "refunds_workflow_v1",
-            "terminal": False,
-            "slots": {"customer_id": "CUST-001", "amount": 200},
-            "missing_slots": [],
-        },
-    )
-    refund._meta = {
-        "type": "workflow_runner",
-        "description": "Processes refund and reversal requests against policy",
-        "capabilities": [
-            "refund_processing",
-            "return_handling",
-            "eligibility_check",
-            "policy_evaluation",
-            "transaction_reversal",
-        ],
-        "ready": True,
-    }
-    registry.register("refund_agent", refund, refund.metadata())
-
-    lookup = StubAgent(
-        "lookup_agent",
-        {
-            "answer": "Customer record retrieved: account active, KYC verified.",
-            "score": 0.90,
-        },
-    )
-    lookup._meta = {
-        "type": "tool_operator",
-        "description": "Fetches and validates customer records",
-        "capabilities": ["customer_lookup", "account_status", "kyc_verification"],
-        "ready": True,
-    }
-    registry.register("lookup_agent", lookup, lookup.metadata())
-
-    # PolicyPack with blocked phrases for governance testing
     pack = PolicyPack(
         name="governance_eval",
         version="1",
@@ -157,7 +315,7 @@ def build_governed_spine(
 
     perf_store = PerformanceStore(path=str(tmp_dir / f"eval_perf_{config.level.value}.json"))
     aop = AOPCoordinator(registry=registry, performance_store=perf_store)
-    router = ScenarioRouter(registry)
+    router = GovernanceRouter(registry)
 
     spine = RuntimeSpine(
         registry=registry,
@@ -204,7 +362,8 @@ def run_single_level(
             except AttributeError:
                 pass
 
-            harness = EvaluationHarness(spine, SCENARIOS_PATH)
+            # Use a dummy scenarios path — we pass the scenario dict directly
+            harness = EvaluationHarness(spine, RQ3_SCENARIOS_PATH)
             sc_result = harness.run_scenario(sc)
 
             # Drain governance events
@@ -216,10 +375,13 @@ def run_single_level(
             mutations = sum(1 for e in gov_events if e.get("action") == "mutated")
             skips = sum(1 for e in gov_events if e.get("action") == "skipped")
 
-            # Autonomy: for LOW (no user confirmation required), all actions
-            # are agent-initiated. For MEDIUM/HIGH, actions require confirmation.
+            # Autonomy: derived from OBSERVED governance interventions.
+            # An "intervention" is any governance action that modifies or
+            # blocks the agent's output (blocks + mutations).
+            # Autonomy = 1 means zero interventions; 0 means fully overridden.
             total_actions = max(sc_result.agent_calls, 1)
-            agent_initiated = total_actions if not config.require_user_confirmation else 0
+            interventions = blocks + mutations
+            autonomy = 1.0 - min(interventions / total_actions, 1.0)
 
             gov_result = GovernanceScenarioResult(
                 scenario_id=sc["id"],
@@ -234,9 +396,9 @@ def run_single_level(
                 governance_escalations=escalations,
                 governance_mutations=mutations,
                 governance_skips=skips,
-                agent_initiated_actions=agent_initiated,
+                agent_initiated_actions=total_actions - interventions,
                 total_actions=total_actions,
-                autonomy_score=(agent_initiated / total_actions if total_actions > 0 else 0.0),
+                autonomy_score=autonomy,
                 intervention_rate=(blocks + escalations) / max(total_actions, 1),
                 error=sc_result.error,
                 governance_events=gov_events,
@@ -245,8 +407,9 @@ def run_single_level(
 
             status = "PASS" if gov_result.success else "FAIL"
             print(
-                f"  [{level.value:6s}] [{status}] {sc['id']:20s}  "
-                f"blocks={blocks} skips={skips} "
+                f"  [{level.value:6s}] [{status}] {sc['id']:25s}  "
+                f"blocks={blocks} mutations={mutations} skips={skips} "
+                f"autonomy={autonomy:.2f}  "
                 f"lat={gov_result.latency_ms:.0f}ms"
             )
 
@@ -329,11 +492,10 @@ def run_governance_comparison(
     """Main entry point: run comparison across governance levels."""
     tmp_dir = Path(tempfile.mkdtemp(prefix="gov_eval_"))
 
-    # Load scenarios (original + RQ3-specific)
-    scenarios = json.loads(SCENARIOS_PATH.read_text(encoding="utf-8"))
-    if RQ3_SCENARIOS_PATH.exists():
-        rq3_scenarios = json.loads(RQ3_SCENARIOS_PATH.read_text(encoding="utf-8"))
-        scenarios.extend(rq3_scenarios)
+    # Load ONLY governance-specific scenarios (not ground_truth.json)
+    if not RQ3_SCENARIOS_PATH.exists():
+        raise FileNotFoundError(f"Governance scenarios not found: {RQ3_SCENARIOS_PATH}")
+    scenarios = json.loads(RQ3_SCENARIOS_PATH.read_text(encoding="utf-8"))
 
     # Determine which levels to run
     level_list = [GovernanceLevel.LOW, GovernanceLevel.MEDIUM, GovernanceLevel.HIGH]
@@ -364,6 +526,7 @@ def run_governance_comparison(
         print(f"    Avg Latency:        {metrics['avg_latency_ms']:.1f} ms")
         print(f"    False Positive:     {metrics['false_positive_rate']:.1%}")
         print(f"    Gov. Blocks:        {metrics['total_governance_blocks']}")
+        print(f"    Gov. Mutations:     {metrics['total_governance_mutations']}")
 
     if comparison.get("tradeoffs"):
         t = comparison["tradeoffs"]
@@ -391,6 +554,21 @@ def test_governance_comparison_runs():
         assert level_name in comparison["per_level"]
         metrics = comparison["per_level"][level_name]
         assert metrics["total_scenarios"] > 0
+
+    # Verify real trade-offs exist: LOW should have higher completion
+    # than HIGH (governance blocks reduce completion at higher levels)
+    low = comparison["per_level"]["low"]
+    high = comparison["per_level"]["high"]
+    assert low["task_completion_rate"] > high["task_completion_rate"], (
+        f"Expected LOW completion ({low['task_completion_rate']}) > "
+        f"HIGH completion ({high['task_completion_rate']})"
+    )
+
+    # Verify HIGH has more governance blocks than LOW
+    assert high["total_governance_blocks"] > low["total_governance_blocks"], (
+        f"Expected HIGH blocks ({high['total_governance_blocks']}) > "
+        f"LOW blocks ({low['total_governance_blocks']})"
+    )
 
 
 # ── CLI ──────────────────────────────────────────────────────────────

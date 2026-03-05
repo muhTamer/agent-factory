@@ -197,3 +197,80 @@ class TestGovernanceAwareGuardrails:
         result = guard.pre("test", {"intent": "blocked_intent"})
         assert result.allowed is False
         assert "test_blocked" in result.reason
+
+    def test_low_skips_hallucination_detection(self, pack):
+        """At LOW, hallucination detection is disabled — refund claims pass."""
+        config = GovernanceConfig.for_level(GovernanceLevel.LOW)
+        guard = GovernanceAwareGuardrails(pack, config)
+        result = guard.post(
+            {"text": "Your refund has been processed and approved."},
+            {"original_query": "Tell me about refund policies"},
+        )
+        assert result.allowed is True
+
+    def test_high_blocks_hallucinated_refund(self, pack):
+        """At HIGH, hallucination detection blocks refund claims without tx context."""
+        config = GovernanceConfig.for_level(GovernanceLevel.HIGH)
+        guard = GovernanceAwareGuardrails(pack, config)
+        result = guard.post(
+            {"text": "Your refund has been processed and approved."},
+            {"original_query": "Tell me about refund policies"},
+        )
+        assert result.allowed is False
+
+    def test_high_allows_refund_with_tx_context(self, pack):
+        """At HIGH, refund claims with transaction context are legitimate."""
+        config = GovernanceConfig.for_level(GovernanceLevel.HIGH)
+        guard = GovernanceAwareGuardrails(pack, config)
+        result = guard.post(
+            {"text": "Your refund has been processed and approved."},
+            {"original_query": "Refund for order #1234 EUR 50"},
+        )
+        assert result.allowed is True
+
+    def test_event_actions_are_correct(self, pack):
+        """Verify governance events record the correct action types."""
+        config = GovernanceConfig.for_level(GovernanceLevel.HIGH)
+        guard = GovernanceAwareGuardrails(pack, config)
+
+        # Trigger a block
+        guard.post({"text": "We offer guaranteed refund"}, {})
+        events = guard.get_events()
+
+        block_events = [e for e in events if e["action"] == "blocked"]
+        assert len(block_events) >= 1
+
+    def test_autonomy_derived_from_events(self):
+        """Autonomy score should be derived from observed interventions."""
+        from evaluation.governance_metrics import (
+            GovernanceScenarioResult,
+            compute_rq3_metrics,
+        )
+
+        # 3 scenarios: 1 blocked, 1 mutated, 1 clean
+        results = [
+            GovernanceScenarioResult(
+                scenario_id="s1",
+                governance_level="high",
+                category="test",
+                governance_blocks=1,
+                governance_mutations=0,
+            ),
+            GovernanceScenarioResult(
+                scenario_id="s2",
+                governance_level="high",
+                category="test",
+                governance_blocks=0,
+                governance_mutations=1,
+            ),
+            GovernanceScenarioResult(
+                scenario_id="s3",
+                governance_level="high",
+                category="test",
+                governance_blocks=0,
+                governance_mutations=0,
+            ),
+        ]
+        metrics = compute_rq3_metrics(results)
+        # 2 interventions out of 3 scenarios → autonomy = 1 - 2/3 ≈ 0.3333
+        assert 0.3 < metrics["autonomy_score"] < 0.4
