@@ -5,6 +5,7 @@ import { OrchestrationPanel } from "./OrchestrationPanel";
 import { RouterPlanPanel } from "./RouterPlanPanel";
 import { SolvabilityPanel } from "./SolvabilityPanel";
 import { PolicyCheckPanel } from "./PolicyCheckPanel";
+import { GovernancePanel } from "./GovernancePanel";
 import { RawJsonViewer } from "./RawJsonViewer";
 import { Separator } from "@/components/ui/separator";
 import { X } from "lucide-react";
@@ -45,6 +46,8 @@ export function DebugSidebar() {
             <SolvabilityPanel message={selected} />
             <Separator />
             <PolicyCheckPanel message={selected} />
+            <Separator />
+            <GovernancePanel message={selected} />
             <Separator />
             {selected.raw && <RawJsonViewer data={selected.raw} />}
           </>

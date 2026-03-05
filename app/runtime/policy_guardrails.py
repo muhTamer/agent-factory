@@ -50,6 +50,11 @@ _TONE_STRIP_PATTERNS = [
 class PolicyGuardrails(Guardrails):
     def __init__(self, pack: PolicyPack):
         self.pack = pack
+        self._pii_redactor = None
+        if pack.pii_redaction:
+            from app.governance.pii_redactor import PIIRedactor
+
+            self._pii_redactor = PIIRedactor()
 
     def pre(self, query: str, context: Dict[str, Any]) -> GuardResult:
         # length check
@@ -67,6 +72,19 @@ class PolicyGuardrails(Guardrails):
                 return GuardResult(
                     allowed=False,
                     reason=rule.get("reason", f"intent_blocked:{intent}"),
+                )
+
+        # PII redaction on incoming query
+        if self._pii_redactor:
+            redacted_q, records = self._pii_redactor.redact(query)
+            if records:
+                return GuardResult(
+                    allowed=True,
+                    mutated_query=redacted_q,
+                    mutated_context={
+                        **context,
+                        "_pii_redactions_pre": [r.to_dict() for r in records],
+                    },
                 )
 
         return GuardResult(allowed=True)
@@ -122,6 +140,12 @@ class PolicyGuardrails(Guardrails):
                     allowed=False,
                     reason="refund_initiated_without_transaction_details",
                 )
+
+        # PII redaction on outgoing response
+        if self._pii_redactor:
+            redacted_resp, pii_records = self._pii_redactor.redact_dict(response)
+            if pii_records:
+                response = redacted_resp
 
         # Tone control: strip customer-inappropriate patterns from all
         # text fields (text, answer, chat.messages).

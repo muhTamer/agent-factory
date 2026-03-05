@@ -26,6 +26,7 @@ class Trace:
     query: str
     context: Dict[str, Any] = field(default_factory=dict)
     events: List[TraceEvent] = field(default_factory=list)
+    governance: Dict[str, Any] = field(default_factory=dict)
 
     @staticmethod
     def start(
@@ -44,13 +45,16 @@ class Trace:
         self.events.append(TraceEvent(ts_ms=_now_ms(), stage=stage, data=data))
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        d = {
             "request_id": self.request_id,
             "started_ts_ms": self.started_ts_ms,
             "query": self.query,
             "context": self.context,
             "events": [{"ts_ms": e.ts_ms, "stage": e.stage, "data": e.data} for e in self.events],
         }
+        if self.governance:
+            d["governance"] = self.governance
+        return d
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), ensure_ascii=False)

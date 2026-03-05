@@ -5,6 +5,7 @@ import { AgentAvatar } from "./AgentAvatar";
 import { WorkflowProgressBar } from "@/components/workflow/WorkflowProgressBar";
 import { SlotSummary } from "@/components/workflow/SlotSummary";
 import { HierarchicalResults } from "@/components/orchestration/HierarchicalResults";
+import { GovernanceBadge } from "@/components/debug/GovernancePanel";
 import { getAgentDisplay } from "@/lib/constants";
 import {
   Shield,
@@ -21,6 +22,7 @@ import {
   ListChecks,
 } from "lucide-react";
 import { useChatStore } from "@/store/chatStore";
+import { useState } from "react";
 
 interface Props {
   message: ChatMessage;
@@ -29,6 +31,8 @@ interface Props {
 export function MessageBubble({ message }: Props) {
   const debugMode = useChatStore((s) => s.debugMode);
   const setSelectedMessageId = useChatStore((s) => s.setSelectedMessageId);
+  const [taskPlanOpen, setTaskPlanOpen] = useState(true);
+  const [remainingOpen, setRemainingOpen] = useState(true);
 
   if (message.role === "user") {
     return (
@@ -91,7 +95,13 @@ export function MessageBubble({ message }: Props) {
     <div className="flex items-start gap-2 mb-4 group">
       <div
         className="max-w-[92%] sm:max-w-[80%]"
-        onClick={() => debugMode && setSelectedMessageId(message.id)}
+        onClick={(e) => {
+          // Only select for debug sidebar if clicking the bubble itself,
+          // not a nested <details>/<summary>/<button> interactive element.
+          if (debugMode && !(e.target as HTMLElement).closest("details, button")) {
+            setSelectedMessageId(message.id);
+          }
+        }}
       >
         <AgentAvatar iconName={display.icon} label={display.label} />
 
@@ -295,71 +305,83 @@ export function MessageBubble({ message }: Props) {
 
           {/* AOP Task Menu — numbered task list for sequential execution */}
           {kind === "aop_task_menu" && message.aopTaskMenu && (
-            <details className="mt-2" open>
-              <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+            <div className="mt-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); setTaskPlanOpen(!taskPlanOpen); }}
+                className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+              >
+                {taskPlanOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 <Layers size={12} />
                 Task Plan ({message.aopTaskMenu.taskMenu.length} tasks)
-              </summary>
-              <div className="mt-1 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
-                {message.aopTaskMenu.taskMenu.map((t, i) => {
-                  const display_desc = t.subtask
-                    .replace(/^INFORMATIONAL:\s*/i, "")
-                    .replace(/^ACTION:\s*/i, "")
-                    .replace(/^\[INFORMATIONAL\]\s*/i, "")
-                    .replace(/^\[ACTION\]\s*/i, "");
-                  const agentDisplay = t.agentId ? getAgentDisplay(t.agentId) : null;
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 py-1.5 text-sm text-slate-700"
-                    >
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-xs font-bold text-blue-700">
-                        {i + 1}
-                      </span>
-                      <span className="flex-1 truncate">{display_desc}</span>
-                      {agentDisplay && (
-                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
-                          {agentDisplay.label}
+              </button>
+              {taskPlanOpen && (
+                <div className="mt-1 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                  {message.aopTaskMenu.taskMenu.map((t, i) => {
+                    const display_desc = t.subtask
+                      .replace(/^INFORMATIONAL:\s*/i, "")
+                      .replace(/^ACTION:\s*/i, "")
+                      .replace(/^\[INFORMATIONAL\]\s*/i, "")
+                      .replace(/^\[ACTION\]\s*/i, "");
+                    const agentDisplay = t.agentId ? getAgentDisplay(t.agentId) : null;
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2 py-1.5 text-sm text-slate-700"
+                      >
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-xs font-bold text-blue-700">
+                          {i + 1}
                         </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </details>
+                        <span className="flex-1 truncate">{display_desc}</span>
+                        {agentDisplay && (
+                          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                            {agentDisplay.label}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Remaining AOP tasks (shown for any response with remaining_subtasks) */}
           {Array.isArray(raw?.remaining_subtasks) &&
             raw!.remaining_subtasks.length > 0 && (
-              <details className="mt-2" open>
-                <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+              <div className="mt-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setRemainingOpen(!remainingOpen); }}
+                  className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                >
+                  {remainingOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   <ListChecks size={12} />
                   Remaining tasks ({raw!.remaining_subtasks.length})
-                </summary>
-                <div className="mt-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                  {raw!.remaining_subtasks.map(
-                    (
-                      r: { index: number; subtask: string; agent_id: string | null },
-                      i: number
-                    ) => {
-                      const desc = r.subtask
-                        .replace(/^INFORMATIONAL:\s*/i, "")
-                        .replace(/^ACTION:\s*/i, "")
-                        .replace(/^\[INFORMATIONAL\]\s*/i, "")
-                        .replace(/^\[ACTION\]\s*/i, "");
-                      return (
-                        <div
-                          key={i}
-                          className="ml-2 mt-1 text-xs text-slate-600"
-                        >
-                          {i + 1}. {desc}
-                        </div>
-                      );
-                    }
-                  )}
-                </div>
-              </details>
+                </button>
+                {remainingOpen && (
+                  <div className="mt-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                    {raw!.remaining_subtasks.map(
+                      (
+                        r: { index: number; subtask: string; agent_id: string | null },
+                        i: number
+                      ) => {
+                        const desc = r.subtask
+                          .replace(/^INFORMATIONAL:\s*/i, "")
+                          .replace(/^ACTION:\s*/i, "")
+                          .replace(/^\[INFORMATIONAL\]\s*/i, "")
+                          .replace(/^\[ACTION\]\s*/i, "");
+                        return (
+                          <div
+                            key={i}
+                            className="ml-2 mt-1 text-xs text-slate-600"
+                          >
+                            {i + 1}. {desc}
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
         </div>
@@ -453,6 +475,9 @@ export function MessageBubble({ message }: Props) {
             </div>
           </details>
         )}
+
+        {/* IEEE Governance compliance badge */}
+        <GovernanceBadge message={message} />
       </div>
     </div>
   );
