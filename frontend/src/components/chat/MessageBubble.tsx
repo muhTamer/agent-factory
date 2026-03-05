@@ -31,8 +31,10 @@ interface Props {
 export function MessageBubble({ message }: Props) {
   const debugMode = useChatStore((s) => s.debugMode);
   const setSelectedMessageId = useChatStore((s) => s.setSelectedMessageId);
-  const [taskPlanOpen, setTaskPlanOpen] = useState(true);
-  const [remainingOpen, setRemainingOpen] = useState(true);
+  const [taskPlanOpen, setTaskPlanOpen] = useState(false);
+  const [remainingOpen, setRemainingOpen] = useState(false);
+  const [routerPlanOpen, setRouterPlanOpen] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(false);
 
   if (message.role === "user") {
     return (
@@ -97,8 +99,8 @@ export function MessageBubble({ message }: Props) {
         className="max-w-[92%] sm:max-w-[80%]"
         onClick={(e) => {
           // Only select for debug sidebar if clicking the bubble itself,
-          // not a nested <details>/<summary>/<button> interactive element.
-          if (debugMode && !(e.target as HTMLElement).closest("details, button")) {
+          // not a nested interactive element (button, summary, a).
+          if (debugMode && !(e.target as HTMLElement).closest("details, button, summary")) {
             setSelectedMessageId(message.id);
           }
         }}
@@ -307,6 +309,7 @@ export function MessageBubble({ message }: Props) {
           {kind === "aop_task_menu" && message.aopTaskMenu && (
             <div className="mt-2">
               <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); setTaskPlanOpen(!taskPlanOpen); }}
                 className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
               >
@@ -350,6 +353,7 @@ export function MessageBubble({ message }: Props) {
             raw!.remaining_subtasks.length > 0 && (
               <div className="mt-2">
                 <button
+                  type="button"
                   onClick={(e) => { e.stopPropagation(); setRemainingOpen(!remainingOpen); }}
                   className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
                 >
@@ -388,11 +392,17 @@ export function MessageBubble({ message }: Props) {
 
         {/* Router plan (expandable — always shown when available) */}
         {routerPlan?.candidates && routerPlan.candidates.length > 0 && (
-          <details className="mt-1.5 ml-1">
-            <summary className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600">
+          <div className="mt-1.5 ml-1">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setRouterPlanOpen(!routerPlanOpen); }}
+              className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600"
+            >
+              {routerPlanOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               <Route size={12} />
               Router decision ({routerPlan.candidates.length} candidates)
-            </summary>
+            </button>
+            {routerPlanOpen && (
             <div className="mt-1 rounded-lg border border-slate-200 bg-white p-2.5">
               <div className="mb-1.5 flex items-center gap-2 text-[10px] text-slate-400">
                 <span>
@@ -450,16 +460,23 @@ export function MessageBubble({ message }: Props) {
                 </tbody>
               </table>
             </div>
-          </details>
+            )}
+          </div>
         )}
 
         {/* Metadata row */}
         {(message.latencyMs || (kind !== "faq" && raw?.score != null) || raw?.rag_state) && (
-          <details className="mt-1 ml-1">
-            <summary className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600">
+          <div className="mt-1 ml-1">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setMetadataOpen(!metadataOpen); }}
+              className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600"
+            >
+              {metadataOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
               <Info size={10} />
               Metadata
-            </summary>
+            </button>
+            {metadataOpen && (
             <div className="mt-0.5 flex items-center gap-3 text-xs text-slate-400">
               {message.latencyMs && (
                 <span>{(message.latencyMs / 1000).toFixed(1)}s</span>
@@ -473,7 +490,8 @@ export function MessageBubble({ message }: Props) {
                 </span>
               )}
             </div>
-          </details>
+            )}
+          </div>
         )}
 
         {/* IEEE Governance compliance badge */}

@@ -405,6 +405,8 @@ function EnvelopeSection({ envelope }: { envelope: Record<string, unknown> | und
 /* ── Expandable inline badge for use in MessageBubble ──── */
 
 export function GovernanceBadge({ message }: Props) {
+  const [badgeOpen, setBadgeOpen] = useState(false);
+
   const governance = message.raw?.governance;
   if (!governance?.compliance) return null;
 
@@ -433,8 +435,11 @@ export function GovernanceBadge({ message }: Props) {
   const nonCompliant = results.filter((r) => !r.compliant);
 
   return (
-    <details className="mt-2" onClick={(e) => e.stopPropagation()}>
-      <summary className="flex cursor-pointer items-center gap-2 list-none [&::-webkit-details-marker]:hidden">
+    <div className="mt-2">
+      <button
+        onClick={(e) => { e.stopPropagation(); setBadgeOpen(!badgeOpen); }}
+        className="flex cursor-pointer items-center gap-2"
+      >
         <span
           className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${color}`}
         >
@@ -447,8 +452,9 @@ export function GovernanceBadge({ message }: Props) {
             {explLevels}/3 levels
           </span>
         )}
-      </summary>
+      </button>
 
+      {badgeOpen && (
       <div className="mt-2 space-y-3 rounded-lg border border-slate-200 bg-white p-3">
         {/* ── Compliance breakdown ── */}
         <div className="space-y-1.5">
@@ -523,7 +529,8 @@ export function GovernanceBadge({ message }: Props) {
           <InlineEnvelope envelope={governance.envelope} />
         )}
       </div>
-    </details>
+      )}
+    </div>
   );
 }
 
