@@ -1,0 +1,513 @@
+[
+  {
+    "id": "info_01",
+    "category": "informational",
+    "description": "FAQ: Current Account transfer policy",
+    "emotional_context": "neutral",
+    "turns": [
+      {
+        "query": "Can I transfer my Current Account from one branch to another?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["transfer", "branch"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    },
+    "strategy_responses": {
+      "baseline": "Yes, you can transfer your Current Account between branches. Please visit your nearest branch with your ID and account details.",
+      "transparent": "Yes, you can transfer your Current Account between branches. I checked our account guidelines and confirmed that inter-branch transfers are supported for all Current Account types. Please visit your nearest branch with your ID and account details.",
+      "empathetic": "I understand that relocating can mean a lot of changes to manage. The good news is that you can transfer your Current Account between branches. Please visit your nearest branch with your ID and account details, and they will take care of it for you.",
+      "proactive": "Yes, you can transfer your Current Account between branches. Please visit your nearest branch with your ID and account details. The transfer usually takes 2-3 working days, and all your standing orders and direct debits will be migrated automatically. You will receive a confirmation once the transfer is complete."
+    }
+  },
+  {
+    "id": "info_02",
+    "category": "informational",
+    "description": "FAQ: Cheque clearing timeline",
+    "emotional_context": "neutral",
+    "turns": [
+      {
+        "query": "How long does it take to clear an outstation cheque?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["cheque", "days"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    },
+    "strategy_responses": {
+      "baseline": "Outstation cheque clearing typically takes 7-14 working days.",
+      "transparent": "Outstation cheque clearing typically takes 7-14 working days. I looked this up in our FAQ knowledge base, which covers standard processing times for all cheque types.",
+      "empathetic": "I know waiting for a cheque to clear can be a bit stressful. Outstation cheques typically take 7-14 working days to clear. I hope that helps you plan accordingly.",
+      "proactive": "Outstation cheque clearing typically takes 7-14 working days. If you have a Premium Current Account, you may qualify for faster intercity clearing at no extra charge. You can track the status of your cheque through our online banking portal."
+    }
+  },
+  {
+    "id": "info_03",
+    "category": "informational",
+    "description": "FAQ: Premium Account features",
+    "emotional_context": "curious",
+    "turns": [
+      {
+        "query": "What are the benefits of a Premium Current Account compared to a regular one?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["premium", "account"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    },
+    "strategy_responses": {
+      "baseline": "The Premium Current Account offers free intercity cheque clearing, higher transaction limits, a dedicated relationship manager, and priority customer service.",
+      "transparent": "Based on our account comparison guidelines, the Premium Current Account offers several advantages over a regular CA: free intercity cheque clearing, higher transaction limits, a dedicated relationship manager, and priority customer service. I pulled this from our account features database.",
+      "empathetic": "Great question! Choosing the right account is an important decision. The Premium Current Account offers free intercity cheque clearing, higher transaction limits, a dedicated relationship manager, and priority customer service. I hope this helps you decide what works best for you.",
+      "proactive": "The Premium Current Account offers free intercity cheque clearing, higher transaction limits, a dedicated relationship manager, and priority customer service. The initial deposit is Rs. 75,000 and there is no monthly fee if you maintain a minimum balance of Rs. 50,000. Would you like me to help you start the upgrade process?"
+    }
+  },
+  {
+    "id": "info_04",
+    "category": "informational",
+    "description": "FAQ: EEFC Account eligibility",
+    "emotional_context": "neutral",
+    "turns": [
+      {
+        "query": "Can Special Economic Zone units open an EEFC Account?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": ["SEZ"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    },
+    "strategy_responses": {
+      "baseline": "No, SEZ units are not eligible to open EEFC (Exchange Earners Foreign Currency) Accounts under current regulations.",
+      "transparent": "According to our foreign currency account policy, SEZ units are not eligible to open EEFC Accounts. This restriction comes from RBI guidelines governing foreign exchange accounts for special economic zones.",
+      "empathetic": "I understand you are exploring options for your SEZ unit. Unfortunately, SEZ units are not currently eligible to open EEFC Accounts under the existing regulations. I am sorry about that.",
+      "proactive": "SEZ units are not eligible to open EEFC Accounts under current regulations. However, SEZ units can explore other foreign currency account options such as Diamond Dollar Accounts or resident foreign currency accounts. Would you like information on alternative account types?"
+    }
+  },
+  {
+    "id": "txn_01",
+    "category": "transactional",
+    "description": "Refund: Standard eligible refund under EUR 5000",
+    "emotional_context": "concerned",
+    "turns": [
+      {
+        "query": "I was charged EUR 200 twice for the same purchase. Can I get a refund?",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": ["refund"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-101", "amount": 200, "payment_method": "card", "reason": "duplicate charge"}}
+    },
+    "strategy_responses": {
+      "baseline": "Your refund request for EUR 200 has been received and is being processed. The duplicate charge will be reversed.",
+      "transparent": "Your refund request for EUR 200 has been received. I verified the duplicate charge against your transaction history and confirmed it meets our refund eligibility criteria. The reversal is now being processed.",
+      "empathetic": "I am sorry about the duplicate charge — that must be frustrating. I have initiated a refund of EUR 200 for you. The duplicate charge will be reversed shortly.",
+      "proactive": "Your refund of EUR 200 for the duplicate charge has been initiated. You should see the amount back in your account within 3-5 business days. You will receive a confirmation email with the reference number. If the refund does not appear after 5 days, please contact us with this reference."
+    }
+  },
+  {
+    "id": "txn_02",
+    "category": "transactional",
+    "description": "Refund: Subscription cancellation charge",
+    "emotional_context": "annoyed",
+    "turns": [
+      {
+        "query": "I cancelled my subscription last week but was charged EUR 30 today. I want a refund.",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": ["refund"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-102", "amount": 30, "payment_method": "card", "reason": "subscription cancelled"}}
+    },
+    "strategy_responses": {
+      "baseline": "Your refund request for EUR 30 has been received and is being processed.",
+      "transparent": "I have checked your subscription status and confirmed the cancellation date. Since the charge of EUR 30 occurred after your cancellation, it qualifies for a refund under our subscription policy. The refund is being processed.",
+      "empathetic": "I completely understand your frustration — being charged after cancelling is not acceptable. I have initiated a full refund of EUR 30 for you right away. I apologize for the inconvenience.",
+      "proactive": "Your refund of EUR 30 has been initiated. The subscription charge will be reversed within 3-5 business days. I have also flagged your account to prevent any further subscription charges. You will receive a confirmation email shortly."
+    }
+  },
+  {
+    "id": "txn_03",
+    "category": "transactional",
+    "description": "Refund: Large amount wire transfer failure",
+    "emotional_context": "worried",
+    "turns": [
+      {
+        "query": "I sent a wire transfer of EUR 8000 but it failed and the money has not been returned. What is going on?",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": ["refund"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-103", "amount": 8000, "payment_method": "wire", "reason": "failed transfer"}}
+    },
+    "strategy_responses": {
+      "baseline": "Your case for the EUR 8000 failed wire transfer has been logged. The refund is being processed and requires additional review due to the amount.",
+      "transparent": "I have reviewed your wire transfer of EUR 8000 and confirmed it failed at the receiving end. Because the amount exceeds our standard auto-approval threshold of EUR 5000, this requires a manual review by our transfers team. The refund process has been initiated.",
+      "empathetic": "I understand how worrying it must be to have EUR 8000 unaccounted for. I want to assure you that your money is safe. The wire transfer failed and the refund process has been started. It requires additional review due to the amount, but we are on it.",
+      "proactive": "Your EUR 8000 wire transfer has been confirmed as failed, and the refund process has been initiated. Due to the amount, it requires manual review which typically takes 5-7 business days. You will receive email updates at each stage. Your case reference is WR-2026-8001. If you need an update sooner, you can call our priority line."
+    }
+  },
+  {
+    "id": "txn_04",
+    "category": "transactional",
+    "description": "Refund: ATM did not dispense cash",
+    "emotional_context": "frustrated",
+    "turns": [
+      {
+        "query": "The ATM took EUR 300 from my account but did not give me any cash!",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": ["refund"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-104", "amount": 300, "payment_method": "atm", "reason": "ATM failed dispensation"}}
+    },
+    "strategy_responses": {
+      "baseline": "Your complaint about the ATM non-dispensation of EUR 300 has been registered. A refund will be processed.",
+      "transparent": "I have logged your ATM non-dispensation complaint for EUR 300. Our system has verified the transaction against ATM logs. The refund will be processed after the standard reconciliation check, which confirms the cash was not dispensed.",
+      "empathetic": "That sounds really frustrating — I am sorry you had to deal with that. I have immediately registered your complaint about the EUR 300 ATM issue. We will get this resolved for you as quickly as possible.",
+      "proactive": "Your ATM non-dispensation complaint for EUR 300 has been registered with reference ATM-2026-3001. The automatic reconciliation will run overnight, and if confirmed, the refund will be credited within 2 business days. If you need cash urgently, you can visit your nearest branch with your ID for an emergency withdrawal."
+    }
+  },
+  {
+    "id": "comp_01",
+    "category": "complaint",
+    "description": "Complaint: Hidden fees on account",
+    "emotional_context": "angry",
+    "turns": [
+      {
+        "query": "I keep finding charges on my account that I never agreed to. This is unacceptable!",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    },
+    "strategy_responses": {
+      "baseline": "I can help you review the charges on your account. Please provide your account number so I can look into the specific charges you are referring to.",
+      "transparent": "I will review your recent account charges against our fee schedule to identify any discrepancies. Could you please share your account number? I will cross-reference each charge with our standard fee policy to determine if any charges were applied incorrectly.",
+      "empathetic": "I completely understand your frustration — unexpected charges are never pleasant and you have every right to question them. Let me look into this for you right away. Could you share your account number so I can review the charges in detail?",
+      "proactive": "I can review all charges on your account for the past 6 months and flag any that do not match our published fee schedule. Could you share your account number? If any charges are found to be incorrect, I can initiate a refund immediately. You also have the right to request a full fee disclosure statement."
+    }
+  },
+  {
+    "id": "comp_02",
+    "category": "complaint",
+    "description": "Complaint: Poor service experience",
+    "emotional_context": "disappointed",
+    "turns": [
+      {
+        "query": "I have been trying to resolve an issue for weeks and nobody has helped me. This is terrible service.",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    },
+    "strategy_responses": {
+      "baseline": "I am sorry to hear about your experience. Could you please describe the issue so I can try to help you resolve it?",
+      "transparent": "I am sorry to hear you have had difficulty getting help. I do not have access to your previous interactions, but I can start fresh and try to resolve your issue now. Could you describe what you need help with?",
+      "empathetic": "I am truly sorry that you have been going through this. Weeks without resolution is not the experience we want for any customer. I want to help you get this sorted out today. Could you tell me what the issue is?",
+      "proactive": "I am sorry about your experience. Let me help you resolve this now. Could you describe the issue? Once resolved, I can also register a formal service complaint on your behalf, which triggers a review by our customer experience team. You will receive a response within 48 hours."
+    }
+  },
+  {
+    "id": "comp_03",
+    "category": "complaint",
+    "description": "Complaint: Billing error on statement",
+    "emotional_context": "frustrated",
+    "turns": [
+      {
+        "query": "My latest statement shows a EUR 500 charge I definitely did not make. Fix this immediately!",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-301", "amount": 500, "payment_method": "card", "reason": "unrecognized charge"}}
+    },
+    "strategy_responses": {
+      "baseline": "I have registered a dispute for the EUR 500 charge on your statement. We will investigate and get back to you.",
+      "transparent": "I have registered a dispute for the EUR 500 charge. Our investigation team will review the transaction details, including merchant information, timestamp, and authorization records. This process typically takes 7-10 business days.",
+      "empathetic": "I understand how alarming it is to see a charge you did not make. I have immediately flagged the EUR 500 charge as disputed and started an investigation. We take this very seriously and will work to resolve it as quickly as possible.",
+      "proactive": "I have registered a dispute for the EUR 500 charge with case reference DSP-2026-5001. As a precaution, I recommend checking your other recent transactions for any unfamiliar charges. If you suspect unauthorized access, I can also arrange for a temporary card block and replacement. The investigation typically takes 7-10 business days."
+    }
+  },
+  {
+    "id": "comp_04",
+    "category": "complaint",
+    "description": "Complaint: Long wait time frustration",
+    "emotional_context": "very_angry",
+    "turns": [
+      {
+        "query": "I have been waiting for 45 minutes! Your customer service is a joke. I want to close my account.",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    },
+    "strategy_responses": {
+      "baseline": "I am sorry for the wait. I can help you now. Regarding closing your account, I can provide the process information. Is that what you would like?",
+      "transparent": "I am sorry for the long wait. You are now connected and I have full access to assist you. Regarding account closure, this requires verification and has a processing period. Would you like me to explain the process, or is there another issue I can help resolve first?",
+      "empathetic": "I sincerely apologize for making you wait 45 minutes — that is far too long and I understand your frustration completely. You have every right to be upset. I am here now and I want to make sure I address your concerns properly. Before we discuss account closure, is there something specific that triggered this? Perhaps I can help resolve it.",
+      "proactive": "I sincerely apologize for the 45-minute wait. I want to help you right away. Before proceeding with account closure, I want to make sure we address any underlying issues — sometimes we can resolve the original problem. If you do want to close the account, the process takes 7 days, all pending transactions will need to clear first, and your balance will be transferred to a nominated account. What would you prefer?"
+    }
+  },
+  {
+    "id": "multi_01",
+    "category": "complex_multi_intent",
+    "description": "Multi-intent: Refund AND policy question",
+    "emotional_context": "neutral",
+    "turns": [
+      {
+        "query": "I need a refund for order #123 and also want to know your return policy window.",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": ["refund"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Process refund for order #123", "Answer FAQ about return window policy"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Both intents covered."}
+    },
+    "strategy_responses": {
+      "baseline": "Your refund for order #123 has been initiated. Our return policy allows returns within 30 days of purchase.",
+      "transparent": "I identified two parts to your request and handled them separately. First, I processed your refund for order #123 through our returns system. Second, I looked up our return policy: returns are accepted within 30 days of purchase with original receipt.",
+      "empathetic": "Of course, I am happy to help with both! Your refund for order #123 has been initiated. And regarding our return policy — you have a 30-day window from the date of purchase to make returns. I hope that covers everything you needed.",
+      "proactive": "Your refund for order #123 has been initiated and should be processed within 3-5 business days. Our return policy allows returns within 30 days of purchase with original receipt. For future reference, you can also initiate returns directly through our online banking portal under 'Transaction Disputes'."
+    }
+  },
+  {
+    "id": "multi_02",
+    "category": "complex_multi_intent",
+    "description": "Multi-intent: Account balance AND cheque status",
+    "emotional_context": "neutral",
+    "turns": [
+      {
+        "query": "What is my current balance and how long until my deposited cheque clears?",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Look up current account balance", "Answer FAQ about cheque clearing time"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Both intents addressed."}
+    },
+    "strategy_responses": {
+      "baseline": "Your current balance is available through online banking. Cheque clearing typically takes 7-14 working days for outstation cheques.",
+      "transparent": "I handled your two questions separately. For your balance, I checked the account lookup system. For the cheque clearing time, I consulted our FAQ database. Your balance is available through online banking, and outstation cheques take 7-14 working days.",
+      "empathetic": "Happy to help with both questions! Your balance details are accessible through online banking. As for your deposited cheque, outstation cheques typically take 7-14 working days — I know the wait can feel long, but it is standard processing.",
+      "proactive": "Your balance is available through online banking or by calling our automated line. Outstation cheques take 7-14 working days to clear. You can check the cheque status in real-time under 'Pending Transactions' in online banking. If it has been more than 14 days, please let us know and we can trace it."
+    }
+  },
+  {
+    "id": "multi_03",
+    "category": "complex_multi_intent",
+    "description": "Multi-intent: Cancel subscription AND explain statement charges",
+    "emotional_context": "confused",
+    "turns": [
+      {
+        "query": "Please cancel my premium subscription and explain the three charges on my last statement.",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Cancel premium subscription", "Explain charges on latest account statement"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Cancellation and charge explanation both addressed."}
+    },
+    "strategy_responses": {
+      "baseline": "Your premium subscription cancellation has been processed. For the statement charges, please share your account details so I can review them.",
+      "transparent": "I processed two requests. First, I submitted your subscription cancellation through our subscription management system — it will take effect at the end of the current billing cycle. Second, to explain your statement charges, I need your account number to cross-reference the transactions.",
+      "empathetic": "No problem at all, I will take care of both. Your premium subscription cancellation is being processed. I understand seeing unexpected charges can be confusing — please share your account details and I will go through each charge with you.",
+      "proactive": "Your premium subscription cancellation has been submitted and takes effect at the end of the current billing period — you will not be charged again. For the statement charges, please share your account number. In the meantime, you can view a detailed breakdown of all charges in your online banking under 'Statements > Transaction Details'."
+    }
+  },
+  {
+    "id": "multi_04",
+    "category": "complex_multi_intent",
+    "description": "Multi-intent: Open new account AND close existing one",
+    "emotional_context": "decisive",
+    "turns": [
+      {
+        "query": "I want to upgrade to a Premium Current Account and close my regular one.",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Provide information on opening Premium Current Account", "Process closure of Regular Current Account"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Account opening and closure both covered."}
+    },
+    "strategy_responses": {
+      "baseline": "To open a Premium Current Account, you need an initial deposit of Rs. 75,000. To close your regular account, all pending transactions must be cleared first.",
+      "transparent": "I am handling both requests. For the Premium upgrade, I checked our account products database — the initial deposit is Rs. 75,000. For the closure, our account management system requires all pending transactions to clear first, which typically takes 7 days.",
+      "empathetic": "An upgrade to Premium is a great choice! I will help you with both the new account and closing the old one. The Premium Account requires an initial deposit of Rs. 75,000 and comes with some excellent benefits. For the closure, we just need to make sure all pending transactions are cleared first.",
+      "proactive": "For the Premium Current Account upgrade: initial deposit is Rs. 75,000, and you get free intercity cheque clearing, higher limits, and a dedicated relationship manager. For closing your regular account: all pending transactions must clear first (typically 7 days). Since this is an upgrade, we can transfer your balance directly to the new account, so you do not need to worry about the closure separately."
+    }
+  },
+  {
+    "id": "trust_01",
+    "category": "trust_sensitive",
+    "description": "Trust: Unauthorized transaction report",
+    "emotional_context": "scared",
+    "turns": [
+      {
+        "query": "I see transactions on my account that I did not make. Has someone hacked my account?",
+        "expected": {
+          "pattern": "fsm_workflow",
+          "agent_contains": "refund",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"},
+      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-401", "amount": 0, "reason": "unauthorized transactions"}}
+    },
+    "strategy_responses": {
+      "baseline": "I have flagged your account for suspicious activity. Our security team will review the unauthorized transactions.",
+      "transparent": "I have immediately flagged your account in our fraud detection system. The unauthorized transactions have been logged for investigation. Our security protocol involves reviewing transaction origins, IP addresses, and device fingerprints. Your card has been temporarily suspended as a precaution.",
+      "empathetic": "I understand how frightening this must be. Please know that your account security is our top priority. I have immediately flagged your account and our security team is on it. We will investigate every unauthorized transaction and make sure you are protected.",
+      "proactive": "I have immediately flagged your account and temporarily suspended your card to prevent further unauthorized transactions. Our security team will investigate. In the meantime, please change your online banking password and enable two-factor authentication if you have not already. You will receive a call from our fraud team within 24 hours. All unauthorized transactions are covered by our fraud protection guarantee."
+    }
+  },
+  {
+    "id": "trust_02",
+    "category": "trust_sensitive",
+    "description": "Trust: Data privacy concern",
+    "emotional_context": "concerned",
+    "turns": [
+      {
+        "query": "How is my personal data being used? I am worried about privacy after reading about data breaches.",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    },
+    "strategy_responses": {
+      "baseline": "Your personal data is handled according to our privacy policy and applicable data protection regulations. You can review our privacy policy on our website.",
+      "transparent": "Your data is stored in encrypted databases and is only accessed by authorized personnel for banking operations. We comply with GDPR and local data protection laws. Our privacy policy details exactly what data we collect, how we use it, and your rights regarding your data.",
+      "empathetic": "I completely understand your concern — data privacy is incredibly important, especially with recent news about breaches. I want to reassure you that we take the protection of your personal data very seriously. Your information is handled according to strict data protection regulations.",
+      "proactive": "Your personal data is protected by industry-standard encryption and we comply with GDPR. You have the right to request a full data disclosure, restrict processing, or request deletion of non-essential data. You can download a copy of all data we hold about you through online banking under 'Settings > Privacy > Data Export'. Our full privacy policy is available on our website, and you can also contact our Data Protection Officer directly."
+    }
+  },
+  {
+    "id": "trust_03",
+    "category": "trust_sensitive",
+    "description": "Trust: Large fraud claim",
+    "emotional_context": "panicked",
+    "turns": [
+      {
+        "query": "Someone transferred EUR 15000 out of my savings account without my permission! I need this resolved NOW!",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["Investigate unauthorized transfer of EUR 15000", "Process urgent refund for fraud-related losses"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Investigation and refund both planned."}
+    },
+    "strategy_responses": {
+      "baseline": "Your fraud claim for EUR 15000 has been registered. Our security team will investigate the unauthorized transfer.",
+      "transparent": "I have registered a priority fraud case for the EUR 15000 unauthorized transfer. The investigation involves tracing the transfer destination, reviewing authorization logs, and coordinating with the receiving bank. Your account has been locked to prevent further unauthorized activity.",
+      "empathetic": "I am so sorry this happened to you — I can only imagine how stressful this is. I want you to know that I am treating this as an urgent priority. Your fraud claim for EUR 15000 has been registered immediately and your account has been secured. We will do everything we can to recover your funds.",
+      "proactive": "Your fraud case has been registered as PRIORITY with reference FR-2026-1500. Your account is now locked to prevent further unauthorized transactions. Here is what happens next: (1) Our fraud team investigates within 24 hours, (2) we contact the receiving bank to attempt fund recovery, (3) you receive daily updates via email. Under our fraud protection policy, you are covered for unauthorized transactions reported within 48 hours. Please also file a police report and share the reference number with us."
+    }
+  },
+  {
+    "id": "trust_04",
+    "category": "trust_sensitive",
+    "description": "Trust: Identity verification concern",
+    "emotional_context": "suspicious",
+    "turns": [
+      {
+        "query": "Why are you asking for my personal details? How do I know this is really the bank and not a scam?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    },
+    "strategy_responses": {
+      "baseline": "This is a secure banking channel. We need your details to verify your identity before accessing account information. You can verify our authenticity through our official website.",
+      "transparent": "This is a legitimate secure banking channel. Identity verification is required by banking regulations before we can access any account information. We never ask for your full password or PIN. You can verify this channel by checking our official website or calling our verified phone number.",
+      "empathetic": "That is a really smart question and I appreciate your caution — being careful about sharing personal information is exactly the right approach. This is a secure banking channel, but I understand your hesitation. You can verify us through our official website or by calling the number on the back of your bank card.",
+      "proactive": "Excellent question — being cautious is the best way to protect yourself. This is a secure channel, and here is how you can verify: (1) Check our official website for this chat service URL, (2) call the number on the back of your bank card to confirm, (3) we will NEVER ask for your full password, PIN, or OTP. For your protection, we only ask for partial identity verification (last 4 digits of account, date of birth) to access your information."
+    }
+  }
+]
