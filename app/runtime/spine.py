@@ -46,6 +46,7 @@ class RuntimeSpine:
         audit_writer: JsonlAuditWriter | None = None,
         aop_coordinator: Optional[AOPCoordinator] = None,
         memory: Optional[ConversationMemory] = None,
+        governance_enabled: bool = True,
     ):
         self.registry = registry
         self.router = router
@@ -53,6 +54,7 @@ class RuntimeSpine:
         self.audit_writer = audit_writer or JsonlAuditWriter()
         self.voice = VoiceAgent()
         self.aop_coordinator = aop_coordinator
+        self._governance_enabled = governance_enabled
         # Conversation memory — the "M" in PMPA (Wang et al. 2024)
         if memory is not None:
             self.memory = memory
@@ -425,6 +427,53 @@ class RuntimeSpine:
             if self.registry.get(aid):
                 return aid
         return None
+
+    # -------------------------
+    # RQ2: Governance enrichment
+    # -------------------------
+    def _enrich_governance(
+        self,
+        trace: Trace,
+        response: Dict[str, Any],
+        ctx: Dict[str, Any],
+    ) -> None:
+        """Attach IEEE compliance, explainability, and UMF envelope to trace.
+
+        Called in the finally block of handle_chat so every request
+        (successful or not) gets governance metadata in the audit trail.
+        """
+        from app.governance.explainability import ExplainabilityEngine
+        from app.governance.ieee_compliance import IEEEComplianceChecker
+        from app.governance.message_envelope import wrap_response
+
+        if not isinstance(response, dict) or not response:
+            return
+
+        # 1. Generate multi-level explanations
+        engine = ExplainabilityEngine()
+        explanations = engine.generate_all_levels(trace, response)
+        expl_dicts = {k: v.to_dict() for k, v in explanations.items()}
+
+        # 2. Wrap response in UMF envelope
+        envelope = wrap_response(response, trace, ctx)
+        envelope_dict = envelope.to_dict()
+
+        # 3. Run IEEE compliance checks
+        checker = IEEEComplianceChecker()
+        report = checker.check_all(
+            message=envelope_dict,
+            trace=trace,
+            response=response,
+            explanations=expl_dicts,
+            envelope=envelope_dict,
+        )
+
+        # 4. Store everything in trace.governance
+        trace.governance = {
+            "envelope": envelope_dict,
+            "explanations": expl_dicts,
+            "compliance": report.to_dict(),
+        }
 
     # -------------------------
     # Public entrypoint
@@ -1105,6 +1154,34 @@ class RuntimeSpine:
                     )
                 except Exception:
                     pass
+
+            # RQ2 Governance enrichment — generate UMF envelope, explanations,
+            # and IEEE compliance report, then attach to the trace before audit.
+            if self._governance_enabled:
+                try:
+                    _final_resp = (
+                        post
+                        if (isinstance(post, dict) and post)
+                        else (resp if isinstance(resp, dict) else {})
+                    )
+                except Exception:
+                    _final_resp = {}
+                try:
+                    self._enrich_governance(trace, _final_resp, ctx)
+                    # Attach governance summary to the response for the UI.
+                    # Strip envelope.payload to avoid circular reference
+                    # (payload IS the response dict itself).
+                    if trace.governance and isinstance(_final_resp, dict):
+                        import copy
+
+                        gov = copy.copy(trace.governance)
+                        if isinstance(gov.get("envelope"), dict):
+                            env = dict(gov["envelope"])
+                            env.pop("payload", None)
+                            gov["envelope"] = env
+                        _final_resp["governance"] = gov
+                except Exception as e:
+                    print(f"[GOVERNANCE] enrichment failed: {e}")
 
             try:
                 self.audit_writer.write(trace)

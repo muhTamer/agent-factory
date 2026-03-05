@@ -60,6 +60,10 @@ LAYERS = {
         "app/runtime/policy/policy_parser.py",
         "app/runtime/policy/workflow_policy_bridge.py",
         "app/runtime/policy_pack.py",
+        "app/governance/ieee_compliance.py",
+        "app/governance/message_envelope.py",
+        "app/governance/explainability.py",
+        "app/governance/pii_redactor.py",
     ],
 }
 

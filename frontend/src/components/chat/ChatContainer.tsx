@@ -10,6 +10,7 @@ import { DebugSidebar } from "@/components/debug/DebugSidebar";
 import {
   Bot,
   Bug,
+  Shield,
   Trash2,
   Wifi,
   WifiOff,
@@ -66,6 +67,17 @@ export function ChatContainer() {
               className="rounded p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
             >
               <Trash2 size={16} />
+            </button>
+            <button
+              onClick={() => { if (!debugMode) toggleDebugMode(); }}
+              title="IEEE Governance panel"
+              className={`rounded p-2 transition-colors ${
+                debugMode
+                  ? "bg-emerald-50 text-emerald-600"
+                  : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              }`}
+            >
+              <Shield size={16} />
             </button>
             <button
               onClick={toggleDebugMode}

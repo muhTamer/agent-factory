@@ -2,9 +2,64 @@
 from __future__ import annotations
 
 import json
+import re
 import textwrap
 from pathlib import Path
 from string import Template
+
+# Directories to search when resolving file references from slot descriptions
+_DATA_DIRS = [Path("data"), Path(".workspace"), Path("data/uploads")]
+
+
+def _resolve_file_hint(hint: str) -> str | None:
+    """Find a file in _DATA_DIRS whose name matches the hint (case-insensitive)."""
+    hint_lower = hint.lower()
+    # Also try segments: "refunds_policy" → ["refunds_policy", "refunds", "policy"]
+    segments = [hint_lower] + [s for s in hint_lower.replace(".", "_").split("_") if len(s) > 3]
+    for d in _DATA_DIRS:
+        if not d.exists():
+            continue
+        for f in d.iterdir():
+            if not f.is_file():
+                continue
+            fname = f.name.lower()
+            if any(seg in fname for seg in segments):
+                return str(f.resolve())
+    return None
+
+
+def _extract_file_refs_from_slots(workflow_spec: dict, docs: list, policies: list) -> None:
+    """Scan workflow slot descriptions for file references and add to context.
+
+    Mutates ``docs`` and ``policies`` in-place so resolved paths are
+    available to the generated agent as internal context.
+    """
+    _FILE_RE = re.compile(r"\b([\w.-]+\.(?:yaml|yml|json|csv|txt|md))\b", re.IGNORECASE)
+    _UPLOAD_RE = re.compile(r"<UPLOAD:([^>]+)>", re.IGNORECASE)
+
+    for slot_name, meta in (workflow_spec.get("slots") or {}).items():
+        if not isinstance(meta, dict):
+            continue
+        desc = str(meta.get("description", ""))
+        is_policy_slot = "policy" in slot_name.lower()
+
+        # Collect file hints from <UPLOAD:...> tags and literal filenames
+        hints: list[str] = []
+        for m in _UPLOAD_RE.finditer(desc):
+            hints.append(m.group(1).strip())
+        for m in _FILE_RE.finditer(desc):
+            hints.append(m.group(1).strip())
+
+        for hint in hints:
+            resolved = _resolve_file_hint(hint)
+            if not resolved:
+                continue
+            target = policies if (is_policy_slot or "policy" in hint.lower()) else docs
+            if resolved not in target:
+                target.append(resolved)
+                print(
+                    f"[GEN][AUTO-REF] slot '{slot_name}' -> {resolved} ({'policy' if target is policies else 'doc'})"
+                )
 
 
 def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
@@ -40,6 +95,13 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
         policies = [policies]
     if isinstance(tools, str):
         tools = [tools]
+
+    # ── Auto-discover internal docs/policies from slot descriptions ──
+    # LLM-generated workflow specs often reference files (e.g. refunds_policy.yaml)
+    # in slot descriptions but the factory spec may not list them as explicit inputs.
+    # Scan slots for file hints and resolve them into the agent's context so they
+    # are available internally (never exposed to customers).
+    _extract_file_refs_from_slots(workflow_spec, docs, policies)
 
     # Write workflow spec beside the agent for runtime loading
     wf_path = gen_dir / "workflow_spec.json"
@@ -108,6 +170,19 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                 self.policy_slot_map: Dict[str, str] = {}
                 self.policy_slot_computed: Dict[str, Any] = {}
                 self.policy_slot_defaults: Dict[str, Any] = {}
+
+                # Action prefixes that indicate user-input collection states
+                # (these should NOT auto-advance through the auto-chain).
+                self._USER_ACTION_PREFIXES = ("collect_", "ask_", "prompt_")
+
+                # Keywords indicating system-internal slots (never ask customer)
+                self._SYSTEM_SLOT_DESC_KW = (
+                    "path", "file path", "yaml", "yml", "json",
+                    "upload", "config", "<upload:",
+                )
+                self._SYSTEM_SLOT_NAME_KW = (
+                    "_reference", "_path", "_config", "override",
+                )
 
             def load(self, spec: Dict[str, Any]) -> None:
                 cfg_path = Path(__file__).parent / "config.json"
@@ -222,22 +297,106 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
 
                 return policy_slots
 
+            def _is_system_slot(self, slot_name: str, slot_defs: Dict[str, Any]) -> bool:
+                '''Check if a slot is system-internal (not customer-facing).'''
+                meta = (slot_defs or {}).get(slot_name)
+                if not isinstance(meta, dict):
+                    return False
+                name_lower = slot_name.lower()
+                if any(kw in name_lower for kw in self._SYSTEM_SLOT_NAME_KW):
+                    return True
+                desc = str(meta.get("description", "")).lower()
+                return any(kw in desc for kw in self._SYSTEM_SLOT_DESC_KW)
+
+            def _auto_fill_system_slots(self, engine: GenericWorkflowEngine, ctx: Dict[str, Any]) -> None:
+                '''Auto-fill system-internal slots from agent context.
+
+                LLM-generated workflow specs may include required slots like
+                "policy_reference" that point to internal config (policy YAML
+                paths, file references).  These must never be surfaced to the
+                customer as clarification questions.
+                '''
+                policies = ctx.get("policies") or []
+                docs = ctx.get("docs") or []
+                for slot_name in list(engine.slot_defs or {}):
+                    if engine.slots.get(slot_name):
+                        continue
+                    if not self._is_system_slot(slot_name, engine.slot_defs):
+                        continue
+                    name_lower = slot_name.lower()
+                    if "policy" in name_lower and policies:
+                        engine.slots[slot_name] = policies[0] if len(policies) == 1 else str(policies)
+                    elif "doc" in name_lower and docs:
+                        engine.slots[slot_name] = docs[0] if len(docs) == 1 else str(docs)
+                    else:
+                        engine.slots[slot_name] = "N/A"
+                    print(f"[SYS-SLOT:$agent_id] auto-filled {slot_name}={engine.slots[slot_name]}")
+
             def _try_policy_auto_event(self, engine: GenericWorkflowEngine) -> Optional[str]:
                 '''
                 Deterministically resolve an FSM event for system states.
 
-                Two paths:
-                  - tool_exec: stub tools always succeed; fire pass_event immediately.
+                Three paths:
+                  - tool_exec (explicit or inferred): stub tools always succeed;
+                    fire pass_event / first happy-path event immediately.
                     Does NOT require the policy bridge.
                   - eligibility / approval_needed: run compiled policy rules.
                     Requires the policy bridge.
+                  - inferred system state: if the state spec has an
+                    ``action`` starting with ``invoke_tool:`` but no explicit
+                    config in policy_state_map, auto-fire the first non-cancel
+                    event so the auto-chain can advance through tool states.
 
                 Returns None to fall back to LLM mapper (user-input states).
                 '''
-                if not self.policy_state_map:
+                # ── Guard: don't auto-advance while required slots are missing ──
+                # System states (tool exec, policy checks, etc.) need slot data to
+                # produce meaningful results.  If the user hasn't provided required
+                # information yet, fall back to the LLM mapper / request_clarification
+                # path so the workflow can collect the data first.
+                for slot_name, meta in (engine.slot_defs or {}).items():
+                    if isinstance(meta, dict) and meta.get("required") and not engine.slots.get(slot_name):
+                        return None
+
+                state_cfg = (self.policy_state_map or {}).get(engine.current_state)
+
+                # ── Inferred auto-advance for unconfigured system states ──
+                # States whose ``action`` is a system operation (tool invocation,
+                # internal agent query, ticket creation, handoff, etc.) should
+                # auto-advance without waiting for user input.
+                # Only ``collect_*`` / ``ask_*`` actions require user input.
+                if state_cfg is None:
+                    state_spec = engine.states.get(engine.current_state, {})
+                    action = state_spec.get("action") or ""
+                    actions = state_spec.get("actions") or []
+                    all_actions = ([action] if action else []) + (
+                        actions if isinstance(actions, list) else []
+                    )
+                    all_actions = [a for a in all_actions if isinstance(a, str) and a.strip()]
+
+                    is_system = (
+                        bool(all_actions)
+                        and not any(
+                            a.startswith(pfx)
+                            for a in all_actions
+                            for pfx in self._USER_ACTION_PREFIXES
+                        )
+                    )
+                    if is_system:
+                        on = state_spec.get("on") or {}
+                        # Pick first happy-path event (skip cancel/error/failure)
+                        _skip = {"cancel", "error", "failure", "timeout"}
+                        event = next(
+                            (e for e in on if e.lower() not in _skip), None
+                        )
+                        if event:
+                            print(
+                                f"[SYSTEM-AUTO-INFER:$agent_id] state={engine.current_state} "
+                                f"-> event={event} (inferred from action: {all_actions})"
+                            )
+                            return event
                     return None
 
-                state_cfg = self.policy_state_map.get(engine.current_state)
                 if not state_cfg:
                     return None
 
@@ -343,6 +502,10 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                         if k in (engine.slot_defs or {}) and not engine.slots.get(k):
                             engine.slots[k] = v
 
+                # Auto-fill system-internal slots (policy paths, file refs, etc.)
+                # so the customer is never asked for internal config values.
+                self._auto_fill_system_slots(engine, merged_ctx)
+
                 allowed_events = self._allowed_events(engine)
 
                 # ── Policy auto-event: deterministic resolution for policy-evaluation states ──
@@ -396,6 +559,13 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                     # request_clarification mode.  Prevents the LLM from picking an
                     # error/escalation event just because a required field is absent.
                     #
+                    # The guard only fires when the event would transition to a
+                    # NON-collection target (i.e., a system state or processing
+                    # state).  This allows incremental slot collection within
+                    # user-facing collection states: the mapper can return a
+                    # partial-slot event, the engine saves the new slots, and
+                    # on the next turn the remaining slots are collected.
+                    #
                     # Exception: "N/A" is a valid sentinel set by the mapper when the
                     # user explicitly declines to provide a field.  Treat it as satisfied
                     # so the workflow can progress past an unavailable required slot.
@@ -411,7 +581,29 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                             and str(_tentative.get(k, "")).strip() not in _DECLINED_SENTINELS
                         ]
                         if _still_missing:
-                            _mapped_event = None
+                            # Check if the target state is a system/processing
+                            # state.  If so, block — we need all data first.
+                            # If the target is another user-input collection
+                            # state (or we can't determine), allow the event so
+                            # the mapper's extracted slots get committed and the
+                            # engine can narrow the clarification.
+                            _target = (
+                                engine.states
+                                .get(engine.current_state, {})
+                                .get("on", {})
+                                .get(_mapped_event)
+                            )
+                            _target_spec = engine.states.get(_target, {}) if _target else {}
+                            _target_action = _target_spec.get("action") or ""
+                            _target_is_system = (
+                                _target_action
+                                and not any(
+                                    _target_action.startswith(pfx)
+                                    for pfx in self._USER_ACTION_PREFIXES
+                                )
+                            )
+                            if _target_is_system:
+                                _mapped_event = None
 
                     # Drive the workflow engine
                     wf_res = engine.handle({
@@ -483,6 +675,14 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
 
                 # Echo merged context for visibility/debugging
                 wf_res["context"] = engine.context
+
+                # Safety net: strip any system-internal slots that still appear
+                # in clarification requests (e.g. if auto-fill missed them).
+                if wf_res.get("action") == "request_clarification":
+                    wf_res["missing_slots"] = [
+                        s for s in (wf_res.get("missing_slots") or [])
+                        if not self._is_system_slot(s, engine.slot_defs)
+                    ]
 
                 return wf_res
 

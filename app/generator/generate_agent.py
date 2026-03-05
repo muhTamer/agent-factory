@@ -25,8 +25,58 @@ import json
 import shutil
 import traceback
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 import yaml
+
+
+# ------------------------------------------------------------
+# Upload placeholder resolution
+# ------------------------------------------------------------
+_DATA_DIRS = [Path("data"), Path(".workspace"), Path("data/uploads")]
+
+
+def _resolve_upload_placeholders(inputs: Dict[str, Any]) -> Dict[str, Any]:
+    """Resolve ``<UPLOAD:hint>`` placeholders in docs/policies lists.
+
+    Searches _DATA_DIRS for files whose name contains the hint string.
+    Unresolved placeholders are dropped with a warning.
+    """
+    for key in ("docs", "policies"):
+        items = inputs.get(key)
+        if not isinstance(items, list):
+            continue
+        resolved: List[str] = []
+        for item in items:
+            if isinstance(item, str) and item.strip().startswith("<UPLOAD:"):
+                path = _resolve_single_placeholder(item.strip())
+                if path:
+                    resolved.append(str(path))
+                else:
+                    print(f"[GEN][WARN] Could not resolve placeholder: {item}")
+            else:
+                resolved.append(item)
+        inputs[key] = resolved
+    return inputs
+
+
+def _resolve_single_placeholder(tag: str) -> Optional[Path]:
+    """Extract hint from ``<UPLOAD:hint>`` and find a matching file."""
+    hint = tag[len("<UPLOAD:") :].rstrip(">").strip().lower()
+    if not hint:
+        return None
+    # Build candidate search terms: full hint + individual segments
+    # e.g. "customer_faqs" → ["customer_faqs", "customer", "faqs"]
+    candidates = [hint] + [seg for seg in hint.split("_") if len(seg) > 2]
+    for d in _DATA_DIRS:
+        if not d.exists():
+            continue
+        for f in d.iterdir():
+            if not f.is_file():
+                continue
+            fname = f.name.lower()
+            if any(c in fname for c in candidates):
+                return f.resolve()
+    return None
 
 
 # ------------------------------------------------------------
@@ -45,8 +95,12 @@ def generate_agent(agent_spec: Dict[str, Any]) -> Path:
     agent_id = agent_spec["id"]
     blueprint = agent_spec.get("blueprint")
     # bp_meta = agent_spec.get("blueprint_meta", {})
-    inputs = agent_spec.get("inputs", {})
+    inputs = dict(agent_spec.get("inputs", {}))
     # base_dir = Path(agent_spec.get("inputs", {}).get("base_dir", Path.cwd()))
+
+    # Resolve <UPLOAD:hint> placeholders in inputs.docs / inputs.policies
+    # so builders receive real file paths, not unresolved tags.
+    inputs = _resolve_upload_placeholders(inputs)
 
     print(f"[GEN] Generating agent '{agent_id}' from blueprint '{blueprint}'")
 

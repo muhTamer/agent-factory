@@ -532,13 +532,16 @@ class AOPCoordinator:
                     "policy including timelines, fees, exceptions, and cite policy references...'\n"
                     "- Do NOT include agent names in subtask descriptions. Agent assignment is separate.\n\n"
                     "CRITICAL — Distinguish INFORMATIONAL vs ACTION queries:\n"
-                    '- "I need help with a refund" or "tell me about refund policy" = INFORMATIONAL.\n'
-                    "  Route to faq_rag. Do NOT start a refund workflow.\n"
-                    '- "I want a refund for order #123" or "refund EUR 50 for transaction X" = ACTION.\n'
-                    "  Route to refunds_workflow ONLY when the user provides specific transaction details.\n"
-                    "- NEVER initiate a workflow unless the user explicitly requests an action "
-                    "with concrete details (order number, amount, transaction ID).\n"
-                    "- When in doubt, prefer faq_rag lookup over workflow.\n\n"
+                    "- Questions ABOUT policies, procedures, or how things work = INFORMATIONAL.\n"
+                    '  Examples: "tell me about refund policy", "how do I request a refund?",\n'
+                    '  "what documents do I need to open an account?"\n'
+                    "- Explicit requests to PERFORM an action = ACTION, even without full details.\n"
+                    '  Examples: "I want to issue a refund", "process a refund for order #123",\n'
+                    '  "I want to open an account", "refund my last transaction"\n'
+                    "- The key distinction is USER INTENT: asking for information vs requesting\n"
+                    "  an action be performed. A workflow agent can collect missing details\n"
+                    "  (order number, amount) itself — do NOT require those for ACTION label.\n"
+                    "- When in doubt, prefer INFORMATIONAL.\n\n"
                     'Return STRICT JSON: {"subtasks": ["subtask description 1", ...]}'
                 ),
             },
@@ -584,12 +587,10 @@ class AOPCoordinator:
                     "- Do NOT create one subtask per missing aspect — group them logically.\n\n"
                     "CRITICAL — Keep subtask descriptions SHORT and factual.\n"
                     "CRITICAL — Distinguish INFORMATIONAL vs ACTION queries:\n"
-                    '- "I need help with a refund" or "tell me about refund policy" = INFORMATIONAL.\n'
-                    "  Route to faq_rag. Do NOT initiate a refund workflow or executor.\n"
-                    '- "I want a refund for order #123" or "refund EUR 50 for transaction X" = ACTION.\n'
-                    "  Route to workflow ONLY when the user provides specific transaction details.\n"
-                    "- NEVER create subtasks that initiate, execute, or process a refund unless the\n"
-                    "  user provided an order number, transaction ID, or specific amount.\n\n"
+                    "- Questions ABOUT policies, procedures, or how things work = INFORMATIONAL.\n"
+                    "- Explicit requests to PERFORM an action = ACTION, even without full details.\n"
+                    "  The workflow agent can collect missing details itself.\n"
+                    "- When in doubt, prefer INFORMATIONAL.\n\n"
                     'Return STRICT JSON: {"subtasks": ["subtask description 1", ...]}'
                 ),
             },
@@ -742,21 +743,25 @@ class AOPCoordinator:
         """Return True when all subtasks are informational (no action needed).
 
         Detection (in priority order):
-        1. LLM label: any subtask containing 'INFORMATIONAL' (prefix or mid-string)
-           is classified as informational.  If ALL have the label → True.
-        2. Action-signal fallback: if no subtask contains concrete transaction
+        1. LLM label: if ANY subtask has an ACTION label → False.
+        2. LLM label: if ALL subtasks have INFORMATIONAL label → True.
+        3. Action-signal fallback: if no subtask contains concrete transaction
            identifiers (order#, transaction#, amounts), treat as informational.
         """
         if not subtask_strs:
             return False
 
-        # Check 1: LLM-provided INFORMATIONAL labels (flexible — not just prefix)
-        all_labeled_info = all("INFORMATIONAL" in s.upper() for s in subtask_strs)
+        # Check 1: any ACTION label → not all informational
         any_labeled_action = any("ACTION" in s.upper() for s in subtask_strs)
-        if all_labeled_info and not any_labeled_action:
+        if any_labeled_action:
+            return False
+
+        # Check 2: all INFORMATIONAL labels → informational
+        all_labeled_info = all("INFORMATIONAL" in s.upper() for s in subtask_strs)
+        if all_labeled_info:
             return True
 
-        # Check 2: no action signals in any subtask → informational
+        # Check 3: no action signals in any subtask → informational
         return not any(self._action_signals.search(s) for s in subtask_strs)
 
     def _execute_subtasks(
@@ -778,20 +783,22 @@ class AOPCoordinator:
                 continue
 
             # Per-subtask guardrail: block action agents when the user hasn't provided
-            # concrete transaction details.
+            # concrete transaction details AND the decomposer didn't label it ACTION.
             #
-            # Primary signal — the decomposer's own label: if the LLM already marked
-            # this subtask INFORMATIONAL, never route it to an action agent regardless.
+            # If the decomposer explicitly labeled the subtask ACTION, allow it through —
+            # the workflow FSM is designed to collect missing details via slot prompting.
             #
-            # Fallback — for unlabeled subtasks (e.g. from re-decompose): check the
-            # original query using the configurable _action_signals pattern.
+            # If labeled INFORMATIONAL, always block action agents.
+            # If unlabeled, fall back to regex-based transaction detection.
             if self._is_action_agent(st.assigned_agent_id):
                 labeled_informational = st.description.upper().startswith("INFORMATIONAL:")
-                original_query = context.get("original_query", "") or ""
-                has_transaction = self._action_signals.search(
-                    original_query if original_query else st.description
-                )
-                if labeled_informational or not has_transaction:
+                labeled_action = st.description.upper().startswith("ACTION:")
+
+                if labeled_action:
+                    # Decomposer explicitly marked this as an action — let the
+                    # workflow agent handle it; it will collect missing slots.
+                    pass
+                elif labeled_informational:
                     agent_meta = self.registry.all_meta().get(st.assigned_agent_id, {})
                     msg = agent_meta.get("missing_context_message") or (
                         "To help with this I'll need a few more details — "
@@ -801,10 +808,28 @@ class AOPCoordinator:
                     st.result = {"error": "guardrail_blocked", "message": msg}
                     print(
                         f"[AOP-GUARD] Blocked action agent {st.assigned_agent_id} — "
-                        f"labeled_informational={labeled_informational}, "
-                        f"has_transaction={bool(has_transaction)}"
+                        f"labeled_informational={labeled_informational}"
                     )
                     continue
+                else:
+                    # No label — fall back to regex detection
+                    original_query = context.get("original_query", "") or ""
+                    has_transaction = self._action_signals.search(
+                        original_query if original_query else st.description
+                    )
+                    if not has_transaction:
+                        agent_meta = self.registry.all_meta().get(st.assigned_agent_id, {})
+                        msg = agent_meta.get("missing_context_message") or (
+                            "To help with this I'll need a few more details — "
+                            "could you share your order or transaction reference?"
+                        )
+                        st.success = False
+                        st.result = {"error": "guardrail_blocked", "message": msg}
+                        print(
+                            f"[AOP-GUARD] Blocked action agent {st.assigned_agent_id} — "
+                            f"no transaction details in query"
+                        )
+                        continue
 
             # Strip the decomposer's INFORMATIONAL:/ACTION: prefix before
             # passing to the agent — these are internal AOP labels that add
