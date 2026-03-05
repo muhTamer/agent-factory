@@ -1,0 +1,1375 @@
+{
+  "total_evaluations": 560,
+  "scenarios_count": 20,
+  "strategies_count": 4,
+  "personas_count": 7,
+  "overall": {
+    "transparency": {
+      "mean": 2.31,
+      "std": 0.65,
+      "min": 1,
+      "max": 4,
+      "n": 560
+    },
+    "trust": {
+      "mean": 2.55,
+      "std": 0.62,
+      "min": 1,
+      "max": 4,
+      "n": 560
+    },
+    "satisfaction": {
+      "mean": 2.26,
+      "std": 0.61,
+      "min": 1,
+      "max": 5,
+      "n": 560
+    },
+    "composite": {
+      "mean": 2.37,
+      "std": 0.54,
+      "min": 1.0,
+      "max": 4.0,
+      "n": 560
+    }
+  },
+  "by_strategy": {
+    "baseline": {
+      "transparency": {
+        "mean": 1.91,
+        "std": 0.42,
+        "min": 1,
+        "max": 3,
+        "n": 140
+      },
+      "trust": {
+        "mean": 2.27,
+        "std": 0.52,
+        "min": 1,
+        "max": 4,
+        "n": 140
+      },
+      "satisfaction": {
+        "mean": 1.96,
+        "std": 0.58,
+        "min": 1,
+        "max": 4,
+        "n": 140
+      },
+      "composite": {
+        "mean": 2.05,
+        "std": 0.42,
+        "min": 1.0,
+        "max": 3.33,
+        "n": 140
+      }
+    },
+    "transparent": {
+      "transparency": {
+        "mean": 2.59,
+        "std": 0.62,
+        "min": 2,
+        "max": 4,
+        "n": 140
+      },
+      "trust": {
+        "mean": 2.56,
+        "std": 0.57,
+        "min": 1,
+        "max": 4,
+        "n": 140
+      },
+      "satisfaction": {
+        "mean": 2.22,
+        "std": 0.47,
+        "min": 1,
+        "max": 4,
+        "n": 140
+      },
+      "composite": {
+        "mean": 2.46,
+        "std": 0.45,
+        "min": 1.33,
+        "max": 3.33,
+        "n": 140
+      }
+    },
+    "empathetic": {
+      "transparency": {
+        "mean": 2.05,
+        "std": 0.53,
+        "min": 1,
+        "max": 3,
+        "n": 140
+      },
+      "trust": {
+        "mean": 2.51,
+        "std": 0.59,
+        "min": 1,
+        "max": 4,
+        "n": 140
+      },
+      "satisfaction": {
+        "mean": 2.29,
+        "std": 0.57,
+        "min": 1,
+        "max": 4,
+        "n": 140
+      },
+      "composite": {
+        "mean": 2.29,
+        "std": 0.49,
+        "min": 1.0,
+        "max": 3.67,
+        "n": 140
+      }
+    },
+    "proactive": {
+      "transparency": {
+        "mean": 2.7,
+        "std": 0.64,
+        "min": 2,
+        "max": 4,
+        "n": 140
+      },
+      "trust": {
+        "mean": 2.86,
+        "std": 0.66,
+        "min": 2,
+        "max": 4,
+        "n": 140
+      },
+      "satisfaction": {
+        "mean": 2.56,
+        "std": 0.67,
+        "min": 2,
+        "max": 5,
+        "n": 140
+      },
+      "composite": {
+        "mean": 2.7,
+        "std": 0.58,
+        "min": 2.0,
+        "max": 4.0,
+        "n": 140
+      }
+    }
+  },
+  "by_persona": {
+    "Trust Seeker": {
+      "transparency": {
+        "mean": 2.02,
+        "std": 0.48,
+        "min": 1,
+        "max": 3,
+        "n": 80
+      },
+      "trust": {
+        "mean": 2.21,
+        "std": 0.41,
+        "min": 2,
+        "max": 3,
+        "n": 80
+      },
+      "satisfaction": {
+        "mean": 2.08,
+        "std": 0.31,
+        "min": 1,
+        "max": 3,
+        "n": 80
+      },
+      "composite": {
+        "mean": 2.1,
+        "std": 0.34,
+        "min": 1.33,
+        "max": 3.0,
+        "n": 80
+      }
+    },
+    "Efficiency Expert": {
+      "transparency": {
+        "mean": 2.6,
+        "std": 0.72,
+        "min": 1,
+        "max": 4,
+        "n": 80
+      },
+      "trust": {
+        "mean": 2.96,
+        "std": 0.54,
+        "min": 2,
+        "max": 4,
+        "n": 80
+      },
+      "satisfaction": {
+        "mean": 2.62,
+        "std": 0.79,
+        "min": 1,
+        "max": 5,
+        "n": 80
+      },
+      "composite": {
+        "mean": 2.73,
+        "std": 0.56,
+        "min": 1.33,
+        "max": 4.0,
+        "n": 80
+      }
+    },
+    "Tech Novice": {
+      "transparency": {
+        "mean": 2.48,
+        "std": 0.55,
+        "min": 2,
+        "max": 4,
+        "n": 80
+      },
+      "trust": {
+        "mean": 2.89,
+        "std": 0.55,
+        "min": 2,
+        "max": 4,
+        "n": 80
+      },
+      "satisfaction": {
+        "mean": 2.54,
+        "std": 0.55,
+        "min": 2,
+        "max": 4,
+        "n": 80
+      },
+      "composite": {
+        "mean": 2.63,
+        "std": 0.44,
+        "min": 2.0,
+        "max": 4.0,
+        "n": 80
+      }
+    },
+    "Frustrated Complainer": {
+      "transparency": {
+        "mean": 2.5,
+        "std": 0.73,
+        "min": 1,
+        "max": 4,
+        "n": 80
+      },
+      "trust": {
+        "mean": 2.56,
+        "std": 0.5,
+        "min": 2,
+        "max": 3,
+        "n": 80
+      },
+      "satisfaction": {
+        "mean": 1.94,
+        "std": 0.56,
+        "min": 1,
+        "max": 3,
+        "n": 80
+      },
+      "composite": {
+        "mean": 2.33,
+        "std": 0.5,
+        "min": 1.33,
+        "max": 3.33,
+        "n": 80
+      }
+    },
+    "Detail Oriented": {
+      "transparency": {
+        "mean": 1.89,
+        "std": 0.48,
+        "min": 1,
+        "max": 3,
+        "n": 80
+      },
+      "trust": {
+        "mean": 2.12,
+        "std": 0.37,
+        "min": 1,
+        "max": 3,
+        "n": 80
+      },
+      "satisfaction": {
+        "mean": 1.94,
+        "std": 0.33,
+        "min": 1,
+        "max": 3,
+        "n": 80
+      },
+      "composite": {
+        "mean": 1.98,
+        "std": 0.32,
+        "min": 1.0,
+        "max": 3.0,
+        "n": 80
+      }
+    },
+    "First-Time User": {
+      "transparency": {
+        "mean": 2.65,
+        "std": 0.62,
+        "min": 2,
+        "max": 4,
+        "n": 80
+      },
+      "trust": {
+        "mean": 3.1,
+        "std": 0.52,
+        "min": 2,
+        "max": 4,
+        "n": 80
+      },
+      "satisfaction": {
+        "mean": 2.76,
+        "std": 0.53,
+        "min": 2,
+        "max": 4,
+        "n": 80
+      },
+      "composite": {
+        "mean": 2.84,
+        "std": 0.45,
+        "min": 2.0,
+        "max": 4.0,
+        "n": 80
+      }
+    },
+    "Regulatory Aware": {
+      "transparency": {
+        "mean": 2.06,
+        "std": 0.49,
+        "min": 1,
+        "max": 3,
+        "n": 80
+      },
+      "trust": {
+        "mean": 2.01,
+        "std": 0.37,
+        "min": 1,
+        "max": 3,
+        "n": 80
+      },
+      "satisfaction": {
+        "mean": 1.94,
+        "std": 0.33,
+        "min": 1,
+        "max": 3,
+        "n": 80
+      },
+      "composite": {
+        "mean": 2.0,
+        "std": 0.34,
+        "min": 1.0,
+        "max": 3.0,
+        "n": 80
+      }
+    }
+  },
+  "by_category": {
+    "informational": {
+      "transparency": {
+        "mean": 2.24,
+        "std": 0.54,
+        "min": 1,
+        "max": 3,
+        "n": 112
+      },
+      "trust": {
+        "mean": 2.62,
+        "std": 0.66,
+        "min": 1,
+        "max": 4,
+        "n": 112
+      },
+      "satisfaction": {
+        "mean": 2.32,
+        "std": 0.67,
+        "min": 1,
+        "max": 5,
+        "n": 112
+      },
+      "composite": {
+        "mean": 2.4,
+        "std": 0.55,
+        "min": 1.0,
+        "max": 4.0,
+        "n": 112
+      }
+    },
+    "transactional": {
+      "transparency": {
+        "mean": 2.23,
+        "std": 0.68,
+        "min": 1,
+        "max": 4,
+        "n": 112
+      },
+      "trust": {
+        "mean": 2.57,
+        "std": 0.63,
+        "min": 1,
+        "max": 4,
+        "n": 112
+      },
+      "satisfaction": {
+        "mean": 2.27,
+        "std": 0.66,
+        "min": 1,
+        "max": 4,
+        "n": 112
+      },
+      "composite": {
+        "mean": 2.36,
+        "std": 0.57,
+        "min": 1.0,
+        "max": 4.0,
+        "n": 112
+      }
+    },
+    "complaint": {
+      "transparency": {
+        "mean": 2.63,
+        "std": 0.71,
+        "min": 1,
+        "max": 4,
+        "n": 112
+      },
+      "trust": {
+        "mean": 2.64,
+        "std": 0.57,
+        "min": 2,
+        "max": 4,
+        "n": 112
+      },
+      "satisfaction": {
+        "mean": 2.38,
+        "std": 0.6,
+        "min": 1,
+        "max": 4,
+        "n": 112
+      },
+      "composite": {
+        "mean": 2.55,
+        "std": 0.53,
+        "min": 1.67,
+        "max": 4.0,
+        "n": 112
+      }
+    },
+    "complex_multi_intent": {
+      "transparency": {
+        "mean": 2.23,
+        "std": 0.42,
+        "min": 2,
+        "max": 3,
+        "n": 112
+      },
+      "trust": {
+        "mean": 2.35,
+        "std": 0.51,
+        "min": 1,
+        "max": 4,
+        "n": 112
+      },
+      "satisfaction": {
+        "mean": 2.18,
+        "std": 0.47,
+        "min": 1,
+        "max": 3,
+        "n": 112
+      },
+      "composite": {
+        "mean": 2.25,
+        "std": 0.39,
+        "min": 1.33,
+        "max": 3.33,
+        "n": 112
+      }
+    },
+    "trust_sensitive": {
+      "transparency": {
+        "mean": 2.23,
+        "std": 0.76,
+        "min": 1,
+        "max": 4,
+        "n": 112
+      },
+      "trust": {
+        "mean": 2.57,
+        "std": 0.69,
+        "min": 1,
+        "max": 4,
+        "n": 112
+      },
+      "satisfaction": {
+        "mean": 2.15,
+        "std": 0.62,
+        "min": 1,
+        "max": 4,
+        "n": 112
+      },
+      "composite": {
+        "mean": 2.32,
+        "std": 0.61,
+        "min": 1.0,
+        "max": 4.0,
+        "n": 112
+      }
+    }
+  },
+  "strategy_persona_matrix": {
+    "baseline": {
+      "Trust Seeker": {
+        "transparency": {
+          "mean": 1.8,
+          "std": 0.41,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.05,
+          "std": 0.22,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 1.95,
+          "std": 0.22,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "composite": {
+          "mean": 1.93,
+          "std": 0.2,
+          "min": 1.33,
+          "max": 2.33,
+          "n": 20
+        }
+      },
+      "Efficiency Expert": {
+        "transparency": {
+          "mean": 2.05,
+          "std": 0.39,
+          "min": 1,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.6,
+          "std": 0.5,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.4,
+          "std": 0.75,
+          "min": 1,
+          "max": 4,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.35,
+          "std": 0.45,
+          "min": 1.33,
+          "max": 3.33,
+          "n": 20
+        }
+      },
+      "Tech Novice": {
+        "transparency": {
+          "mean": 2.15,
+          "std": 0.37,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.6,
+          "std": 0.6,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.25,
+          "std": 0.44,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.33,
+          "std": 0.38,
+          "min": 2.0,
+          "max": 3.33,
+          "n": 20
+        }
+      },
+      "Frustrated Complainer": {
+        "transparency": {
+          "mean": 1.85,
+          "std": 0.49,
+          "min": 1,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.1,
+          "std": 0.31,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 1.3,
+          "std": 0.47,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "composite": {
+          "mean": 1.75,
+          "std": 0.34,
+          "min": 1.33,
+          "max": 2.67,
+          "n": 20
+        }
+      },
+      "Detail Oriented": {
+        "transparency": {
+          "mean": 1.65,
+          "std": 0.49,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2,
+          "std": 0.32,
+          "min": 1,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 1.8,
+          "std": 0.41,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "composite": {
+          "mean": 1.82,
+          "std": 0.33,
+          "min": 1.0,
+          "max": 2.33,
+          "n": 20
+        }
+      },
+      "First-Time User": {
+        "transparency": {
+          "mean": 2.05,
+          "std": 0.22,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.7,
+          "std": 0.47,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.25,
+          "std": 0.44,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.33,
+          "std": 0.24,
+          "min": 2.0,
+          "max": 2.67,
+          "n": 20
+        }
+      },
+      "Regulatory Aware": {
+        "transparency": {
+          "mean": 1.85,
+          "std": 0.37,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "trust": {
+          "mean": 1.85,
+          "std": 0.37,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 1.8,
+          "std": 0.41,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "composite": {
+          "mean": 1.83,
+          "std": 0.35,
+          "min": 1.0,
+          "max": 2.0,
+          "n": 20
+        }
+      }
+    },
+    "transparent": {
+      "Trust Seeker": {
+        "transparency": {
+          "mean": 2.25,
+          "std": 0.44,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.4,
+          "std": 0.5,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.05,
+          "std": 0.22,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.23,
+          "std": 0.33,
+          "min": 2.0,
+          "max": 3.0,
+          "n": 20
+        }
+      },
+      "Efficiency Expert": {
+        "transparency": {
+          "mean": 3,
+          "std": 0.56,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.9,
+          "std": 0.31,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.55,
+          "std": 0.6,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.82,
+          "std": 0.3,
+          "min": 2.33,
+          "max": 3.33,
+          "n": 20
+        }
+      },
+      "Tech Novice": {
+        "transparency": {
+          "mean": 2.6,
+          "std": 0.5,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.8,
+          "std": 0.41,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.25,
+          "std": 0.44,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.55,
+          "std": 0.29,
+          "min": 2.0,
+          "max": 3.0,
+          "n": 20
+        }
+      },
+      "Frustrated Complainer": {
+        "transparency": {
+          "mean": 3,
+          "std": 0.65,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.7,
+          "std": 0.47,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2,
+          "std": 0.32,
+          "min": 1,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.57,
+          "std": 0.38,
+          "min": 1.67,
+          "max": 3.33,
+          "n": 20
+        }
+      },
+      "Detail Oriented": {
+        "transparency": {
+          "mean": 2.05,
+          "std": 0.22,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.05,
+          "std": 0.22,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2,
+          "std": 0.0,
+          "min": 2,
+          "max": 2,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.03,
+          "std": 0.1,
+          "min": 2.0,
+          "max": 2.33,
+          "n": 20
+        }
+      },
+      "First-Time User": {
+        "transparency": {
+          "mean": 3.05,
+          "std": 0.51,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "trust": {
+          "mean": 3.15,
+          "std": 0.49,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.75,
+          "std": 0.44,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.98,
+          "std": 0.33,
+          "min": 2.33,
+          "max": 3.33,
+          "n": 20
+        }
+      },
+      "Regulatory Aware": {
+        "transparency": {
+          "mean": 2.2,
+          "std": 0.41,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 1.95,
+          "std": 0.22,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 1.95,
+          "std": 0.22,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.03,
+          "std": 0.21,
+          "min": 1.33,
+          "max": 2.33,
+          "n": 20
+        }
+      }
+    },
+    "empathetic": {
+      "Trust Seeker": {
+        "transparency": {
+          "mean": 1.8,
+          "std": 0.41,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.05,
+          "std": 0.22,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2,
+          "std": 0.0,
+          "min": 2,
+          "max": 2,
+          "n": 20
+        },
+        "composite": {
+          "mean": 1.95,
+          "std": 0.16,
+          "min": 1.67,
+          "max": 2.33,
+          "n": 20
+        }
+      },
+      "Efficiency Expert": {
+        "transparency": {
+          "mean": 2.15,
+          "std": 0.49,
+          "min": 1,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.95,
+          "std": 0.51,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.3,
+          "std": 0.66,
+          "min": 1,
+          "max": 4,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.47,
+          "std": 0.49,
+          "min": 1.33,
+          "max": 3.67,
+          "n": 20
+        }
+      },
+      "Tech Novice": {
+        "transparency": {
+          "mean": 2.2,
+          "std": 0.41,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.95,
+          "std": 0.51,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.75,
+          "std": 0.44,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.63,
+          "std": 0.34,
+          "min": 2.0,
+          "max": 3.33,
+          "n": 20
+        }
+      },
+      "Frustrated Complainer": {
+        "transparency": {
+          "mean": 2.3,
+          "std": 0.47,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.6,
+          "std": 0.5,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.35,
+          "std": 0.49,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.42,
+          "std": 0.4,
+          "min": 2.0,
+          "max": 3.0,
+          "n": 20
+        }
+      },
+      "Detail Oriented": {
+        "transparency": {
+          "mean": 1.65,
+          "std": 0.49,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2,
+          "std": 0.0,
+          "min": 2,
+          "max": 2,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 1.85,
+          "std": 0.37,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "composite": {
+          "mean": 1.83,
+          "std": 0.25,
+          "min": 1.33,
+          "max": 2.0,
+          "n": 20
+        }
+      },
+      "First-Time User": {
+        "transparency": {
+          "mean": 2.45,
+          "std": 0.51,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 3.1,
+          "std": 0.31,
+          "min": 3,
+          "max": 4,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.9,
+          "std": 0.45,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.82,
+          "std": 0.33,
+          "min": 2.33,
+          "max": 3.67,
+          "n": 20
+        }
+      },
+      "Regulatory Aware": {
+        "transparency": {
+          "mean": 1.8,
+          "std": 0.41,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "trust": {
+          "mean": 1.95,
+          "std": 0.22,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 1.9,
+          "std": 0.31,
+          "min": 1,
+          "max": 2,
+          "n": 20
+        },
+        "composite": {
+          "mean": 1.88,
+          "std": 0.27,
+          "min": 1.0,
+          "max": 2.0,
+          "n": 20
+        }
+      }
+    },
+    "proactive": {
+      "Trust Seeker": {
+        "transparency": {
+          "mean": 2.25,
+          "std": 0.44,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.35,
+          "std": 0.49,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.3,
+          "std": 0.47,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.3,
+          "std": 0.44,
+          "min": 2.0,
+          "max": 3.0,
+          "n": 20
+        }
+      },
+      "Efficiency Expert": {
+        "transparency": {
+          "mean": 3.2,
+          "std": 0.62,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "trust": {
+          "mean": 3.4,
+          "std": 0.5,
+          "min": 3,
+          "max": 4,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 3.25,
+          "std": 0.79,
+          "min": 2,
+          "max": 5,
+          "n": 20
+        },
+        "composite": {
+          "mean": 3.28,
+          "std": 0.48,
+          "min": 2.33,
+          "max": 4.0,
+          "n": 20
+        }
+      },
+      "Tech Novice": {
+        "transparency": {
+          "mean": 2.95,
+          "std": 0.51,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "trust": {
+          "mean": 3.2,
+          "std": 0.52,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.9,
+          "std": 0.55,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "composite": {
+          "mean": 3.02,
+          "std": 0.44,
+          "min": 2.33,
+          "max": 4.0,
+          "n": 20
+        }
+      },
+      "Frustrated Complainer": {
+        "transparency": {
+          "mean": 2.85,
+          "std": 0.67,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.85,
+          "std": 0.37,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.1,
+          "std": 0.31,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.6,
+          "std": 0.35,
+          "min": 2.0,
+          "max": 3.33,
+          "n": 20
+        }
+      },
+      "Detail Oriented": {
+        "transparency": {
+          "mean": 2.2,
+          "std": 0.41,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.45,
+          "std": 0.51,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.1,
+          "std": 0.31,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.25,
+          "std": 0.34,
+          "min": 2.0,
+          "max": 3.0,
+          "n": 20
+        }
+      },
+      "First-Time User": {
+        "transparency": {
+          "mean": 3.05,
+          "std": 0.51,
+          "min": 2,
+          "max": 4,
+          "n": 20
+        },
+        "trust": {
+          "mean": 3.45,
+          "std": 0.51,
+          "min": 3,
+          "max": 4,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 3.15,
+          "std": 0.37,
+          "min": 3,
+          "max": 4,
+          "n": 20
+        },
+        "composite": {
+          "mean": 3.22,
+          "std": 0.36,
+          "min": 2.67,
+          "max": 4.0,
+          "n": 20
+        }
+      },
+      "Regulatory Aware": {
+        "transparency": {
+          "mean": 2.4,
+          "std": 0.5,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "trust": {
+          "mean": 2.3,
+          "std": 0.47,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "satisfaction": {
+          "mean": 2.1,
+          "std": 0.31,
+          "min": 2,
+          "max": 3,
+          "n": 20
+        },
+        "composite": {
+          "mean": 2.27,
+          "std": 0.35,
+          "min": 2.0,
+          "max": 3.0,
+          "n": 20
+        }
+      }
+    }
+  },
+  "statistical_tests": {
+    "note": "scipy not available; statistical tests skipped"
+  }
+}
