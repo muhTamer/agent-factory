@@ -21,20 +21,29 @@ export function RouterPlanPanel({ message }: Props) {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold uppercase text-slate-500 flex items-center gap-1.5">
+      <h3
+        className="text-sm font-semibold uppercase text-slate-500 flex items-center gap-1.5 cursor-help"
+        title="The LLM router evaluates the query and ranks candidate agents by relevance, then selects a routing strategy"
+      >
         <Route size={14} />
         Router Plan
       </h3>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg bg-slate-50 px-3 py-2">
+        <div
+          className="rounded-lg bg-slate-50 px-3 py-2 cursor-help"
+          title="'single' runs only the top agent; 'fanout' runs all candidates in parallel and picks the best scoring response"
+        >
           <p className="text-xs text-slate-400">Strategy</p>
           <p className="text-sm font-medium text-slate-700 capitalize">
             {plan.strategy}
           </p>
         </div>
-        <div className="rounded-lg bg-slate-50 px-3 py-2">
+        <div
+          className="rounded-lg bg-slate-50 px-3 py-2 cursor-help"
+          title="'Direct' routes to a single agent; 'Multi-agent' delegates subtasks across multiple specialized agents"
+        >
           <p className="text-xs text-slate-400">Pattern</p>
           <p className="text-sm font-medium text-slate-700">
             {orchestrationPattern === "hierarchical_delegation"
@@ -46,7 +55,10 @@ export function RouterPlanPanel({ message }: Props) {
 
       {/* Winner highlight */}
       {winnerAgent && (
-        <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
+        <div
+          className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 cursor-help"
+          title="The agent chosen to handle this query, selected based on the highest router confidence score"
+        >
           <Target size={16} className="shrink-0 text-blue-500" />
           <div className="min-w-0 flex-1">
             <p className="text-xs text-blue-500">Selected agent</p>
@@ -55,7 +67,10 @@ export function RouterPlanPanel({ message }: Props) {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-blue-600">
+            <p
+              className="text-lg font-bold text-blue-600 cursor-help"
+              title={`Router confidence: ${(Number(winnerAgent.score) * 100).toFixed(1)}% — how well this agent matches the query intent`}
+            >
               {(Number(winnerAgent.score) * 100).toFixed(0)}%
             </p>
           </div>
@@ -68,8 +83,18 @@ export function RouterPlanPanel({ message }: Props) {
           <thead>
             <tr className="border-b border-slate-200 text-left text-xs text-slate-400">
               <th className="pb-1.5 pr-2 font-medium">Agent</th>
-              <th className="pb-1.5 pr-2 font-medium">Score</th>
-              <th className="pb-1.5 font-medium">Reason</th>
+              <th
+                className="pb-1.5 pr-2 font-medium cursor-help"
+                title="The LLM router's confidence score (0-1) for how well each agent can handle this query"
+              >
+                Score
+              </th>
+              <th
+                className="pb-1.5 font-medium cursor-help"
+                title="The router's explanation for why this agent was considered for the query"
+              >
+                Reason
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -114,7 +139,10 @@ export function RouterPlanPanel({ message }: Props) {
 
       {/* Latency */}
       {message.latencyMs && (
-        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+        <div
+          className="flex items-center gap-1.5 text-xs text-slate-400 cursor-help"
+          title="End-to-end time from sending the query to receiving the final response, including routing, agent execution, and governance checks"
+        >
           <Clock size={12} />
           <span>
             Total response time: {(message.latencyMs / 1000).toFixed(1)}s

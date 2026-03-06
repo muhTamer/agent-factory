@@ -40,7 +40,10 @@ export function ExplainabilityPanel({ onClose }: Props) {
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
           <Eye size={16} className="text-blue-500" />
-          <h2 className="text-base font-semibold text-slate-700">
+          <h2
+            className="text-base font-semibold text-slate-700 cursor-help"
+            title="Inspect how the system processed this response — routing decisions, agent selection, governance compliance, and policy checks"
+          >
             Explainability
           </h2>
         </div>
@@ -72,7 +75,10 @@ export function ExplainabilityPanel({ onClose }: Props) {
         {!selected || selected.role !== "agent" ? (
           <div className="py-8 text-center">
             <Eye size={32} className="mx-auto mb-2 text-slate-200" />
-            <p className="text-sm text-slate-400">
+            <p
+              className="text-sm text-slate-400 cursor-help"
+              title="Select any agent message in the chat to see the routing, governance, and policy details for that response"
+            >
               Click an agent response to inspect how it was generated.
             </p>
           </div>

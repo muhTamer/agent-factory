@@ -38,7 +38,10 @@ export function GovernancePanel({ message }: Props) {
   if (!governance) {
     return (
       <div className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">
+        <h3
+          className="text-xs font-semibold uppercase text-slate-500 cursor-help"
+          title="IEEE governance layer evaluates compliance, explainability, and message provenance for each response"
+        >
           IEEE Governance
         </h3>
         <p className="text-xs text-slate-400">
@@ -50,7 +53,10 @@ export function GovernancePanel({ message }: Props) {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xs font-semibold uppercase text-slate-500">
+      <h3
+        className="text-xs font-semibold uppercase text-slate-500 cursor-help"
+        title="IEEE governance layer evaluates compliance, explainability, and message provenance for each response"
+      >
         IEEE Governance
       </h3>
       <ComplianceSection compliance={governance.compliance} />
@@ -85,7 +91,10 @@ function ComplianceSection({ compliance }: { compliance: Record<string, unknown>
     <div className="space-y-2">
       {/* Overall rate */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-600">Overall Compliance</span>
+        <span
+          className="text-xs font-medium text-slate-600 cursor-help"
+          title="Percentage of IEEE standard requirements that this response satisfies — higher is better"
+        >Overall Compliance</span>
         <span className={`text-sm font-bold ${rateColor}`}>
           {(rate * 100).toFixed(0)}%
         </span>
@@ -181,25 +190,29 @@ function ExplainabilitySection({
   if (!explanations) return null;
 
   const levels = [
-    { key: "summary", label: "Summary", icon: Eye, desc: "User-facing" },
-    { key: "detailed", label: "Detailed", icon: FileText, desc: "Auditor" },
-    { key: "full", label: "Full", icon: Code, desc: "Developer" },
+    { key: "summary", label: "Summary", icon: Eye, desc: "User-facing", tooltip: "Plain-language explanation suitable for end-users — what the system did and why" },
+    { key: "detailed", label: "Detailed", icon: FileText, desc: "Auditor", tooltip: "Auditor-level explanation with decision rationale, agents involved, and data provenance" },
+    { key: "full", label: "Full", icon: Code, desc: "Developer", tooltip: "Developer-level trace with full metrics, decision chain, and technical details" },
   ];
 
   return (
     <div className="space-y-2">
-      <h4 className="text-[10px] font-semibold uppercase text-slate-400">
+      <h4
+        className="text-[10px] font-semibold uppercase text-slate-400 cursor-help"
+        title="IEEE 2894-2024 requires AI systems to provide explanations at multiple levels: Summary (end-user), Detailed (auditor), and Full (developer)"
+      >
         Explainability (IEEE 2894)
       </h4>
 
       <div className="flex gap-1">
-        {levels.map(({ key, label, icon: Icon, desc }) => {
+        {levels.map(({ key, label, icon: Icon, desc, tooltip }) => {
           const available = key in explanations;
           const active = activeLevel === key;
           return (
             <button
               key={key}
               disabled={!available}
+              title={tooltip}
               onClick={() => setActiveLevel(active ? null : key)}
               className={`flex flex-1 flex-col items-center gap-0.5 rounded-md border p-1.5 text-[10px] transition-colors ${
                 active
@@ -253,7 +266,10 @@ function ExplanationContent({ data }: { data: Record<string, unknown> }) {
       {/* Key decisions */}
       {decisions.length > 0 && (
         <details className="text-[10px]">
-          <summary className="cursor-pointer font-medium text-slate-500 hover:text-slate-700">
+          <summary
+            className="cursor-pointer font-medium text-slate-500 hover:text-slate-700"
+            title="Key routing and processing decisions made during this request"
+          >
             Decisions ({decisions.length})
           </summary>
           <div className="mt-1 space-y-1">
@@ -274,7 +290,10 @@ function ExplanationContent({ data }: { data: Record<string, unknown> }) {
       {/* Provenance */}
       {provenance.length > 0 && (
         <details className="text-[10px]">
-          <summary className="cursor-pointer font-medium text-slate-500 hover:text-slate-700">
+          <summary
+            className="cursor-pointer font-medium text-slate-500 hover:text-slate-700"
+            title="Data sources and evidence used to generate this response"
+          >
             Provenance ({provenance.length})
           </summary>
           <div className="mt-1 space-y-1">
@@ -291,7 +310,10 @@ function ExplanationContent({ data }: { data: Record<string, unknown> }) {
       {/* Metrics */}
       {Object.keys(metrics).length > 0 && (
         <details className="text-[10px]">
-          <summary className="cursor-pointer font-medium text-slate-500 hover:text-slate-700">
+          <summary
+            className="cursor-pointer font-medium text-slate-500 hover:text-slate-700"
+            title="Performance and quality metrics collected during processing"
+          >
             Metrics
           </summary>
           <div className="mt-1 space-y-0.5">
@@ -326,7 +348,10 @@ function EnvelopeSection({ envelope }: { envelope: Record<string, unknown> | und
 
   return (
     <div className="space-y-2">
-      <h4 className="text-[10px] font-semibold uppercase text-slate-400">
+      <h4
+        className="text-[10px] font-semibold uppercase text-slate-400 cursor-help"
+        title="IEEE P3394 defines a universal message format for multi-agent communication, including sender/receiver identity, AI disclosure, and the chain of agents involved"
+      >
         Message Envelope (IEEE P3394)
       </h4>
 
@@ -334,7 +359,10 @@ function EnvelopeSection({ envelope }: { envelope: Record<string, unknown> | und
         {/* AI disclosure */}
         <div className="flex items-center gap-2">
           <Fingerprint size={12} className="text-slate-400" />
-          <span className="text-slate-500">AI-generated:</span>
+          <span
+            className="text-slate-500 cursor-help"
+            title="Whether this response was generated by an AI model, as required by transparency standards"
+          >AI-generated:</span>
           {aiGenerated ? (
             <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-[9px]">
               Yes
@@ -348,7 +376,10 @@ function EnvelopeSection({ envelope }: { envelope: Record<string, unknown> | und
         {sender && (
           <div className="flex items-center gap-2">
             <Activity size={12} className="text-slate-400" />
-            <span className="text-slate-500">Sender:</span>
+            <span
+              className="text-slate-500 cursor-help"
+              title="The agent that produced this response"
+            >Sender:</span>
             <span className="font-medium text-slate-700">
               {String(sender.agent_id || "unknown")}
             </span>
@@ -362,7 +393,10 @@ function EnvelopeSection({ envelope }: { envelope: Record<string, unknown> | und
         {receiver && (
           <div className="flex items-center gap-2">
             <Activity size={12} className="text-slate-400" />
-            <span className="text-slate-500">Receiver:</span>
+            <span
+              className="text-slate-500 cursor-help"
+              title="The intended recipient of this message — either the end-user or another agent in the pipeline"
+            >Receiver:</span>
             <span className="font-medium text-slate-700">
               {(receiver.is_human ? "User" : String(receiver.agent_id || "unknown"))}
             </span>
@@ -373,7 +407,10 @@ function EnvelopeSection({ envelope }: { envelope: Record<string, unknown> | und
         {agentsChain.length > 0 && (
           <div className="flex items-center gap-2">
             <Shield size={12} className="text-slate-400" />
-            <span className="text-slate-500">Chain:</span>
+            <span
+              className="text-slate-500 cursor-help"
+              title="The sequence of agents that processed this request, from router to final responder"
+            >Chain:</span>
             <div className="flex flex-wrap gap-1">
               {agentsChain.map((a, i) => (
                 <Badge key={i} variant="secondary" className="text-[9px]">
