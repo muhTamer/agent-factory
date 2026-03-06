@@ -124,3 +124,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mobile overlay slide-in animations */
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in-left {
+  animation: slide-in-left 0.2s ease-out;
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}

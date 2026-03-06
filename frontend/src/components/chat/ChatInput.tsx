@@ -40,7 +40,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           placeholder="Type a message..."
           disabled={disabled}
           rows={1}
-          className="flex-1 resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-300 disabled:opacity-50"
+          className="flex-1 resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-base text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-300 disabled:opacity-50"
           style={{ maxHeight: 120 }}
           onInput={(e) => {
             const target = e.target as HTMLTextAreaElement;

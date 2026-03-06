@@ -4,9 +4,9 @@ import type { AgentMeta } from "@/types/api";
 
 interface ChatState {
   messages: ChatMessage[];
-  addMessage: (msg: ChatMessage) => void;
   clearMessages: () => void;
 
+  /** The backend-generated thread_id for multi-turn API calls */
   threadId: string | null;
   setThreadId: (id: string) => void;
 
@@ -33,13 +33,22 @@ interface ChatState {
 
   error: string | null;
   setError: (e: string | null) => void;
+
+  /** Internal: tracks which threads have in-flight requests */
+  _loadingThreads: Record<string, boolean>;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
-  addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
+
   clearMessages: () =>
-    set({ messages: [], threadId: null, activeWorkflow: null, quickReplies: [] }),
+    set({
+      messages: [],
+      threadId: null,
+      activeWorkflow: null,
+      quickReplies: [],
+      selectedMessageId: null,
+    }),
 
   threadId: null,
   setThreadId: (id) => set({ threadId: id }),
@@ -67,4 +76,6 @@ export const useChatStore = create<ChatState>((set) => ({
 
   error: null,
   setError: (e) => set({ error: e }),
+
+  _loadingThreads: {},
 }));
