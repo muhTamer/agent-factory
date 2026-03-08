@@ -83,17 +83,17 @@ _INTERNAL_AGENT_SIGNALS = {
 
 
 def _is_customer_facing_agent(bp: Dict[str, Any]) -> bool:
-    """Determine if a knowledge_rag agent is customer-facing (vs internal).
+    """Determine if an agent is customer-facing (vs internal).
 
-    Only knowledge_rag agents can be customer-facing.  Among those, agents
-    whose description or capabilities mention compliance/guardrails/audit
+    knowledge_rag and domain_agent agents can be customer-facing.
+    Agents whose description or capabilities mention compliance/guardrails/audit
     are classified as internal — they need access to policy docs.
 
     NOTE: The LLM-provided ``customer_facing`` flag is intentionally ignored.
     LLMs frequently misclassify this; the description-based heuristic is
     more reliable.
     """
-    if bp.get("agent_kind") != "knowledge_rag":
+    if bp.get("agent_kind") not in ("knowledge_rag", "domain_agent"):
         return False
     # Always use description-based heuristic (LLM flag is unreliable)
     desc = (bp.get("description") or "").lower()
@@ -206,6 +206,42 @@ def _inputs_from_blueprint(
             pc = _build_policy_config(inputs.get("workflow_spec") or {}, data_dir)
             if pc:
                 inputs["policy_config"] = pc
+
+    # For domain_agent: set domain, goal, knowledge_sources, available_tools, policies
+    if agent_kind == "domain_agent":
+        inputs.setdefault("domain", bp.get("domain") or bp.get("id", "general"))
+        inputs.setdefault("goal", bp.get("goal") or bp.get("description", ""))
+
+        # knowledge_sources: merge resolved docs + policy docs for the RAG corpus
+        if "knowledge_sources" not in inputs or not inputs.get("knowledge_sources"):
+            ks = list(resolved_docs)
+            if not _is_customer_facing:
+                ks.extend(resolved_policies)
+            if not ks:
+                # Fallback: use any csv/md/txt files
+                candidates = [
+                    f
+                    for f in data_dir.iterdir()
+                    if f.is_file() and f.suffix.lower() in {".csv", ".md", ".txt"}
+                ]
+                ks = [_abs(f) for f in candidates]
+            inputs["knowledge_sources"] = ks
+
+        # available_tools: from blueprint inputs or bp["tools"]
+        if "available_tools" not in inputs or not inputs.get("available_tools"):
+            tools_list = bp.get("tools") or []
+            if isinstance(tools_list, list):
+                inputs["available_tools"] = [str(t) for t in tools_list]
+            else:
+                inputs["available_tools"] = []
+
+        # policies: natural language constraints from policy docs or explicit policies_text
+        if "policies" not in inputs or not inputs.get("policies"):
+            policies_text = bp.get("policies_text") or inputs.get("policies_text") or []
+            if isinstance(policies_text, list):
+                inputs["policies"] = [str(p) for p in policies_text]
+            else:
+                inputs["policies"] = []
 
     # For tool_operator, allow a default tool name from blueprint inputs or bp["tools"][0]
     if agent_kind == "tool_operator":
@@ -529,6 +565,7 @@ def build_factory_spec(
     #   - factory/blueprints/workflow_runner/blueprint.yaml (entrypoint: app.shared.workflow.build_agent)  <-- next step
     #   - factory/blueprints/tool_operator/blueprint.yaml   (entrypoint: app.shared.toolop.build_agent)   <-- later
     kind_to_blueprint = {
+        "domain_agent": "domain_agent",
         "knowledge_rag": "knowledge_rag",
         "workflow_runner": "workflow_runner",
         "tool_operator": "tool_operator",
@@ -562,7 +599,7 @@ def build_factory_spec(
                     # details (order ID, amount, etc.).  The AOPCoordinator reads this flag
                     # to decide whether to block execution until the user supplies context.
                     # Add new action agent kinds here as the platform grows.
-                    "requires_user_context": agent_kind in {"workflow_runner"},
+                    "requires_user_context": agent_kind in {"workflow_runner", "domain_agent"},
                     "customer_facing": _is_customer_facing_agent(bp),
                     # Declarative AOP eligibility: set by the planning LLMs
                     # (infer_capabilities → blueprint_creator).  AOPCoordinator

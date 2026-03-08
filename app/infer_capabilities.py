@@ -22,8 +22,9 @@ DOC_TYPES = {
 
 
 AGENT_KINDS = {
-    "rag",  # retrieval-based answering / lookup
-    "workflow",  # multi-step state machine / process runner
+    "domain_agent",  # unified domain specialist (RAG + tools + ReAct reasoning)
+    "rag",  # retrieval-based answering / lookup (legacy)
+    "workflow",  # multi-step state machine / process runner (legacy)
     "tool",  # tool operator / action executor
     "router",  # intent routing / agent selection
     "qa",  # evaluation / monitoring / scoring
@@ -279,7 +280,20 @@ class InferCapabilities:
         """
         system = (
             "You are designing a CUSTOMER-SERVICE multi-agent system plan.\n"
-            "You must propose a small set of agents that can handle the user's goals.\n"
+            "You must propose a small set of DOMAIN AGENTS that can handle the user's goals.\n\n"
+            "AGENT TYPE:\n"
+            "Every agent MUST be agent_kind='domain_agent'.\n"
+            "A domain_agent is a unified domain specialist that combines:\n"
+            "  - Knowledge retrieval (RAG) from domain documents\n"
+            "  - Tool selection and execution\n"
+            "  - ReAct reasoning loop for autonomous decision-making\n"
+            "  - Policy enforcement via prompt constraints\n"
+            "Each agent specializes in one domain (e.g. refunds, orders, accounts, FAQ).\n\n"
+            "REQUIRED FIELDS per agent:\n"
+            "  - domain: string (e.g. 'refunds', 'orders', 'faq', 'accounts')\n"
+            "  - goal: string (e.g. 'Help customers with refund requests')\n"
+            "  - required_tools: list of tool names the agent needs\n"
+            "  - policies_text: list of natural language policy constraints\n\n"
             "IMPORTANT CONSTRAINTS:\n"
             "- Do NOT invent documents. Use only the provided document names.\n"
             "- Keep it minimal (<= max_agents). Prefer reusable agents.\n"
@@ -289,31 +303,26 @@ class InferCapabilities:
             "  By default, DO NOT attach off_vertical documents to agents.\n"
             "  If there are NO on-vertical documents for a needed bucket, you may attach off_vertical docs,\n"
             "  but then set status='partial' and explain the mismatch in notes.\n"
-            "- Policy documents (doc_type='policy') are INTERNAL process documents (eligibility rules, "
-            "compliance criteria, refund thresholds, KYC requirements). They tell agents what to do, "
-            "NOT what to show customers.\n"
-            "  - Internal agents (policy enforcement, compliance, guardrails) MUST receive policy documents.\n"
-            "  - Customer-facing agents (FAQ answering, general Q&A) must NOT receive policy documents.\n"
-            "    Only give them knowledge_base documents (FAQs, help articles, product guides).\n"
-            "- If a knowledge_base doc is on-vertical, share it with all agents that need it.\n"
+            "- Policy documents (doc_type='policy') provide INTERNAL rules that constrain the agent's\n"
+            "  reasoning (eligibility rules, refund thresholds, KYC requirements).\n"
+            "  They become 'policies_text' constraints in the agent's ReAct prompt.\n"
+            "- Knowledge_base documents (FAQs, help articles) become the agent's retrieval corpus.\n"
             "AOP ELIGIBILITY — aop_eligible field:\n"
             "Each agent MUST include an 'aop_eligible' boolean field.\n"
             "aop_eligible=true means the agent can be assigned user-facing subtasks by the orchestrator.\n"
-            "Set aop_eligible=true for:\n"
-            "  - Customer-facing FAQ/QA agents (answer user questions directly)\n"
-            "  - Primary workflow handlers (refund processing, account changes — end-to-end)\n"
-            "Set aop_eligible=false for:\n"
-            "  - Routing/classification agents (they dispatch, not handle)\n"
-            "  - Internal support agents (compliance checkers, policy lookup for other agents)\n"
-            "  - Tool operators (invoked by workflows, not directly by the orchestrator)\n"
-            "  - Guardrails agents\n\n"
+            "Set aop_eligible=true for all customer-facing domain agents.\n"
+            "Set aop_eligible=false only for internal-only agents (if any).\n\n"
             "Return STRICT JSON with this shape:\n"
             "{\n"
             '  "agents": [\n'
             "    {\n"
             '      "id": string,\n'
-            '      "agent_kind": one of [rag, workflow, tool, router, qa, guardrails, other],\n'
+            '      "agent_kind": "domain_agent",\n'
             '      "description": string,\n'
+            '      "domain": string,\n'
+            '      "goal": string,\n'
+            '      "required_tools": [string...],\n'
+            '      "policies_text": [string...],\n'
             '      "aop_eligible": boolean,\n'
             '      "status": one of [ready, partial, missing_docs],\n'
             '      "inputs": {\n'
@@ -420,12 +429,23 @@ class InferCapabilities:
 
             # Bridge to runtime/spec_builder-friendly keys (generic mapping)
             # NOTE: this is not hardcoding agents; it's mapping doc TYPES to input KEYS.
-            runtime_inputs = {
+            runtime_inputs: Dict[str, Any] = {
                 "docs": typed["knowledge_base"],
                 "policies": typed["policy"],
                 "procedures": typed["procedure"],
                 "tools": typed["tool_spec"],
             }
+
+            # Domain agent specific fields
+            if agent_kind == "domain_agent":
+                runtime_inputs["domain"] = str(a.get("domain", agent_id)).strip()
+                runtime_inputs["goal"] = str(a.get("goal", description)).strip()
+                runtime_inputs["available_tools"] = (
+                    a.get("required_tools") or a.get("available_tools") or []
+                )
+                runtime_inputs["policies_text"] = a.get("policies_text") or []
+                # knowledge_sources = knowledge_base + policy docs for RAG corpus
+                runtime_inputs["knowledge_sources"] = typed["knowledge_base"] + typed["policy"]
 
             # aop_eligible: declarative flag from LLM (default True for
             # backward compat — the spec_builder/aop_coordinator apply
@@ -488,9 +508,9 @@ class InferCapabilities:
         return [
             {
                 "id": "customer_service_assistant",
-                "agent_kind": "rag" if kb else "other",
+                "agent_kind": "domain_agent",
                 "description": "Generic customer service assistant grounded in available documents.",
-                "aop_eligible": True,  # generic fallback is always eligible
+                "aop_eligible": True,
                 "status": "partial" if documents else "missing_docs",
                 "inputs_typed": {
                     "knowledge_base": kb,
@@ -503,6 +523,11 @@ class InferCapabilities:
                     "policies": pol,
                     "procedures": proc,
                     "tools": tool,
+                    "domain": "general",
+                    "goal": "Help customers with general inquiries",
+                    "knowledge_sources": kb + pol,
+                    "available_tools": [],
+                    "policies_text": [],
                 },
                 "docs_detected": sorted(set(kb + pol + proc + tool)),
             }

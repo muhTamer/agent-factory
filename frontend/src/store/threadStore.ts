@@ -20,6 +20,7 @@ interface ThreadState {
   createThread: () => string;
   switchThread: (id: string) => void;
   deleteThread: (id: string) => void;
+  clearAllThreads: () => void;
   setActiveThreadId: (id: string | null) => void;
 
   addMessage: (threadId: string, msg: ChatMessage) => void;
@@ -77,6 +78,10 @@ export const useThreadStore = create<ThreadState>()(
               : s.activeThreadId;
           return { threads, messagesMap, activeThreadId };
         });
+      },
+
+      clearAllThreads: () => {
+        set({ threads: [], activeThreadId: null, messagesMap: {} });
       },
 
       setActiveThreadId: (id) => set({ activeThreadId: id }),

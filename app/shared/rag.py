@@ -90,9 +90,11 @@ def load_corpus(paths: List[str]) -> List[CorpusItem]:
             try:
                 with path.open(newline="", encoding="utf-8", errors="ignore") as fh:
                     reader = csv.DictReader(fh)
-                    cols = [c.lower() for c in (reader.fieldnames or [])]
-                    q_col = next((c for c in cols if c in {"q", "question"}), None)
-                    a_col = next((c for c in cols if c in {"a", "answer"}), None)
+                    # Build case-insensitive lookup: lowered name → original name
+                    orig_cols = list(reader.fieldnames or [])
+                    col_map = {c.lower(): c for c in orig_cols}
+                    q_col = col_map.get("question") or col_map.get("q")
+                    a_col = col_map.get("answer") or col_map.get("a")
                     if q_col and a_col:
                         for row in reader:
                             q = row.get(q_col, "").strip()

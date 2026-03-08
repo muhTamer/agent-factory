@@ -648,7 +648,7 @@ class RuntimeSpine:
 
             if (
                 pinned
-                and pinned_type in ("workflow_runner", "rag_fsm", "faq_rag")
+                and pinned_type in ("workflow_runner", "rag_fsm", "faq_rag", "domain_agent")
                 and pinned_terminal is False
             ):
                 plan = type("Plan", (), {})()
@@ -976,11 +976,29 @@ class RuntimeSpine:
                 ctx.pop("pinned_terminal", None)
                 trace.add("rag_unpinned")
 
+            # Pin domain agent during multi-turn (ask_user → resume)
+            if isinstance(resp, dict) and resp.get("domain_agent_clarification"):
+                ctx["pinned_agent_id"] = resp.get("agent_id", plan.primary)
+                ctx["pinned_agent_type"] = "domain_agent"
+                ctx["pinned_terminal"] = False
+                trace.add("domain_agent_pinned", agent_id=ctx["pinned_agent_id"])
+            elif (
+                isinstance(resp, dict)
+                and ctx.get("pinned_agent_type") == "domain_agent"
+                and not resp.get("needs_input")
+            ):
+                ctx.pop("pinned_agent_id", None)
+                ctx.pop("pinned_agent_type", None)
+                ctx.pop("pinned_terminal", None)
+                trace.add("domain_agent_unpinned")
+
             # Detect transition from pinned → unpinned (covers both
             # spine-detected unpin AND agent self-unpin via context mutation).
             # If remaining AOP tasks exist, inject them into the response.
             _was_rag_pinned = (
-                pinned and pinned_type in ("rag_fsm", "faq_rag") and pinned_terminal is False
+                pinned
+                and pinned_type in ("rag_fsm", "faq_rag", "domain_agent")
+                and pinned_terminal is False
             )
             _now_unpinned = not ctx.get("pinned_agent_id")
             if (

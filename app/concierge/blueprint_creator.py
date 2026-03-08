@@ -134,7 +134,7 @@ class BlueprintCreatorAgent:
             llm_out, vertical=vertical
         )
 
-        EXECUTABLE_KINDS = {"knowledge_rag", "workflow_runner", "tool_operator"}
+        EXECUTABLE_KINDS = {"knowledge_rag", "workflow_runner", "tool_operator", "domain_agent"}
 
         filtered = []
         for bp in blueprints:
@@ -261,14 +261,22 @@ class BlueprintCreatorAgent:
             "- Every blueprint MUST be directly executable by the factory.\n"
             "- Every blueprint MUST include ALL of the following fields:\n"
             "    - id: short unique string\n"
-            "    - agent_kind: one of [knowledge_rag, workflow_runner, tool_operator]\n"
+            "    - agent_kind: one of [domain_agent, knowledge_rag, workflow_runner, tool_operator]\n"
             "    - description: string\n"
             "    - capabilities: list of strings\n"
             "    - inputs: object (see rules below)\n\n"
+            "PREFERRED: Use agent_kind='domain_agent' for all new agents.\n"
+            "domain_agent is a unified specialist that combines RAG + tools + ReAct reasoning.\n\n"
             "AGENT_KIND → REQUIRED INPUTS:\n"
-            "- knowledge_rag:\n"
+            "- domain_agent (PREFERRED):\n"
+            "    inputs.domain = string (e.g. 'refunds', 'orders', 'faq')\n"
+            "    inputs.goal = string (e.g. 'Help customers with refund requests')\n"
+            "    inputs.knowledge_sources = array of doc paths (for RAG corpus)\n"
+            "    inputs.available_tools = array of tool names\n"
+            "    inputs.policies = array of natural language policy constraints\n"
+            "- knowledge_rag (legacy):\n"
             "    inputs.docs = array of document paths or placeholders like '<UPLOAD:faq>'\n"
-            "- workflow_runner:\n"
+            "- workflow_runner (legacy):\n"
             "    inputs.workflow_spec = object defining an FSM workflow (REQUIRED)\n"
             "- tool_operator:\n"
             "    inputs.tool = string (tool name)\n\n"

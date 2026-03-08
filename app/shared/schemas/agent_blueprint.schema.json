@@ -20,7 +20,8 @@
             "enum": [
                 "knowledge_rag",
                 "workflow_runner",
-                "tool_operator"
+                "tool_operator",
+                "domain_agent"
             ]
         },
         "role_name": {
@@ -208,6 +209,52 @@
                         "properties": {
                             "tool": {
                                 "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "if": {
+                "properties": {
+                    "agent_kind": {
+                        "const": "domain_agent"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "inputs": {
+                        "type": "object",
+                        "required": [
+                            "domain",
+                            "goal"
+                        ],
+                        "properties": {
+                            "domain": {
+                                "type": "string"
+                            },
+                            "goal": {
+                                "type": "string"
+                            },
+                            "knowledge_sources": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "available_tools": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "policies": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }

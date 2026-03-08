@@ -2,7 +2,7 @@
 
 import { useThreadStore } from "@/store/threadStore";
 import { useChatStore } from "@/store/chatStore";
-import { Plus, Trash2, MessageSquare, X } from "lucide-react";
+import { Plus, Trash2, MessageSquare, X, Trash } from "lucide-react";
 
 interface Props {
   onClose?: () => void;
@@ -51,6 +51,20 @@ export function ConversationSidebar({ onClose }: Props) {
       error: null,
     });
     onClose?.();
+  };
+
+  const handleClearAll = () => {
+    if (threads.length === 0) return;
+    useThreadStore.getState().clearAllThreads();
+    useChatStore.setState({
+      messages: [],
+      threadId: null,
+      isLoading: false,
+      activeWorkflow: null,
+      quickReplies: [],
+      selectedMessageId: null,
+      error: null,
+    });
   };
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
@@ -105,6 +119,13 @@ export function ConversationSidebar({ onClose }: Props) {
       <div className="flex items-center justify-between border-b bg-white px-4 py-3">
         <h2 className="text-base font-semibold text-slate-700">Conversations</h2>
         <div className="flex items-center gap-1">
+          <button
+            onClick={handleClearAll}
+            title="Clear all conversations"
+            className="rounded p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500"
+          >
+            <Trash size={18} />
+          </button>
           <button
             onClick={handleNewChat}
             title="New conversation"

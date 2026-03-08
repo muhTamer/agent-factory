@@ -1,0 +1,29 @@
+id: domain_agent
+version: "1.0"
+description: "Unified domain agent with RAG + tools + ReAct reasoning. Replaces knowledge_rag and workflow_runner."
+capabilities:
+  - domain_agent
+entrypoint: app.shared.domain_agent.build_agent
+inputs:
+  domain:
+    type: string
+    required: true
+  goal:
+    type: string
+    required: true
+  knowledge_sources:
+    type: array
+    items: string
+    required: false
+  available_tools:
+    type: array
+    items: string
+    required: false
+  policies:
+    type: array
+    items: string
+    required: false
+outputs:
+  agent_py: generated/<agent_id>/agent.py
+  corpus: generated/<agent_id>/corpus.json
+  config: generated/<agent_id>/config.json
