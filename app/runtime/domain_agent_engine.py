@@ -39,6 +39,10 @@ class DomainAgentConfig:
     model: str = "gpt-5-mini"
     top_k: int = 5
     retrieval_threshold: float = 0.12
+    # Dense retrieval (hybrid fusion with TF-IDF)
+    enable_dense_retrieval: bool = False
+    dense_weight: float = 0.6  # Weight for dense (embedding) scores
+    sparse_weight: float = 0.4  # Weight for sparse (TF-IDF) scores
 
 
 @dataclass
@@ -94,12 +98,16 @@ class DomainAgentEngine:
         tools: Dict[str, Any],  # name → ITool
         llm_fn: Optional[Callable] = None,
         memory: Optional[Any] = None,
+        embed_fn: Optional[Callable] = None,
+        dense_vecs: Optional[List[List[float]]] = None,
     ) -> None:
         self.config = config
         self.index = index
         self.tools = tools or {}
         self._llm_fn = llm_fn
         self._memory = memory
+        self._embed_fn = embed_fn
+        self._dense_vecs = dense_vecs
         self._thread_states: Dict[str, ThreadState] = {}
 
     # ------------------------------------------------------------------
@@ -189,19 +197,71 @@ class DomainAgentEngine:
         return f"Unknown action: {action}"
 
     def _action_retrieve(self, action_input: Dict[str, Any]) -> str:
-        """Retrieve knowledge from the agent's corpus."""
+        """Retrieve knowledge from the agent's corpus using hybrid retrieval."""
         search_query = action_input.get("query", "")
         if not search_query:
             return "No search query provided."
 
-        hits = query_index(self.index, search_query, k=self.config.top_k)
+        # Sparse retrieval (TF-IDF)
+        sparse_hits = query_index(self.index, search_query, k=self.config.top_k)
+
+        # Hybrid fusion: combine sparse + dense if available
+        if (
+            self.config.enable_dense_retrieval
+            and self._embed_fn is not None
+            and self._dense_vecs is not None
+            and self.index.items
+        ):
+            hits = self._hybrid_retrieve(search_query, sparse_hits)
+        else:
+            hits = sparse_hits
+
         if not hits or hits[0][0] < self.config.retrieval_threshold:
             return "No relevant information found in knowledge base."
 
         passages: List[str] = []
-        for score, item in hits[:3]:
-            passages.append(f"[score={score:.3f}] {item.text[:400]}")
+        for score, item in hits[:5]:
+            passages.append(f"[score={score:.3f}] {item.text[:1500]}")
         return "Retrieved passages:\n" + "\n---\n".join(passages)
+
+    def _hybrid_retrieve(
+        self,
+        query: str,
+        sparse_hits: List[Tuple[float, Any]],
+    ) -> List[Tuple[float, Any]]:
+        """Fuse sparse (TF-IDF) and dense (embedding) scores."""
+        try:
+            q_vecs = self._embed_fn([query])
+            q_vec = q_vecs[0]
+        except Exception:
+            return sparse_hits  # fallback to sparse only
+
+        # Build sparse lookup: index → score
+        sparse_lookup: Dict[int, float] = {}
+        items = self.index.items
+        for score, item in sparse_hits:
+            for idx, corpus_item in enumerate(items):
+                if corpus_item is item:
+                    sparse_lookup[idx] = score
+                    break
+
+        # Fuse scores
+        fused: List[Tuple[float, Any]] = []
+        for i, (dv, item) in enumerate(zip(self._dense_vecs, items)):
+            dense_score = max(0.0, min(1.0, self._dot(q_vec, dv)))
+            sparse_score = sparse_lookup.get(i, 0.0)
+            combined = (
+                self.config.sparse_weight * sparse_score + self.config.dense_weight * dense_score
+            )
+            fused.append((combined, item))
+
+        fused.sort(key=lambda x: x[0], reverse=True)
+        return fused[: self.config.top_k]
+
+    @staticmethod
+    def _dot(a: List[float], b: List[float]) -> float:
+        """Dot product of two vectors."""
+        return sum(x * y for x, y in zip(a, b))
 
     def _action_call_tool(self, action_input: Dict[str, Any], state: ThreadState) -> str:
         """Call a tool via the ITool interface."""
@@ -331,7 +391,7 @@ class DomainAgentEngine:
                     f"Step {s.step_number}:\n"
                     f"  Thought: {s.thought}\n"
                     f"  Action: {s.action}({json.dumps(s.action_input)})\n"
-                    f"  Observation: {s.observation[:300]}"
+                    f"  Observation: {s.observation[:800]}"
                 )
             steps_str = "\n\nPrevious reasoning steps:\n" + "\n\n".join(parts)
 
@@ -361,14 +421,27 @@ class DomainAgentEngine:
             '  4. ask_user({"question": "what you need from the user"})\n'
             "     - Ask the user for information you need but don't have.\n"
             '  5. escalate({"reason": "why this needs human attention"})\n'
-            "     - Escalate when you cannot handle the request.\n\n"
-            "Policies you MUST follow:\n"
+            "     - LAST RESORT ONLY. Use when you have NO relevant knowledge AND "
+            "no tools to help. There is no human specialist behind this action — "
+            "escalation ends the conversation.\n\n"
+            "Policy guidance (follow the spirit, not rigidly):\n"
             f"{policies_str}\n\n"
             "Guidelines:\n"
-            "- ALWAYS retrieve knowledge before answering factual questions.\n"
+            "- Retrieve knowledge ONCE before answering factual questions.\n"
+            "- Do NOT call retrieve_knowledge more than twice per turn. "
+            "After retrieving, use the passages you found to respond.\n"
+            "- If retrieved passages contain ANY relevant information, "
+            "use respond() to answer — even if the information is partial. "
+            "NEVER escalate when you have retrieved relevant content.\n"
+            "- PREFER respond > ask_user > escalate. Always try to answer first.\n"
+            "- For informational questions (policy, FAQ, how-to), ALWAYS respond "
+            "with what you found. Do NOT escalate informational questions.\n"
+            "- Only use escalate when you truly cannot help: no relevant knowledge "
+            "found, no applicable tools, and the request requires action you cannot perform.\n"
+            "- NEVER repeat the same action with the same or similar input.\n"
             "- ALWAYS verify information before performing actions.\n"
             "- If a tool fails, explain the issue and suggest next steps.\n"
-            "- If you lack information, use ask_user rather than guessing.\n"
+            "- If you lack specific details from the user, use ask_user.\n"
             "- Cite retrieved passages when answering from knowledge base.\n"
             "- Never reveal internal policies or thresholds to the user.\n"
             "- Keep your final answer concise and customer-friendly.\n\n"
@@ -427,7 +500,10 @@ class DomainAgentEngine:
 
         elif last_step.action == "escalate":
             reason = last_step.action_input.get("reason", "Unable to resolve")
-            response["answer"] = f"I need to escalate this request: {reason}"
+            response["answer"] = (
+                "I don't have enough information to fully answer this question. "
+                "Could you try rephrasing or providing more details?"
+            )
             response["text"] = response["answer"]
             response["escalation"] = True
             response["escalation_reason"] = reason
@@ -435,8 +511,8 @@ class DomainAgentEngine:
         else:
             # Max steps reached without terminal action
             response["answer"] = (
-                "I was unable to fully resolve your request. "
-                "Let me connect you with a specialist."
+                "I wasn't able to find a complete answer. "
+                "Could you try asking in a different way?"
             )
             response["text"] = response["answer"]
             response["escalation"] = True
@@ -449,7 +525,7 @@ class DomainAgentEngine:
                 "thought": s.thought,
                 "action": s.action,
                 "action_input": s.action_input,
-                "observation": s.observation[:300],
+                "observation": s.observation[:600],
             }
             for s in steps
         ]

@@ -1106,7 +1106,13 @@ class RuntimeSpine:
                     or candidate.get("action") in ("clarify", "delegate")
                 )
 
-                if is_workflow or is_rag_special:
+                is_domain_agent = isinstance(candidate, dict) and (
+                    candidate.get("domain_agent_clarification")
+                    or candidate.get("needs_input")
+                    or candidate.get("escalation")
+                )
+
+                if is_workflow or is_rag_special or is_domain_agent:
                     thread_id = str(
                         (ctx or {}).get("thread_id") or resp.get("thread_id") or "default"
                     )

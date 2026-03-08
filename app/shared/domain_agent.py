@@ -198,6 +198,26 @@ def _generate_agent_source(agent_id: str) -> str:
                 except ImportError:
                     pass
 
+                # Load embedding function for dense retrieval (text-embedding-3-small)
+                embed_fn = None
+                dense_vecs = None
+                enable_dense = False
+                try:
+                    from app.runtime.embeddings import get_embed_fn
+                    embed_fn = get_embed_fn()
+                    enable_dense = True
+                except (ImportError, Exception):
+                    pass
+
+                # Pre-compute dense embeddings at startup
+                if embed_fn and corpus_items:
+                    try:
+                        texts = [item.text for item in corpus_items]
+                        dense_vecs = embed_fn(texts)
+                    except Exception:
+                        dense_vecs = None
+                        enable_dense = False
+
                 # Create engine
                 config = DomainAgentConfig(
                     agent_id=self.cfg["id"],
@@ -206,6 +226,7 @@ def _generate_agent_source(agent_id: str) -> str:
                     policies=self.cfg.get("policies", []),
                     max_steps=self.cfg.get("max_steps", 5),
                     model=self.cfg.get("model", "gpt-5-mini"),
+                    enable_dense_retrieval=enable_dense,
                 )
 
                 self._engine = DomainAgentEngine(
@@ -214,6 +235,8 @@ def _generate_agent_source(agent_id: str) -> str:
                     tools=tools,
                     llm_fn=llm_fn,
                     memory=memory,
+                    embed_fn=embed_fn,
+                    dense_vecs=dense_vecs,
                 )
                 self.ready = True
 
