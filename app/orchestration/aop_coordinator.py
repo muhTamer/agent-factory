@@ -732,12 +732,19 @@ class AOPCoordinator:
     def _is_action_agent(self, agent_id: str) -> bool:
         """Return True if the agent requires concrete user-provided transaction context.
 
-        Driven entirely by the agent's blueprint_meta.requires_user_context flag,
-        which is set at factory-spec generation time. No naming conventions or
-        hardcoded kind sets here — add the flag to any new agent type as needed.
+        An agent is considered an "action agent" only if it requires user context
+        AND is NOT customer-facing.  Customer-facing agents (e.g. FAQ agents with
+        ``customer_facing: true``) can answer informational queries even when
+        ``requires_user_context`` is set — they retrieve knowledge and ask
+        clarifying questions rather than performing irreversible actions.
         """
         meta = self.registry.all_meta().get(agent_id, {})
-        return bool(meta.get("requires_user_context"))
+        if not meta.get("requires_user_context"):
+            return False
+        # Customer-facing agents handle informational queries safely
+        if meta.get("customer_facing"):
+            return False
+        return True
 
     def _all_informational(self, subtask_strs: List[str]) -> bool:
         """Return True when all subtasks are informational (no action needed).
@@ -785,32 +792,33 @@ class AOPCoordinator:
             # Per-subtask guardrail: block action agents when the user hasn't provided
             # concrete transaction details AND the decomposer didn't label it ACTION.
             #
-            # If the decomposer explicitly labeled the subtask ACTION, allow it through —
-            # the workflow FSM is designed to collect missing details via slot prompting.
+            # If the decomposer explicitly labeled the subtask ACTION or INFORMATIONAL,
+            # allow it through — domain agents with ReAct loops handle both:
+            #   ACTION → collect slots via ask_user / call_tool
+            #   INFORMATIONAL → retrieve knowledge and respond
             #
-            # If labeled INFORMATIONAL, always block action agents.
-            # If unlabeled, fall back to regex-based transaction detection.
+            # Only block when there's NO label AND NO transaction context.
             if self._is_action_agent(st.assigned_agent_id):
-                labeled_informational = st.description.upper().startswith("INFORMATIONAL:")
-                labeled_action = st.description.upper().startswith("ACTION:")
+                desc_upper = st.description.upper()
+                # Handle both "INFORMATIONAL:" and "INFORMATIONAL —" (em/en dash)
+                labeled_informational = (
+                    desc_upper.startswith("INFORMATIONAL:")
+                    or desc_upper.startswith("INFORMATIONAL —")
+                    or desc_upper.startswith("INFORMATIONAL -")
+                    or desc_upper.startswith("INFORMATIONAL–")
+                )
+                labeled_action = (
+                    desc_upper.startswith("ACTION:")
+                    or desc_upper.startswith("ACTION —")
+                    or desc_upper.startswith("ACTION -")
+                    or desc_upper.startswith("ACTION–")
+                )
 
-                if labeled_action:
-                    # Decomposer explicitly marked this as an action — let the
-                    # workflow agent handle it; it will collect missing slots.
+                if labeled_action or labeled_informational:
+                    # Decomposer explicitly labeled the subtask — allow through.
+                    # ACTION agents will collect missing slots via ask_user;
+                    # INFORMATIONAL agents will retrieve knowledge and respond.
                     pass
-                elif labeled_informational:
-                    agent_meta = self.registry.all_meta().get(st.assigned_agent_id, {})
-                    msg = agent_meta.get("missing_context_message") or (
-                        "To help with this I'll need a few more details — "
-                        "could you share your order or transaction reference?"
-                    )
-                    st.success = False
-                    st.result = {"error": "guardrail_blocked", "message": msg}
-                    print(
-                        f"[AOP-GUARD] Blocked action agent {st.assigned_agent_id} — "
-                        f"labeled_informational={labeled_informational}"
-                    )
-                    continue
                 else:
                     # No label — fall back to regex detection
                     original_query = context.get("original_query", "") or ""
@@ -835,8 +843,23 @@ class AOPCoordinator:
             # passing to the agent — these are internal AOP labels that add
             # noise to TF-IDF search and confuse downstream agents.
             agent_query = st.description
-            for _prefix in ("INFORMATIONAL: ", "ACTION: "):
+            for _prefix in (
+                "INFORMATIONAL: ",
+                "INFORMATIONAL — ",
+                "INFORMATIONAL - ",
+                "INFORMATIONAL– ",
+                "INFORMATIONAL–",
+                "ACTION: ",
+                "ACTION — ",
+                "ACTION - ",
+                "ACTION– ",
+                "ACTION–",
+            ):
                 if agent_query.startswith(_prefix):
+                    agent_query = agent_query[len(_prefix) :]
+                    break
+                # Also try case-insensitive match
+                if agent_query.upper().startswith(_prefix.upper()):
                     agent_query = agent_query[len(_prefix) :]
                     break
 

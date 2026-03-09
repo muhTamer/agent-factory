@@ -289,7 +289,7 @@ function ExplanationContent({ data }: { data: Record<string, unknown> }) {
 
       {/* Provenance */}
       {provenance.length > 0 && (
-        <details className="text-[10px]">
+        <details className="text-[10px]" open={provenance.some((p) => Array.isArray(p.knowledge_sources) && (p.knowledge_sources as unknown[]).length > 0)}>
           <summary
             className="cursor-pointer font-medium text-slate-500 hover:text-slate-700"
             title="Data sources and evidence used to generate this response"
@@ -301,6 +301,43 @@ function ExplanationContent({ data }: { data: Record<string, unknown> }) {
               <div key={i} className="rounded bg-slate-50 px-2 py-1 text-slate-600">
                 {String(p.source || p.type || `Source ${i + 1}`)}
                 {p.detail != null && <span className="ml-1 text-slate-400">{`— ${String(p.detail)}`}</span>}
+                {/* Domain agent knowledge sources */}
+                {Array.isArray(p.knowledge_sources) && p.knowledge_sources.length > 0 && (
+                  <div className="mt-1 space-y-1">
+                    {(p.knowledge_sources as Array<Record<string, unknown>>).map((ks, j) => (
+                      <div key={j} className="pl-2 border-l-2 border-blue-200">
+                        <div className="text-[10px] text-blue-600 font-medium">
+                          Query: "{String(ks.query || "")}"
+                          {Array.isArray(ks.sources) && ks.sources.length > 0 && (
+                            <span className="ml-1 text-slate-400">
+                              from {(ks.sources as string[]).join(", ")}
+                            </span>
+                          )}
+                        </div>
+                        {Array.isArray(ks.passages) && ks.passages.length > 0 && (
+                          <div className="mt-0.5 space-y-0.5">
+                            {(ks.passages as string[]).slice(0, 3).map((passage, k) => (
+                              <div key={k} className="text-[9px] text-slate-500 truncate max-w-full" title={passage}>
+                                {passage.length > 120 ? passage.slice(0, 120) + "…" : passage}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* RAG agent citations */}
+                {Array.isArray(p.citations) && p.citations.length > 0 && (
+                  <div className="mt-1 space-y-0.5">
+                    {(p.citations as Array<Record<string, unknown>>).slice(0, 5).map((c, j) => (
+                      <div key={j} className="pl-2 border-l-2 border-green-200 text-[9px] text-slate-500 truncate" title={String(c.question || c.text || "")}>
+                        {c.source ? <span className="text-green-600 font-medium mr-1">[{String(c.source)}]</span> : null}
+                        {String(c.question || c.text || `Citation ${j + 1}`).slice(0, 120)}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -618,6 +655,43 @@ function InlineExplainability({
       {activeLevel && explanations[activeLevel] && (
         <div className="rounded border border-slate-100 bg-slate-50 p-2 text-[10px] text-slate-700 leading-relaxed">
           {String(explanations[activeLevel].narrative || "No narrative.")}
+
+          {/* Knowledge sources (always visible when present) */}
+          {(() => {
+            const prov = (explanations[activeLevel].provenance || []) as Array<Record<string, unknown>>;
+            const allKs = prov.flatMap((p) =>
+              Array.isArray(p.knowledge_sources)
+                ? (p.knowledge_sources as Array<Record<string, unknown>>)
+                : []
+            );
+            if (allKs.length === 0) return null;
+            return (
+              <div className="mt-1.5 space-y-1">
+                <span className="font-semibold text-blue-600">Sources used:</span>
+                {allKs.map((ks, j) => (
+                  <div key={j} className="pl-2 border-l-2 border-blue-200">
+                    <div className="text-blue-600">
+                      Query: &quot;{String(ks.query || "")}&quot;
+                      {Array.isArray(ks.sources) && ks.sources.length > 0 && (
+                        <span className="ml-1 text-slate-400">
+                          from {(ks.sources as string[]).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                    {Array.isArray(ks.passages) && ks.passages.length > 0 && (
+                      <div className="mt-0.5 space-y-0.5">
+                        {(ks.passages as string[]).slice(0, 3).map((passage, k) => (
+                          <div key={k} className="text-[9px] text-slate-500 truncate" title={passage}>
+                            {passage.length > 100 ? passage.slice(0, 100) + "…" : passage}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Decisions for detailed/full */}
           {Array.isArray(explanations[activeLevel].decisions) &&

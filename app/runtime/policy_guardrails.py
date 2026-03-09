@@ -134,7 +134,23 @@ class PolicyGuardrails(Guardrails):
             if context.get("pinned_agent_type") == "workflow_runner" and acc_slots:
                 has_transaction_context = True
 
-        if original_query and not has_transaction_context:
+        # Domain agents that only retrieved knowledge are informational —
+        # they're describing policy, not claiming to have executed a refund.
+        # Also skip if the agent is still asking the user for clarification.
+        is_informational = response.get("knowledge_retrieved") is True and not response.get(
+            "tools_used"
+        )
+        is_clarifying = (
+            response.get("needs_input") is True
+            or response.get("domain_agent_clarification") is True
+        )
+
+        if (
+            original_query
+            and not has_transaction_context
+            and not is_informational
+            and not is_clarifying
+        ):
             if _REFUND_INITIATED_PATTERN.search(text):
                 return GuardResult(
                     allowed=False,

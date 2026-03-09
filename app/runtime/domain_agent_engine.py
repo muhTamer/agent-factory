@@ -35,8 +35,9 @@ class DomainAgentConfig:
     domain: str  # e.g. "refunds", "orders", "accounts"
     goal: str  # e.g. "Help customers with refund requests"
     policies: List[str] = field(default_factory=list)
-    max_steps: int = 5
+    max_steps: int = 8
     model: str = "gpt-5-mini"
+    temperature: float = 1.0  # 1.0 is the only value some models accept (o-series, gpt-5-mini)
     top_k: int = 5
     retrieval_threshold: float = 0.12
     # Dense retrieval (hybrid fusion with TF-IDF)
@@ -66,6 +67,7 @@ class ThreadState:
     accumulated_slots: Dict[str, Any] = field(default_factory=dict)
     pending_question: Optional[str] = None
     turn_count: int = 0
+    original_query: Optional[str] = None  # First query that started this thread
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +126,10 @@ class DomainAgentEngine:
         ctx = context or {}
         state = self._get_or_create_thread(thread_id)
         state.turn_count += 1
+
+        # Remember the original query that started this thread
+        if state.original_query is None:
+            state.original_query = query
 
         # Carry over any accumulated slots from spine (cross-agent handoff)
         ext_slots = ctx.get("_accumulated_slots")
@@ -196,8 +202,22 @@ class DomainAgentEngine:
 
         return f"Unknown action: {action}"
 
+    # Maximum number of chunks a source can have to qualify for full
+    # source-expansion.  Sources with more chunks (e.g. large FAQ CSVs)
+    # return only the directly matched chunks sorted by relevance.
+    _SOURCE_EXPANSION_LIMIT = 50
+
     def _action_retrieve(self, action_input: Dict[str, Any]) -> str:
-        """Retrieve knowledge from the agent's corpus using hybrid retrieval."""
+        """Retrieve knowledge from the agent's corpus using hybrid retrieval.
+
+        Uses adaptive source-expansion:
+        - Small sources (≤ _SOURCE_EXPANSION_LIMIT chunks, e.g. policy YAMLs):
+          expand to full document so the agent sees complete context.
+        - Large sources (> limit, e.g. BankFAQs.csv with 1700+ Q&A pairs):
+          return only the matched chunks sorted by relevance score.
+          Each Q&A pair is independent — expansion would flood the context
+          with irrelevant entries and bury the actual matches.
+        """
         search_query = action_input.get("query", "")
         if not search_query:
             return "No search query provided."
@@ -219,10 +239,49 @@ class DomainAgentEngine:
         if not hits or hits[0][0] < self.config.retrieval_threshold:
             return "No relevant information found in knowledge base."
 
+        # Count chunks per source for expansion decision
+        source_chunk_counts: Dict[str, int] = {}
+        for corpus_item in self.index.items:
+            source_chunk_counts[corpus_item.source] = (
+                source_chunk_counts.get(corpus_item.source, 0) + 1
+            )
+
+        # Separate matched hits into expandable (small) and direct (large) sources
+        small_sources: set = set()  # expand to full document
+        direct_hits: List[Any] = []  # return matched chunks only
+        seen_texts: set = set()
+
+        for score, item in hits:
+            if score < self.config.retrieval_threshold:
+                continue
+            chunk_count = source_chunk_counts.get(item.source, 0)
+            if chunk_count <= self._SOURCE_EXPANSION_LIMIT:
+                small_sources.add(item.source)
+            else:
+                if item.text not in seen_texts:
+                    direct_hits.append(item)
+                    seen_texts.add(item.text)
+
+        # Expand small sources (full document context)
+        expanded: List[Any] = []
+        if small_sources:
+            for corpus_item in self.index.items:
+                if corpus_item.source in small_sources:
+                    if corpus_item.text not in seen_texts:
+                        expanded.append(corpus_item)
+                        seen_texts.add(corpus_item.text)
+
+        # Build passages: expanded first, then direct hits
+        all_sources: set = small_sources | {h.source for h in direct_hits}
         passages: List[str] = []
-        for score, item in hits[:5]:
-            passages.append(f"[score={score:.3f}] {item.text[:1500]}")
-        return "Retrieved passages:\n" + "\n---\n".join(passages)
+        for item in expanded:
+            passages.append(item.text[:1500])
+        for item in direct_hits:
+            passages.append(item.text[:1500])
+
+        return f"Retrieved from source(s): " f"{', '.join(all_sources)}\n\n" + "\n---\n".join(
+            passages
+        )
 
     def _hybrid_retrieve(
         self,
@@ -307,7 +366,7 @@ class DomainAgentEngine:
             result = self._llm_fn(
                 messages=messages,
                 model=self.config.model,
-                temperature=1.0,
+                temperature=self.config.temperature,
             )
             if isinstance(result, dict):
                 return result
@@ -430,32 +489,107 @@ class DomainAgentEngine:
             "- Retrieve knowledge ONCE before answering factual questions.\n"
             "- Do NOT call retrieve_knowledge more than twice per turn. "
             "After retrieving, use the passages you found to respond.\n"
-            "- If retrieved passages contain ANY relevant information, "
-            "use respond() to answer — even if the information is partial. "
-            "NEVER escalate when you have retrieved relevant content.\n"
-            "- PREFER respond > ask_user > escalate. Always try to answer first.\n"
-            "- For informational questions (policy, FAQ, how-to), ALWAYS respond "
-            "with what you found. Do NOT escalate informational questions.\n"
-            "- Only use escalate when you truly cannot help: no relevant knowledge "
-            "found, no applicable tools, and the request requires action you cannot perform.\n"
             "- NEVER repeat the same action with the same or similar input.\n"
-            "- ALWAYS verify information before performing actions.\n"
-            "- If a tool fails, explain the issue and suggest next steps.\n"
-            "- If you lack specific details from the user, use ask_user.\n"
-            "- Cite retrieved passages when answering from knowledge base.\n"
-            "- Never reveal internal policies or thresholds to the user.\n"
-            "- Keep your final answer concise and customer-friendly.\n\n"
+            "- If a tool fails, explain the issue and suggest next steps.\n\n"
+            "CRITICAL — Retrieval quality and honesty:\n"
+            "- After retrieving knowledge, CRITICALLY evaluate: do the passages "
+            "DIRECTLY answer the user's specific question?\n"
+            "- If YES and they all relate to ONE specific topic → use respond() "
+            "and base your answer ONLY on what the passages say.\n"
+            "- If the retrieved passages cover MULTIPLE DISTINCT topics, products, "
+            "or categories (e.g. travel insurance vs home insurance vs forex), "
+            "you MUST use ask_user() to ask the user which specific one they mean. "
+            "List the options you found. Do NOT try to summarize all of them.\n"
+            "- If the passages are about a DIFFERENT topic, or only tangentially "
+            "related, they do NOT count as relevant. Do NOT fabricate an answer "
+            "by combining unrelated passages.\n"
+            "- If the question is vague or ambiguous, use ask_user() to clarify "
+            "what specifically the user wants to know, so you can retrieve "
+            "more targeted information.\n"
+            "- If after retrieval you genuinely have NO matching content for "
+            "the user's question, HONESTLY say you don't have that specific "
+            "information and offer to connect them with someone who can help. "
+            "Use respond() for this — do NOT use escalate.\n"
+            "  Example: 'I don't have specific details about that. "
+            "Would you like me to connect you with a specialist who can help?'\n"
+            "- NEVER make up facts, figures, timelines, or procedures that are "
+            "not in the retrieved passages. If it's not in the knowledge base, "
+            "you don't know it.\n\n"
+            "CRITICAL — Internal information must NEVER be shared with the user:\n"
+            "- Policy documents you retrieve are INTERNAL INSTRUCTIONS for you.\n"
+            "  They tell YOU how to act. They are NOT for the customer to see.\n"
+            "- NEVER mention: policy names, policy IDs, version numbers, "
+            "regulatory codes (PSD2, AMLD5, GDPR, PCI-DSS, etc.), "
+            "compliance framework names, internal process names, "
+            "approval thresholds, rule IDs, section numbers, "
+            "or any other internal/operational detail.\n"
+            "- NEVER say 'per our policy', 'our refunds policy states', "
+            "'according to the policy', 'compliance checks', "
+            "'AML/KYC requirements', or similar.\n"
+            "- Instead, translate policy requirements into PLAIN, "
+            "NATURAL customer-friendly language. For example:\n"
+            "  BAD:  'Per our refunds policy, we must complete AML/KYC verification'\n"
+            "  GOOD: 'I just need to verify your identity before we proceed'\n"
+            "  BAD:  'We follow PSD2/AMLD5/GDPR compliance checks'\n"
+            "  GOOD: 'Let me confirm a couple of details for security'\n\n"
+            "CRITICAL — Concise, gradual responses:\n"
+            "- Ask ONE question at a time. Do NOT list multiple questions "
+            "or ask for several pieces of information in a single turn.\n"
+            "- Keep responses SHORT — 1 to 3 sentences maximum when asking questions.\n"
+            "- Do NOT preview or explain future steps, the full process, "
+            "or what you will ask next. Handle one step at a time.\n"
+            "- Do NOT add bullet lists, numbered steps, or 'what happens next' sections.\n"
+            "- Be warm and conversational, not procedural.\n\n"
+            "CRITICAL — Policy grounding:\n"
+            "- When you retrieve a policy document, FOLLOW its documented rules "
+            "and workflow step by step. Do NOT invent your own procedure.\n"
+            "- Your reasoning (the 'thought' field) should reference policy rules, "
+            "but your customer-facing answer must NEVER cite them.\n"
+            "- Only ask the user for information that the policy SPECIFICALLY "
+            "requires AND that you cannot look up via your tools.\n\n"
+            "CRITICAL — Tool-first approach:\n"
+            "- If the user provides a transaction ID, order number, or account "
+            "reference, use call_tool to look it up BEFORE asking for more details.\n"
+            "- Do NOT ask the user for information you could retrieve via tools "
+            "(e.g. transaction details, account status, payment history).\n"
+            "- After looking up data via tools, check the results against policy "
+            "rules before asking the user for anything else.\n\n"
             'Return STRICT JSON: {"thought": "...", "action": "...", "action_input": {...}}'
         )
 
         # User content
         user_content = f"User query: {query}{history_str}{slots_str}{steps_str}"
 
-        # If resuming after ask_user
+        # If resuming after ask_user, include full conversation context
         if thread_state.pending_question:
+            # Build summary of previous turns' reasoning so the LLM
+            # remembers the original intent and what it already did.
+            prev_steps_str = ""
+            prev_steps = [
+                s
+                for s in thread_state.step_history
+                if s not in previous_steps  # exclude current turn's steps
+            ]
+            if prev_steps:
+                parts = []
+                for s in prev_steps[-6:]:  # last 6 steps max to avoid bloat
+                    parts.append(
+                        f"Step {s.step_number}: "
+                        f"thought={s.thought[:200]} → "
+                        f"{s.action}({json.dumps(s.action_input)}) → "
+                        f"{s.observation[:200]}"
+                    )
+                prev_steps_str = "\n\nPrevious reasoning from earlier turns:\n" + "\n".join(parts)
+
+            original_ctx = ""
+            if thread_state.original_query and thread_state.original_query != query:
+                original_ctx = f"Original user question: {thread_state.original_query}\n"
+
             user_content = (
+                f"{original_ctx}"
                 f'You previously asked the user: "{thread_state.pending_question}"\n'
-                f"User responded: {query}{slots_str}{steps_str}"
+                f"User responded: {query}"
+                f"{slots_str}{prev_steps_str}{steps_str}"
             )
             thread_state.pending_question = None
 
@@ -538,9 +672,41 @@ class DomainAgentEngine:
                 if s.action == "call_tool" and s.action_input.get("tool")
             )
         )
-        response["knowledge_retrieved"] = any(s.action == "retrieve_knowledge" for s in steps)
+        # Check current turn AND thread history — agent may have retrieved
+        # knowledge in a prior turn (e.g. before ask_user) that grounds this answer.
+        all_steps = list(state.step_history)
+        response["knowledge_retrieved"] = any(s.action == "retrieve_knowledge" for s in all_steps)
         response["step_count"] = len(steps)
         response["slots"] = dict(state.accumulated_slots)
         response["policies_applied"] = list(self.config.policies)
+
+        # ---- Knowledge sources for explainability provenance ----
+        # Include sources from all turns (not just current) so multi-turn
+        # flows that retrieved knowledge in a prior turn still show sources.
+        knowledge_sources: List[Dict[str, Any]] = []
+        for s in all_steps:
+            if s.action == "retrieve_knowledge" and s.observation:
+                # Parse "Retrieved from source(s): X, Y\n\npassages..."
+                obs = s.observation
+                source_names: List[str] = []
+                passages: List[str] = []
+                if obs.startswith("Retrieved from source(s):"):
+                    header, _, body = obs.partition("\n\n")
+                    source_names = [
+                        n.strip()
+                        for n in header.replace("Retrieved from source(s):", "").split(",")
+                        if n.strip()
+                    ]
+                    # Extract individual passages (separated by ---)
+                    if body:
+                        passages = [p.strip()[:300] for p in body.split("\n---\n") if p.strip()]
+                knowledge_sources.append(
+                    {
+                        "query": s.action_input.get("query", ""),
+                        "sources": source_names,
+                        "passages": passages[:5],  # cap at 5 for readability
+                    }
+                )
+        response["knowledge_sources"] = knowledge_sources
 
         return response

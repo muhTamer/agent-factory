@@ -114,12 +114,15 @@ def _generate_agent_source(agent_id: str) -> str:
         from __future__ import annotations
 
         import json
+        import logging
         from pathlib import Path
         from typing import Dict, Any, Optional
 
         from app.runtime.interfaces import IAgent
         from app.runtime.domain_agent_engine import DomainAgentEngine, DomainAgentConfig
         from app.shared.rag import CorpusItem, build_index, Index
+
+        _log = logging.getLogger(__name__)
 
 
         class Agent(IAgent):
@@ -206,15 +209,28 @@ def _generate_agent_source(agent_id: str) -> str:
                     from app.runtime.embeddings import get_embed_fn
                     embed_fn = get_embed_fn()
                     enable_dense = True
-                except (ImportError, Exception):
-                    pass
+                    _log.info("Embedding function loaded for agent %s", self.cfg.get("id"))
+                except Exception as exc:
+                    _log.warning(
+                        "Dense retrieval disabled for agent %s: %s",
+                        self.cfg.get("id"), exc,
+                    )
 
                 # Pre-compute dense embeddings at startup
                 if embed_fn and corpus_items:
                     try:
+                        _log.info(
+                            "Pre-computing embeddings for %d corpus items...",
+                            len(corpus_items),
+                        )
                         texts = [item.text for item in corpus_items]
                         dense_vecs = embed_fn(texts)
-                    except Exception:
+                        _log.info("Dense embeddings ready (%d vectors)", len(dense_vecs))
+                    except Exception as exc:
+                        _log.warning(
+                            "Embedding pre-computation failed for agent %s: %s",
+                            self.cfg.get("id"), exc,
+                        )
                         dense_vecs = None
                         enable_dense = False
 

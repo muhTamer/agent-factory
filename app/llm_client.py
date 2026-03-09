@@ -53,7 +53,17 @@ def chat_json(messages, model=None, temperature=1.0, timeout=None):
     if timeout is not None:
         create_kwargs["timeout"] = timeout
 
-    response = client.chat.completions.create(**create_kwargs)
+    try:
+        response = client.chat.completions.create(**create_kwargs)
+    except Exception as exc:
+        # Some models (o-series, reasoning models) reject non-default temperature.
+        # Retry once with temperature removed if the error mentions it.
+        if "temperature" in str(exc).lower() and temperature != 1.0:
+            create_kwargs.pop("temperature", None)
+            response = client.chat.completions.create(**create_kwargs)
+        else:
+            raise
+
     msg = response.choices[0].message.content
     try:
         return json.loads(msg) if msg else {}

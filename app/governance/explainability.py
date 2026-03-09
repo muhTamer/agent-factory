@@ -66,6 +66,7 @@ _AGENT_TYPE_LABELS = {
     "aop_coordinator": "task planning coordinator",
     "tool_operator": "system tool",
     "rag_fsm": "knowledge retrieval system",
+    "domain_agent": "domain specialist agent",
 }
 
 
@@ -334,6 +335,27 @@ class ExplainabilityEngine:
                             "citations": citations,
                         }
                     )
+                # Domain agent knowledge sources (from react_trace)
+                ks = result.get("knowledge_sources")
+                if isinstance(ks, list) and ks:
+                    prov.append(
+                        {
+                            "source": f"agent:{st.get('agent_id', '?')}",
+                            "type": "domain_agent_knowledge",
+                            "knowledge_sources": ks,
+                        }
+                    )
+
+        # Direct-route domain agent provenance (not AOP subtask)
+        ks = response.get("knowledge_sources")
+        if isinstance(ks, list) and ks:
+            prov.append(
+                {
+                    "source": f"agent:{response.get('agent_id', '?')}",
+                    "type": "domain_agent_knowledge",
+                    "knowledge_sources": ks,
+                }
+            )
 
         return prov
 

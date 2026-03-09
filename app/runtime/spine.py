@@ -550,30 +550,18 @@ class RuntimeSpine:
                     if not ctx.get("pinned_agent_id") and isinstance(_exec_result, dict):
                         _agent = aop_resp.get("executed_subtask", {}).get("agent_id")
 
-                        # RAG clarification → pin for follow-up answer
-                        if (
-                            _exec_result.get("rag_clarification")
-                            or _exec_result.get("rag_state") == "CLARIFY"
-                            or _exec_result.get("action") == "clarify"
+                        # Domain agent clarification → pin for multi-turn
+                        if _exec_result.get("domain_agent_clarification") or (
+                            _exec_result.get("needs_input")
+                            and _exec_result.get("domain") is not None
                         ):
                             if _agent:
                                 ctx["pinned_agent_id"] = _agent
-                                ctx["pinned_agent_type"] = "rag_fsm"
-                                ctx["pinned_terminal"] = False
-                                trace.add("rag_pinned", agent_id=_agent)
-
-                        # Workflow non-terminal → pin for slot collection
-                        elif _exec_result.get("workflow_id") and not _exec_result.get(
-                            "terminal", False
-                        ):
-                            if _agent:
-                                ctx["pinned_agent_id"] = _agent
-                                ctx["pinned_agent_type"] = "workflow_runner"
+                                ctx["pinned_agent_type"] = "domain_agent"
                                 ctx["pinned_terminal"] = False
                                 trace.add(
-                                    "workflow_pinned_from_aop",
+                                    "domain_agent_pinned_from_aop",
                                     agent_id=_agent,
-                                    state=_exec_result.get("current_state"),
                                 )
 
                     # Update the stored plan
@@ -1142,6 +1130,19 @@ class RuntimeSpine:
                 post["request_id"] = rid
                 post.setdefault("text", f"🚫 Blocked by policy: {post.get('reason','')}")
                 post.setdefault("response", {"text": post["text"]})
+                # Preserve provenance fields from original response for governance
+                if isinstance(resp, dict):
+                    for _prov_key in (
+                        "agent_id",
+                        "score",
+                        "knowledge_sources",
+                        "react_trace",
+                        "tools_used",
+                        "knowledge_retrieved",
+                        "router_plan",
+                    ):
+                        if _prov_key in resp and _prov_key not in post:
+                            post[_prov_key] = resp[_prov_key]
                 return post
 
             trace.add("guard_post_ok")
