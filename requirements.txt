@@ -23,3 +23,6 @@ pytest>=8.0.0
 streamlit>=1.37.0
 python-multipart>=0.0.7
 matplotlib>=3.8.0
+
+# MCP (Model Context Protocol) tool support — optional, for connecting to MCP servers
+mcp>=1.26.0

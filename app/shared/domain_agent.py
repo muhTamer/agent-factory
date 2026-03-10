@@ -185,6 +185,23 @@ def _generate_agent_source(agent_id: str) -> str:
                 except Exception:
                     pass
 
+                # Also try loading MCP tools (shared manager across agents)
+                try:
+                    _tools_cfg_path = Path(".factory") / "tools_config.json"
+                    if _tools_cfg_path.exists():
+                        _tc = json.loads(_tools_cfg_path.read_text(encoding="utf-8"))
+                        _mcp_configs = _tc.get("mcp_servers", [])
+                        if _mcp_configs:
+                            from app.runtime.tools.mcp_manager import MCPManager
+                            _mcp_mgr = MCPManager.get_instance()
+                            if not _mcp_mgr.is_connected():
+                                _mcp_mgr.connect_servers(_mcp_configs)
+                            _mcp_tools = _mcp_mgr.get_tools()
+                            tools.update(_mcp_tools)
+                            _log.info("Loaded %d MCP tools", len(_mcp_tools))
+                except Exception as exc:
+                    _log.warning("MCP tools unavailable: %s", exc)
+
                 # Load LLM function
                 llm_fn = None
                 try:
