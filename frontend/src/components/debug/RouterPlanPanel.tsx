@@ -3,6 +3,7 @@
 import type { ChatMessage } from "@/types/chat";
 import { getAgentDisplay } from "@/lib/constants";
 import { Route, Zap, Target, Clock } from "lucide-react";
+import { CollapsibleSection } from "./CollapsibleSection";
 
 interface Props {
   message: ChatMessage;
@@ -20,15 +21,12 @@ export function RouterPlanPanel({ message }: Props) {
     : null;
 
   return (
-    <div className="space-y-3">
-      <h3
-        className="text-sm font-semibold uppercase text-slate-500 flex items-center gap-1.5 cursor-help"
-        title="The LLM router evaluates the query and ranks candidate agents by relevance, then selects a routing strategy"
-      >
-        <Route size={14} />
-        Router Plan
-      </h3>
-
+    <CollapsibleSection
+      icon={<Route size={14} className="text-slate-500" />}
+      title="Router Plan"
+      tooltip="The LLM router evaluates the query and ranks candidate agents by relevance, then selects a routing strategy"
+    >
+      <div className="space-y-3">
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2">
         <div
@@ -73,6 +71,7 @@ export function RouterPlanPanel({ message }: Props) {
             >
               {(Number(winnerAgent.score) * 100).toFixed(0)}%
             </p>
+            <p className="text-[10px] text-blue-400">Router Confidence</p>
           </div>
         </div>
       )}
@@ -149,6 +148,7 @@ export function RouterPlanPanel({ message }: Props) {
           </span>
         </div>
       )}
-    </div>
+      </div>
+    </CollapsibleSection>
   );
 }

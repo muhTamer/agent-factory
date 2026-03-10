@@ -1,13 +1,13 @@
 "use client";
 
 import { useChatStore } from "@/store/chatStore";
-import { OrchestrationPanel } from "@/components/debug/OrchestrationPanel";
 import { RouterPlanPanel } from "@/components/debug/RouterPlanPanel";
 import { SolvabilityPanel } from "@/components/debug/SolvabilityPanel";
 import { PolicyCheckPanel } from "@/components/debug/PolicyCheckPanel";
+import { SourcesPanel } from "@/components/debug/SourcesPanel";
+import { ReActTracePanel } from "@/components/debug/ReActTracePanel";
 import { GovernancePanel } from "@/components/debug/GovernancePanel";
 import { RawJsonViewer } from "@/components/debug/RawJsonViewer";
-import { Separator } from "@/components/ui/separator";
 import { X, Eye, Bug } from "lucide-react";
 import { getAgentDisplay } from "@/lib/constants";
 
@@ -104,21 +104,14 @@ export function ExplainabilityPanel({ onClose }: Props) {
               </p>
             </div>
 
-            <Separator />
-            <OrchestrationPanel message={selected} />
-            <Separator />
             <RouterPlanPanel message={selected} />
-            <Separator />
             <SolvabilityPanel message={selected} />
-            <Separator />
             <PolicyCheckPanel message={selected} />
-            <Separator />
+            <SourcesPanel message={selected} />
+            <ReActTracePanel message={selected} />
             <GovernancePanel message={selected} />
             {debugMode && selected.raw && (
-              <>
-                <Separator />
-                <RawJsonViewer data={selected.raw} />
-              </>
+              <RawJsonViewer data={selected.raw} />
             )}
           </>
         )}

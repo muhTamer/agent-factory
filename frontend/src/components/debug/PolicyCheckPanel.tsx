@@ -2,6 +2,7 @@
 
 import type { ChatMessage } from "@/types/chat";
 import { Shield, CheckCircle } from "lucide-react";
+import { CollapsibleSection } from "./CollapsibleSection";
 
 interface Props {
   message: ChatMessage;
@@ -15,13 +16,16 @@ export function PolicyCheckPanel({ message }: Props) {
   const reason = raw.reason || raw.guardrail_reason;
 
   return (
-    <div className="space-y-3">
-      <h3
-        className="text-xs font-semibold uppercase text-slate-500 cursor-help"
-        title="The guardrail layer checks the query and response against safety policies before delivery — blocks harmful, off-topic, or policy-violating content"
-      >
-        Policy Check
-      </h3>
+    <CollapsibleSection
+      icon={<Shield size={14} className={blocked ? "text-red-500" : "text-green-500"} />}
+      title="Policy Check"
+      tooltip="The guardrail layer checks the query and response against safety policies before delivery — blocks harmful, off-topic, or policy-violating content"
+      badge={
+        <span className={`text-[10px] font-medium ${blocked ? "text-red-500" : "text-green-500"}`}>
+          {blocked ? "Blocked" : "Passed"}
+        </span>
+      }
+    >
       <div className="flex items-center gap-2 text-sm">
         {blocked ? (
           <>
@@ -53,6 +57,6 @@ export function PolicyCheckPanel({ message }: Props) {
           {String(reason)}
         </p>
       )}
-    </div>
+    </CollapsibleSection>
   );
 }

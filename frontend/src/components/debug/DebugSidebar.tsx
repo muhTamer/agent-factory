@@ -1,13 +1,13 @@
 "use client";
 
 import { useChatStore } from "@/store/chatStore";
-import { OrchestrationPanel } from "./OrchestrationPanel";
 import { RouterPlanPanel } from "./RouterPlanPanel";
 import { SolvabilityPanel } from "./SolvabilityPanel";
 import { PolicyCheckPanel } from "./PolicyCheckPanel";
+import { SourcesPanel } from "./SourcesPanel";
+import { ReActTracePanel } from "./ReActTracePanel";
 import { GovernancePanel } from "./GovernancePanel";
 import { RawJsonViewer } from "./RawJsonViewer";
-import { Separator } from "@/components/ui/separator";
 import { X } from "lucide-react";
 
 export function DebugSidebar() {
@@ -39,16 +39,12 @@ export function DebugSidebar() {
           </p>
         ) : (
           <>
-            <OrchestrationPanel message={selected} />
-            <Separator />
             <RouterPlanPanel message={selected} />
-            <Separator />
             <SolvabilityPanel message={selected} />
-            <Separator />
             <PolicyCheckPanel message={selected} />
-            <Separator />
+            <SourcesPanel message={selected} />
+            <ReActTracePanel message={selected} />
             <GovernancePanel message={selected} />
-            <Separator />
             {selected.raw && <RawJsonViewer data={selected.raw} />}
           </>
         )}

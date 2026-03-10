@@ -24,7 +24,7 @@ def _lookup_payment(slots: Dict[str, Any], context: Dict[str, Any]) -> Dict[str,
     return {
         "payment_found": True,
         "settlement_status": "settled",
-        "original_transaction_amount": slots.get("amount", 100.0),
+        "original_transaction_amount": slots.get("amount", 10000.0),
         "transaction_age_days": 5,
     }
 
@@ -68,6 +68,20 @@ STUB_TOOLS: Dict[str, Any] = {
     "create_ticket": _create_ticket,
     "handoff_to_human": _handoff_to_human,
     "lookup_customer": _lookup_customer,
+}
+
+# Map abstract API-style names from factory_spec.json to concrete
+# stub tool names so agents can find their tools regardless of
+# which naming convention the spec uses.
+TOOL_ALIASES: Dict[str, str] = {
+    "PaymentsAPI": "lookup_payment",
+    "IdentityVerificationAPI": "verify_identity",
+    "TicketingSystemAPI": "create_ticket",
+    "EscalationWorkflowTool": "create_ticket",
+    "CRM": "lookup_customer",
+    "AuditLogger": "create_ticket",
+    "ConversationLogger": "create_ticket",
+    "RAG_Retriever": "",  # handled internally by the engine, not a callable tool
 }
 
 # Agent-level responses returned by tool_operator agents when called as standalone agents

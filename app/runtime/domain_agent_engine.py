@@ -68,6 +68,9 @@ class ThreadState:
     pending_question: Optional[str] = None
     turn_count: int = 0
     original_query: Optional[str] = None  # First query that started this thread
+    # Cache policy content retrieved on first turn so subsequent turns
+    # have the full workflow steps without needing to re-retrieve.
+    cached_policy_content: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -148,6 +151,12 @@ class DomainAgentEngine:
 
             # ACT
             observation = self._execute_action(action, action_input, state)
+
+            # Cache policy content from retrieval so subsequent turns
+            # have the full workflow without re-retrieving.
+            if action == "retrieve_knowledge" and observation and not state.cached_policy_content:
+                if observation.startswith("Retrieved from source(s):"):
+                    state.cached_policy_content = observation
 
             step = ReActStep(
                 step_number=step_num,
@@ -484,8 +493,15 @@ class DomainAgentEngine:
             "no tools to help. There is no human specialist behind this action — "
             "escalation ends the conversation.\n\n"
             "Policy guidance (follow the spirit, not rigidly):\n"
-            f"{policies_str}\n\n"
-            "Guidelines:\n"
+            f"{policies_str}\n"
+            + (
+                f"\n--- RETRIEVED POLICY (you MUST follow ONLY these steps) ---\n"
+                f"{thread_state.cached_policy_content}\n"
+                f"--- END OF POLICY ---\n\n"
+                if thread_state.cached_policy_content
+                else "\n"
+            )
+            + "Guidelines:\n"
             "- Retrieve knowledge ONCE before answering factual questions.\n"
             "- Do NOT call retrieve_knowledge more than twice per turn. "
             "After retrieving, use the passages you found to respond.\n"
@@ -543,10 +559,16 @@ class DomainAgentEngine:
             "CRITICAL — Policy grounding:\n"
             "- When you retrieve a policy document, FOLLOW its documented rules "
             "and workflow step by step. Do NOT invent your own procedure.\n"
+            "- ONLY perform actions and ask questions that are EXPLICITLY listed "
+            "in the policy workflow steps. If a step is not in the policy, "
+            "do NOT add it yourself. For example, if the policy does not require "
+            "card verification, do NOT ask for the last 4 digits of a card.\n"
             "- Your reasoning (the 'thought' field) should reference policy rules, "
             "but your customer-facing answer must NEVER cite them.\n"
             "- Only ask the user for information that the policy SPECIFICALLY "
-            "requires AND that you cannot look up via your tools.\n\n"
+            "requires AND that you cannot look up via your tools.\n"
+            "- NEVER invent security checks, verification steps, or additional "
+            "requirements beyond what the policy document explicitly states.\n\n"
             "CRITICAL — Tool-first approach:\n"
             "- If the user provides a transaction ID, order number, or account "
             "reference, use call_tool to look it up BEFORE asking for more details.\n"
@@ -573,11 +595,14 @@ class DomainAgentEngine:
             if prev_steps:
                 parts = []
                 for s in prev_steps[-6:]:  # last 6 steps max to avoid bloat
+                    # Give retrieval observations more room so policy
+                    # workflow steps aren't lost across turns.
+                    obs_limit = 600 if s.action == "retrieve_knowledge" else 200
                     parts.append(
                         f"Step {s.step_number}: "
                         f"thought={s.thought[:200]} → "
                         f"{s.action}({json.dumps(s.action_input)}) → "
-                        f"{s.observation[:200]}"
+                        f"{s.observation[:obs_limit]}"
                     )
                 prev_steps_str = "\n\nPrevious reasoning from earlier turns:\n" + "\n".join(parts)
 
@@ -664,6 +689,20 @@ class DomainAgentEngine:
             for s in steps
         ]
 
+        # Detailed tool-call results for the frontend trace panel
+        tool_results: List[Dict[str, Any]] = []
+        for s in steps:
+            if s.action == "call_tool":
+                tool_results.append(
+                    {
+                        "step": s.step_number,
+                        "tool": s.action_input.get("tool", "unknown"),
+                        "args": {k: v for k, v in s.action_input.items() if k not in ("tool",)},
+                        "result": s.observation[:800],
+                    }
+                )
+        response["tool_results"] = tool_results
+
         # Metadata for governance & audit
         response["tools_used"] = list(
             set(
@@ -681,32 +720,100 @@ class DomainAgentEngine:
         response["policies_applied"] = list(self.config.policies)
 
         # ---- Knowledge sources for explainability provenance ----
-        # Include sources from all turns (not just current) so multi-turn
-        # flows that retrieved knowledge in a prior turn still show sources.
-        knowledge_sources: List[Dict[str, Any]] = []
-        for s in all_steps:
-            if s.action == "retrieve_knowledge" and s.observation:
-                # Parse "Retrieved from source(s): X, Y\n\npassages..."
-                obs = s.observation
-                source_names: List[str] = []
-                passages: List[str] = []
-                if obs.startswith("Retrieved from source(s):"):
-                    header, _, body = obs.partition("\n\n")
-                    source_names = [
-                        n.strip()
-                        for n in header.replace("Retrieved from source(s):", "").split(",")
-                        if n.strip()
-                    ]
-                    # Extract individual passages (separated by ---)
-                    if body:
-                        passages = [p.strip()[:300] for p in body.split("\n---\n") if p.strip()]
-                knowledge_sources.append(
-                    {
-                        "query": s.action_input.get("query", ""),
-                        "sources": source_names,
-                        "passages": passages[:5],  # cap at 5 for readability
-                    }
-                )
+        def _parse_knowledge_steps(
+            step_list: List[ReActStep],
+        ) -> List[Dict[str, Any]]:
+            ks: List[Dict[str, Any]] = []
+            for s in step_list:
+                if s.action == "retrieve_knowledge" and s.observation:
+                    obs = s.observation
+                    source_names: List[str] = []
+                    passages: List[str] = []
+                    if obs.startswith("Retrieved from source(s):"):
+                        header, _, body = obs.partition("\n\n")
+                        source_names = [
+                            n.strip()
+                            for n in header.replace("Retrieved from source(s):", "").split(",")
+                            if n.strip()
+                        ]
+                        if body:
+                            passages = [p.strip()[:300] for p in body.split("\n---\n") if p.strip()]
+                    ks.append(
+                        {
+                            "query": s.action_input.get("query", ""),
+                            "sources": source_names,
+                            "passages": passages[:5],
+                        }
+                    )
+            return ks
+
+        # Current turn retrieval sources
+        knowledge_sources = _parse_knowledge_steps(steps)
+        # Fall back to prior turns if current turn had no retrieval
+        if not knowledge_sources:
+            prior_steps = [s for s in all_steps if s not in steps]
+            knowledge_sources = _parse_knowledge_steps(prior_steps)
+            # Mark these as from a prior turn so the UI can label them
+            for ks in knowledge_sources:
+                ks["from_prior_turn"] = True
         response["knowledge_sources"] = knowledge_sources
+
+        # ---- Policy grounding: always show which policy drives decisions ----
+        # Extract the specific policy workflow steps that are relevant to
+        # the current turn's reasoning, so the UI can show exactly which
+        # entries guided the agent's decision.
+        if self.config.policies:
+            policy_entries: List[str] = []
+            if state.cached_policy_content:
+                # Extract workflow step blocks from the cached policy.
+                # Each step starts with a header like "step_1_...: " and
+                # ends before the next step or section boundary.
+                import re
+
+                step_blocks = re.split(
+                    r"\n(?=\s*step_\d+_)",
+                    state.cached_policy_content,
+                )
+                # Find which steps the agent referenced in its thoughts
+                # on this turn.
+                for block in step_blocks:
+                    block = block.strip()
+                    if not block:
+                        continue
+                    # Extract step name (e.g. "step_1_collect_transaction_reference")
+                    step_match = re.match(r"(step_\d+\w*)", block)
+                    if not step_match:
+                        continue
+                    step_name = step_match.group(1)
+                    # Check if any of this turn's thoughts reference this step
+                    for s in steps:
+                        thought_lower = (s.thought or "").lower()
+                        # Match step name or step number references
+                        step_num = re.search(r"step_(\d+)", step_name)
+                        if step_num:
+                            num = step_num.group(1)
+                            if (
+                                step_name.lower() in thought_lower
+                                or f"step {num}" in thought_lower
+                                or f"step_{num}" in thought_lower
+                            ):
+                                # Extract the description from the block
+                                desc_match = re.search(
+                                    r"description:\s*>?\s*\n?\s*(.+?)(?:\n\s*\w+:|$)",
+                                    block,
+                                    re.DOTALL,
+                                )
+                                desc = desc_match.group(1).strip() if desc_match else block[:200]
+                                policy_entries.append(f"{step_name}: {desc[:300]}")
+                                break
+
+            response["policy_sources"] = [
+                {
+                    "name": p,
+                    "type": "workflow_policy",
+                    "active_entries": policy_entries,
+                }
+                for p in self.config.policies
+            ]
 
         return response

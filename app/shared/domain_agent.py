@@ -156,32 +156,32 @@ def _generate_agent_source(agent_id: str) -> str:
                 ]
                 index = build_index(corpus_items)
 
-                # Load tools from registry
+                # Load tools — register ALL stubs so the policy workflow
+                # has every tool it needs available.
                 tools = {{}}
                 try:
-                    from app.runtime.tools.registry import ToolRegistry, build_registry
+                    from app.runtime.tools.registry import ToolRegistry
                     from app.runtime.tools.adapters.stub import StubTool
                     from app.runtime.tools.stub_tools import STUB_TOOLS
 
                     registry = ToolRegistry()
-                    for tool_name in self.cfg.get("available_tools", []):
-                        stub_fn = STUB_TOOLS.get(tool_name)
-                        if stub_fn:
-                            registry.register(tool_name, StubTool(tool_name, stub_fn))
+                    for tool_name, stub_fn in STUB_TOOLS.items():
+                        registry.register(tool_name, StubTool(tool_name, stub_fn))
                     tools = {{name: registry.get(name) for name in registry.all_names()}}
+                except Exception:
+                    pass
 
-                    # Also try loading HTTP tools from tools_config.json
-                    try:
-                        factory_dir = Path(".factory")
-                        tools_config_path = factory_dir / "tools_config.json"
-                        if tools_config_path.exists():
-                            tc = json.loads(tools_config_path.read_text(encoding="utf-8"))
-                            http_registry = build_registry(tc.get("tools", []))
-                            for name in http_registry.all_names():
-                                if name in self.cfg.get("available_tools", []):
-                                    tools[name] = http_registry.get(name)
-                    except Exception:
-                        pass
+                # Also try loading HTTP tools from tools_config.json
+                try:
+                    from app.runtime.tools.registry import ToolRegistry, build_registry
+
+                    factory_dir = Path(".factory")
+                    tools_config_path = factory_dir / "tools_config.json"
+                    if tools_config_path.exists():
+                        tc = json.loads(tools_config_path.read_text(encoding="utf-8"))
+                        http_registry = build_registry(tc.get("tools", []))
+                        for name in http_registry.all_names():
+                            tools[name] = http_registry.get(name)
                 except Exception:
                     pass
 

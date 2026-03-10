@@ -1,6 +1,8 @@
 "use client";
 
 import type { ChatMessage } from "@/types/chat";
+import { BarChart3 } from "lucide-react";
+import { CollapsibleSection } from "./CollapsibleSection";
 
 interface Props {
   message: ChatMessage;
@@ -11,13 +13,11 @@ export function SolvabilityPanel({ message }: Props) {
   if (!aop) return null;
 
   return (
-    <div className="space-y-3">
-      <h3
-        className="text-xs font-semibold uppercase text-slate-500 cursor-help"
-        title="Action-Oriented Planning (AOP) decomposes the query into subtasks and scores each for solvability — how likely the system can resolve it"
-      >
-        Solvability Scores (AOP)
-      </h3>
+    <CollapsibleSection
+      icon={<BarChart3 size={14} className="text-slate-500" />}
+      title="Solvability Scores (AOP)"
+      tooltip="Action-Oriented Planning (AOP) decomposes the query into subtasks and scores each for solvability — how likely the system can resolve it"
+    >
       <div className="space-y-1.5">
         {aop.subtaskResults.map((r, i) => {
           const pct = Math.round(r.solvabilityScore * 100);
@@ -63,6 +63,6 @@ export function SolvabilityPanel({ message }: Props) {
           )}
         </div>
       )}
-    </div>
+    </CollapsibleSection>
   );
 }
