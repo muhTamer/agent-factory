@@ -260,12 +260,12 @@ Available via RuntimeSpine for routing
 
 ### Agent Types
 
-| Type | Generator | Engine | Use Case |
-|------|-----------|--------|----------|
-| `domain_agent` | `domain_agent.py` | DomainAgentEngine (ReAct) | Primary: RAG + tools + reasoning |
-| `knowledge_rag` | `rag.py` | RAGFiniteStateMachine (PMPA) | FAQ retrieval with solvability |
-| `workflow_runner` | `workflow.py` | GenericWorkflowEngine (FSM) | Step-by-step workflows |
-| `tool_operator` | `tool_operator.py` | Direct stub execution | Single-tool wrapper |
+| Type | Generator | Engine | Status |
+|------|-----------|--------|--------|
+| `domain_agent` | `domain_agent.py` | DomainAgentEngine (ReAct) | **Active** — primary type for all agents |
+| `tool_operator` | `tool_operator.py` | Direct stub execution | **Active** — single-tool wrapper |
+| `knowledge_rag` | `rag.py` | RAGFiniteStateMachine (PMPA) | Legacy — superseded by `domain_agent` |
+| `workflow_runner` | `workflow.py` | GenericWorkflowEngine (FSM) | Legacy — superseded by `domain_agent` |
 
 ---
 

@@ -65,38 +65,31 @@ generated/<agent_id>/
 └── corpus.json   # Serialized knowledge base
 ```
 
-### 2. Knowledge RAG Agent
-
-**Generator:** `app/shared/rag.py`
-**Engine:** `RAGFiniteStateMachine` (PMPA pattern)
-**Use Case:** FAQ retrieval with solvability estimation
-
-Uses a state machine (ANALYZE → CLARIFY → RETRIEVE → RESPOND/DELEGATE) with solvability scoring to determine if it can answer a question or should delegate.
-
-**States:**
-| State | Purpose | Transitions |
-|-------|---------|-------------|
-| `ANALYZE` | Estimate solvability from TF-IDF scores | → CLARIFY, RETRIEVE, DELEGATE |
-| `CLARIFY` | Ask user for more context (max 2 rounds) | → RETRIEVE, DELEGATE |
-| `RETRIEVE` | Search knowledge base | → RESPOND |
-| `RESPOND` | Return answer with citations | Terminal |
-| `DELEGATE` | Signal spine to re-route | Terminal |
-
-### 3. Workflow Runner
-
-**Generator:** `app/shared/workflow.py`
-**Engine:** `GenericWorkflowEngine` (FSM)
-**Use Case:** Step-by-step procedural workflows (legacy, being replaced by domain_agent)
-
-Executes a finite state machine defined in `workflow_spec.json` with states, transitions, and slot collection.
-
-### 4. Tool Operator
+### 2. Tool Operator
 
 **Generator:** `app/shared/tool_operator.py`
 **Engine:** Direct stub execution
 **Use Case:** Thin wrapper around a single tool
 
 Returns predefined stub responses. Used as leaf agents in hierarchical delegation.
+
+### Legacy Agent Types (Not Actively Used)
+
+The following agent types exist in the codebase but are **not used by any active agent**. All three agents in the current factory spec are `domain_agent`, which unified and replaced both of these earlier types.
+
+#### Knowledge RAG Agent (Legacy)
+
+**Generator:** `app/shared/rag.py`
+**Engine:** `RAGFiniteStateMachine` (`app/runtime/rag_fsm.py`)
+
+A standalone FAQ retrieval agent with a state machine (ANALYZE → CLARIFY → RETRIEVE → RESPOND/DELEGATE) and solvability scoring. Superseded by `domain_agent`, which incorporates the same RAG retrieval capabilities within its ReAct loop alongside tool execution and policy enforcement.
+
+#### Workflow Runner (Legacy)
+
+**Generator:** `app/shared/workflow.py`
+**Engine:** `GenericWorkflowEngine` (`app/runtime/workflow_engine.py`)
+
+An FSM-based agent that executes step-by-step workflows defined in `workflow_spec.json`. Superseded by `domain_agent`, which handles multi-step workflows dynamically through ReAct reasoning rather than rigid state machine transitions.
 
 ---
 
