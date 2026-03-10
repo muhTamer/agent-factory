@@ -3,7 +3,7 @@
 import type { ChatMessage } from "@/types/chat";
 import { getAgentDisplay } from "@/lib/constants";
 import { Route, Zap, Target, Clock } from "lucide-react";
-import { CollapsibleSection } from "./CollapsibleSection";
+import { CollapsibleSection, type SectionStatus } from "./CollapsibleSection";
 
 interface Props {
   message: ChatMessage;
@@ -20,14 +20,32 @@ export function RouterPlanPanel({ message }: Props) {
     ? getAgentDisplay(winnerAgent.id)
     : null;
 
+  const score = Number(winnerAgent?.score ?? 0);
+  const pctTop = Math.round(score * 100);
+  const sectionStatus: SectionStatus =
+    pctTop >= 70 ? "ok" : pctTop >= 40 ? "warning" : "error";
+
   return (
     <CollapsibleSection
       icon={<Route size={14} className="text-slate-500" />}
       title="Router Plan"
       tooltip="The LLM router evaluates the query and ranks candidate agents by relevance, then selects a routing strategy"
+      status={sectionStatus}
+      collapsedSummary={
+        winnerAgent ? (
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <Target size={11} className="text-blue-500" />
+            <span className="font-medium text-slate-700">
+              {winnerDisplay?.label ?? winnerAgent.id}
+            </span>
+            <span className="font-mono text-blue-600">{pctTop}%</span>
+            <span className="text-slate-300">|</span>
+            <span className="capitalize">{plan.strategy}</span>
+          </div>
+        ) : undefined
+      }
     >
       <div className="space-y-3">
-      {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2">
         <div
           className="rounded-lg bg-slate-50 px-3 py-2 cursor-help"
@@ -51,7 +69,6 @@ export function RouterPlanPanel({ message }: Props) {
         </div>
       </div>
 
-      {/* Winner highlight */}
       {winnerAgent && (
         <div
           className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 cursor-help"
@@ -76,24 +93,13 @@ export function RouterPlanPanel({ message }: Props) {
         </div>
       )}
 
-      {/* Candidates table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-left text-xs text-slate-400">
               <th className="pb-1.5 pr-2 font-medium">Agent</th>
-              <th
-                className="pb-1.5 pr-2 font-medium cursor-help"
-                title="The LLM router's confidence score (0-1) for how well each agent can handle this query"
-              >
-                Score
-              </th>
-              <th
-                className="pb-1.5 font-medium cursor-help"
-                title="The router's explanation for why this agent was considered for the query"
-              >
-                Reason
-              </th>
+              <th className="pb-1.5 pr-2 font-medium cursor-help" title="The LLM router's confidence score (0-1) for how well each agent can handle this query">Score</th>
+              <th className="pb-1.5 font-medium cursor-help" title="The router's explanation for why this agent was considered for the query">Reason</th>
             </tr>
           </thead>
           <tbody>
@@ -102,33 +108,17 @@ export function RouterPlanPanel({ message }: Props) {
               const pct = Math.round(score * 100);
               const display = c.id ? getAgentDisplay(c.id) : null;
               return (
-                <tr
-                  key={i}
-                  className={`border-b border-slate-100 ${
-                    i === 0 ? "font-medium" : ""
-                  }`}
-                >
-                  <td className="py-2 pr-2 text-slate-700">
-                    {display?.label ?? c.id ?? "-"}
-                  </td>
+                <tr key={i} className={`border-b border-slate-100 ${i === 0 ? "font-medium" : ""}`}>
+                  <td className="py-2 pr-2 text-slate-700">{display?.label ?? c.id ?? "-"}</td>
                   <td className="py-2 pr-2">
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-16 rounded-full bg-slate-200">
-                        <div
-                          className={`h-2 rounded-full ${
-                            i === 0 ? "bg-blue-500" : "bg-slate-400"
-                          }`}
-                          style={{ width: `${pct}%` }}
-                        />
+                        <div className={`h-2 rounded-full ${i === 0 ? "bg-blue-500" : "bg-slate-400"}`} style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="font-mono text-sm text-slate-600">
-                        {score.toFixed(2)}
-                      </span>
+                      <span className="font-mono text-sm text-slate-600">{score.toFixed(2)}</span>
                     </div>
                   </td>
-                  <td className="py-2 text-sm text-slate-500">
-                    {c.reason || "-"}
-                  </td>
+                  <td className="py-2 text-sm text-slate-500">{c.reason || "-"}</td>
                 </tr>
               );
             })}
@@ -136,16 +126,10 @@ export function RouterPlanPanel({ message }: Props) {
         </table>
       </div>
 
-      {/* Latency */}
       {message.latencyMs && (
-        <div
-          className="flex items-center gap-1.5 text-xs text-slate-400 cursor-help"
-          title="End-to-end time from sending the query to receiving the final response, including routing, agent execution, and governance checks"
-        >
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 cursor-help" title="End-to-end time from sending the query to receiving the final response, including routing, agent execution, and governance checks">
           <Clock size={12} />
-          <span>
-            Total response time: {(message.latencyMs / 1000).toFixed(1)}s
-          </span>
+          <span>Total response time: {(message.latencyMs / 1000).toFixed(1)}s</span>
         </div>
       )}
       </div>
