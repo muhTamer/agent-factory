@@ -25,6 +25,7 @@ This document describes the system architecture, core design decisions, and requ
 ├─────────────────────────────────────────────────────────────┤
 │                    API Layer (FastAPI)                       │
 │  POST /chat · GET /health · GET /version                    │
+│  GET /guardrails · PATCH /guardrails/{rule_id}              │
 ├─────────────────────────────────────────────────────────────┤
 │                   Orchestration Layer                        │
 │  RuntimeSpine · LLMRouter · AOP Coordinator                 │
@@ -38,8 +39,8 @@ This document describes the system architecture, core design decisions, and requ
 │  Voice Renderer · Embeddings · MCP Manager                  │
 ├─────────────────────────────────────────────────────────────┤
 │                  Governance Layer                            │
-│  Policy Guardrails · IEEE Compliance · Explainability       │
-│  Audit Writer · Message Envelope (UMF)                      │
+│  Policy Guardrails · Configurable Rules · IEEE Compliance   │
+│  Explainability · Audit Writer · Message Envelope (UMF)     │
 ├─────────────────────────────────────────────────────────────┤
 │                     Data Layer                              │
 │  BankFAQs.csv · refunds_policy.yaml · complaints_policy.yaml│
@@ -348,6 +349,12 @@ POST-GUARDRAILS (before response delivery):
   1. Blocked phrase enforcement (internal jargon)
   2. Hallucination detection (refund claims without transaction context)
   3. Tone control (strip urgency questions, async promises, file references)
+
+CONFIGURABLE RULES:
+  Each check above is backed by a GuardrailRule with an enabled toggle.
+  Rules can be toggled at runtime via the admin API (PATCH /guardrails/{rule_id})
+  or the GuardrailsAdminPanel in the UI. Changes persist to disk and hot-swap
+  immediately via _rebuild_guardrails() — no restart required.
 ```
 
 ---
@@ -359,7 +366,7 @@ RuntimeSpine
   ├── LLMRouter
   │     └── LLM Client (chat_json)
   ├── PolicyGuardrails
-  │     └── PolicyPack
+  │     └── PolicyPack (GuardrailRule[] + runtime toggles)
   ├── AOPCoordinator
   │     ├── SolvabilityEstimator
   │     ├── CompletenessDetector
@@ -480,6 +487,7 @@ The default demo server uses the **configurable MCP server**, which reads tool d
 
 ## Security Considerations
 
+- **Document Visibility** — Customer-facing agents (`customer_facing: true`) only receive documents classified as `"customer_facing"` in the user's `doc_visibility` map; internal policy docs are filtered out at spec-build time
 - **PII Redaction** — Emails, phone numbers, and credit card numbers are redacted in pre-guardrails before reaching agents
 - **Internal Data Sanitization** — Voice renderer strips FSM state, slot names, policy file paths, and tool registry details before LLM generates customer text
 - **No Credential Exposure** — HTTP tool adapter expands `${ENV_VAR}` tokens from environment, never hardcoded
