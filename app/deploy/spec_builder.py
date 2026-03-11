@@ -56,18 +56,14 @@ def _is_internal(filename: str, doc_visibility: Optional[Dict[str, str]]) -> boo
     """
     Returns True if a file should be treated as internal (excluded from customer-facing RAG).
 
-    When the user has provided an explicit visibility map (from the onboarding wizard), that
-    takes precedence.  If the file is not in the map, or no map was provided, we fall back to
-    a sensible default: YAML/YML → internal, everything else → customer-facing.
+    Uses the user-provided visibility map from the onboarding wizard.
+    Only documents explicitly marked "internal" are excluded; everything else
+    (including unmarked files and files with no visibility map) defaults to
+    customer-facing.
     """
     if doc_visibility:
-        vis = doc_visibility.get(filename, "").lower()
-        if vis == "internal":
-            return True
-        if vis == "customer_facing":
-            return False
-    # Default: YAML files are internal policy/config documents
-    return Path(filename).suffix.lower() in {".yaml", ".yml"}
+        return doc_visibility.get(filename, "").lower() == "internal"
+    return False
 
 
 # Signals in an agent's description/capabilities that indicate it's an
@@ -226,6 +222,19 @@ def _inputs_from_blueprint(
                 ]
                 ks = [_abs(f) for f in candidates]
             inputs["knowledge_sources"] = ks
+
+        # Strip internal documents from customer-facing domain agents.
+        # The LLM blueprint may include documents the user marked as
+        # internal — filter them out so the agent only retrieves from
+        # documents the user classified as customer-facing.
+        if _is_customer_facing:
+            for _doc_key in ("knowledge_sources", "docs", "policies", "procedures"):
+                if _doc_key in inputs and isinstance(inputs[_doc_key], list):
+                    inputs[_doc_key] = [
+                        d
+                        for d in inputs[_doc_key]
+                        if not _is_internal(Path(d).name, doc_visibility)
+                    ]
 
         # available_tools: from blueprint inputs or bp["tools"]
         if "available_tools" not in inputs or not inputs.get("available_tools"):
