@@ -137,11 +137,23 @@ def startup_event():
     # Load customer tool overrides (stubs used as fallback for any unspecified tool)
     if TOOLS_CONFIG_PATH.exists():
         tools_config = json.loads(TOOLS_CONFIG_PATH.read_text(encoding="utf-8"))
-        tool_registry = build_registry(tools_config.get("tools", []))
+        tool_registry = build_registry(
+            config=tools_config.get("tools", []),
+            mcp_servers=tools_config.get("mcp_servers", []),
+        )
         print(f"[TOOLS] Loaded customer config: {tool_registry.all_names()}")
     else:
         tool_registry = DEFAULT_REGISTRY
         print(f"[TOOLS] No tools_config.json found — using stubs: {tool_registry.all_names()}")
+
+
+# ---------- Shutdown ----------
+@app.on_event("shutdown")
+def shutdown_event():
+    """Clean up MCP server connections on shutdown."""
+    if hasattr(tool_registry, "shutdown"):
+        tool_registry.shutdown()
+        print("[TOOLS] MCP servers disconnected.")
 
 
 # ---------- Routes ----------

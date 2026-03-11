@@ -53,18 +53,21 @@ DEFAULT_REGISTRY: ToolRegistry = _build_default_registry()
 # ---------------------------------------------------------------------------
 def build_registry(
     config: Optional[List[Dict[str, Any]]] = None,
+    mcp_servers: Optional[List[Dict[str, Any]]] = None,
 ) -> ToolRegistry:
     """
     Build a ToolRegistry starting from the default stubs, then apply
-    any customer-provided overrides from `config`.
+    any customer-provided overrides from `config`, and optionally
+    connect to MCP servers to auto-discover their tools.
 
     Args:
-        config: List of tool config dicts (see ToolRegistry.load_config).
-                Pass None or [] to get a registry that is identical to
-                DEFAULT_REGISTRY (all stubs).
+        config:      List of tool config dicts (see ToolRegistry.load_config).
+                     Pass None or [] to get a registry with all stubs.
+        mcp_servers: List of MCP server config dicts. Each server's tools
+                     are auto-discovered and registered. Pass None to skip.
 
     Returns:
-        A new ToolRegistry instance with customer overrides applied.
+        A new ToolRegistry instance with customer overrides and MCP tools.
     """
     from app.runtime.tools.stub_tools import STUB_TOOLS
 
@@ -76,6 +79,10 @@ def build_registry(
     # Apply customer overrides (may replace individual stubs)
     if config:
         registry.load_config(config)
+
+    # Connect to MCP servers and register discovered tools
+    if mcp_servers:
+        registry.load_mcp_servers(mcp_servers)
 
     return registry
 

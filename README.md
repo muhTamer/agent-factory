@@ -24,7 +24,7 @@ Built as a thesis project exploring four research questions around agent generat
 The Agent Factory takes a factory specification (`.factory/factory_spec.json`) and generates a fleet of domain-specialist agents, each equipped with:
 
 - **Knowledge retrieval** — TF-IDF + optional dense embeddings over CSV, YAML, and Markdown corpora
-- **Tool execution** — Pluggable tool adapters (HTTP, SQL, stub) via the `ITool` interface
+- **Tool execution** — Pluggable tool adapters (HTTP, SQL, stub, MCP) via the `ITool` interface
 - **ReAct reasoning** — Step-by-step Observe → Think → Act loop with full trace logging
 - **Policy enforcement** — Natural language constraints injected into the LLM prompt, grounded in YAML policy documents
 - **Multi-turn memory** — Thread-scoped conversation state with slot accumulation across turns
@@ -67,8 +67,10 @@ For complex multi-intent queries, an **AOP Coordinator** decomposes the request 
 │    ┌─────────┴──────────┐                                        │
 │    │                     │                                        │
 │  RAG Index           Tool Registry                               │
-│  (TF-IDF +           (Stub/HTTP/SQL)                             │
-│   Dense)                                                         │
+│  (TF-IDF +           (Stub/HTTP/SQL/MCP)                         │
+│   Dense)                  │                                      │
+│                      MCP Manager                                 │
+│                      (stdio / HTTP servers)                      │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -189,7 +191,8 @@ agent-factory-orchestration/
 │   │       ├── interface.py         # ITool abstract base
 │   │       ├── registry.py          # ToolRegistry (name → ITool)
 │   │       ├── stub_tools.py        # Demo tool implementations
-│   │       └── adapters/            # HTTP, SQL, Stub adapters
+│   │       ├── mcp_manager.py      # MCP server lifecycle & sync bridge
+│   │       └── adapters/            # HTTP, SQL, Stub, MCP adapters
 │   │
 │   ├── orchestration/               # Multi-agent orchestration
 │   │   └── aop_coordinator.py       # Action-Oriented Planning (5-step)
@@ -373,6 +376,7 @@ pytest tests/test_e2e_scenarios.py -v
 | `test_ieee_compliance.py` | IEEE standards compliance checking |
 | `test_faq_rag_agent.py` | FAQ retrieval and solvability |
 | `test_tool_operators.py` | Tool operator agent loading |
+| `test_mcp_integration.py` | MCP adapter, manager, and server integration |
 
 ---
 

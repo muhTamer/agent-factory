@@ -1,0 +1,414 @@
+{
+  "_docs": "Config-driven MCP tool definitions. Edit this file to change tool responses or add new tools — no Python needed.",
+  "_template_syntax": "Use {{param_name}} in response values to inject input parameters. Use {{param:default}} for defaults.",
+  "_scenario_ops": "Condition operators: starts_with, equals, contains, greater_than, less_than, in",
+  "server_name": "demo-server",
+  "tools": [
+    {
+      "name": "echo",
+      "description": "Echo back the message. Useful for connectivity testing.",
+      "parameters": {
+        "message": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "response": {
+        "message": "{{message}}"
+      }
+    },
+    {
+      "name": "add",
+      "description": "Add two numbers and return the result.",
+      "parameters": {
+        "a": {
+          "type": "integer",
+          "required": true
+        },
+        "b": {
+          "type": "integer",
+          "required": true
+        }
+      },
+      "response": {
+        "result": "{{a}} + {{b}}"
+      }
+    },
+    {
+      "name": "lookup_customer",
+      "description": "Look up a customer by their ID. Returns account_status, kyc_status, and customer_found.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "response": {
+        "customer_id": "{{customer_id}}",
+        "account_status": "active",
+        "kyc_status": "verified",
+        "customer_found": true
+      },
+      "scenarios": [
+        {
+          "_comment": "Customer not found",
+          "when": {
+            "customer_id": {
+              "starts_with": "FAIL"
+            }
+          },
+          "response": {
+            "customer_found": false,
+            "message": "Customer not found in system."
+          }
+        },
+        {
+          "_comment": "Suspended account",
+          "when": {
+            "customer_id": {
+              "starts_with": "SUSPENDED"
+            }
+          },
+          "response": {
+            "account_status": "suspended"
+          }
+        },
+        {
+          "_comment": "Frozen account",
+          "when": {
+            "customer_id": {
+              "starts_with": "FROZEN"
+            }
+          },
+          "response": {
+            "account_status": "frozen",
+            "kyc_status": "unverified"
+          }
+        }
+      ]
+    },
+    {
+      "name": "verify_identity",
+      "description": "Verify the identity (KYC) of a customer. Returns kyc_status and identity_verified.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "response": {
+        "customer_id": "{{customer_id}}",
+        "kyc_status": "verified",
+        "identity_verified": true,
+        "message": "Identity verified successfully."
+      },
+      "scenarios": [
+        {
+          "when": {
+            "customer_id": {
+              "starts_with": "FROZEN"
+            }
+          },
+          "response": {
+            "kyc_status": "unverified",
+            "identity_verified": false,
+            "message": "Identity verification failed — account frozen."
+          }
+        }
+      ]
+    },
+    {
+      "name": "lookup_payment",
+      "description": "Look up a payment/transaction by its ID. Returns payment_found, settlement_status, and transaction_age_days.",
+      "parameters": {
+        "transaction_id": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "response": {
+        "transaction_id": "{{transaction_id}}",
+        "payment_found": true,
+        "settlement_status": "settled",
+        "original_transaction_amount": 2000,
+        "transaction_age_days": 5
+      },
+      "scenarios": [
+        {
+          "_comment": "Payment not found",
+          "when": {
+            "transaction_id": {
+              "starts_with": "FAIL"
+            }
+          },
+          "response": {
+            "payment_found": false,
+            "message": "Payment record not found."
+          }
+        },
+        {
+          "_comment": "Old transaction (outside 90-day window)",
+          "when": {
+            "transaction_id": {
+              "starts_with": "OLD"
+            }
+          },
+          "response": {
+            "transaction_age_days": 120
+          }
+        },
+        {
+          "_comment": "Unsettled payment",
+          "when": {
+            "transaction_id": {
+              "starts_with": "UNSETTLED"
+            }
+          },
+          "response": {
+            "settlement_status": "pending",
+            "transaction_age_days": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "initiate_refund",
+      "description": "Initiate a refund for a customer transaction. Returns refund_id, refund_status, and approval info.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "transaction_id": {
+          "type": "string",
+          "required": true
+        },
+        "amount": {
+          "type": "number",
+          "required": true
+        },
+        "reason": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "response": {
+        "refund_id": "REF-{{transaction_id}}",
+        "refund_status": "success",
+        "refund_initiated": true,
+        "approval_required": false,
+        "message": "Refund of {{amount}} initiated successfully."
+      },
+      "scenarios": [
+        {
+          "_comment": "High-value refund requires manager approval",
+          "when": {
+            "amount": {
+              "greater_than": 5000
+            }
+          },
+          "response": {
+            "refund_status": "pending_approval",
+            "refund_initiated": false,
+            "approval_required": true,
+            "message": "Refund of {{amount}} requires manager approval (threshold: 5000)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_ticket",
+      "description": "Create a support ticket for a customer issue. Categories: billing, service, fraud, product, general. Severity: low, medium, high.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "category": {
+          "type": "string",
+          "default": "general"
+        },
+        "severity": {
+          "type": "string",
+          "default": "low"
+        },
+        "description": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "response": {
+        "ticket_id": "TKT-{{customer_id}}-001",
+        "ticket_status": "created",
+        "category": "{{category:general}}",
+        "severity": "{{severity:low}}",
+        "message": "Support ticket created for {{category:general}} issue ({{severity:low}} severity)."
+      }
+    },
+    {
+      "name": "handoff_to_human",
+      "description": "Escalate / hand off a case to a human operator. Returns handed_off status and assigned team.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "reason": {
+          "type": "string",
+          "default": ""
+        },
+        "ticket_id": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "response": {
+        "handed_off": true,
+        "handoff_agent": "human_ops_team",
+        "customer_id": "{{customer_id}}",
+        "ticket_id": "{{ticket_id}}",
+        "message": "Case escalated to human operator. Reason: {{reason:not specified}}"
+      }
+    },
+    {
+      "name": "create_complaint_record",
+      "description": "Create a formal complaint record. Categories: billing, service, fraud, product, regulatory. Severity: low, medium, high.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "category": {
+          "type": "string",
+          "required": true
+        },
+        "severity": {
+          "type": "string",
+          "default": "medium"
+        },
+        "description": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "response": {
+        "complaint_id": "CMP-{{customer_id}}-001",
+        "status": "open",
+        "category": "{{category}}",
+        "severity": "{{severity:medium}}",
+        "message": "Complaint recorded for category={{category}}, severity={{severity:medium}}."
+      }
+    },
+    {
+      "name": "compute_compensation",
+      "description": "Compute a compensation estimate for a complaint. Returns compensation_amount and whether approval is required (> 500).",
+      "parameters": {
+        "complaint_id": {
+          "type": "string",
+          "required": true
+        },
+        "category": {
+          "type": "string",
+          "required": true
+        },
+        "severity": {
+          "type": "string",
+          "required": true
+        },
+        "estimated_impact_value": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "response": {
+        "complaint_id": "{{complaint_id}}",
+        "compensation_amount": 200,
+        "approval_required": false,
+        "message": "Compensation estimate: 200. Auto-approved."
+      },
+      "scenarios": [
+        {
+          "_comment": "High severity = higher compensation, needs approval",
+          "when": {
+            "severity": {
+              "equals": "high"
+            }
+          },
+          "response": {
+            "compensation_amount": 500,
+            "approval_required": false,
+            "message": "Compensation estimate: 500. Auto-approved."
+          }
+        },
+        {
+          "_comment": "Large impact value triggers manager approval",
+          "when": {
+            "estimated_impact_value": {
+              "greater_than": 2000
+            }
+          },
+          "response": {
+            "compensation_amount": 750,
+            "approval_required": true,
+            "message": "Compensation estimate: 750. Manager approval required."
+          }
+        }
+      ]
+    },
+    {
+      "name": "apply_triage_rules",
+      "description": "Apply triage rules to route a complaint to the right team. High severity or fraud/regulatory = escalated.",
+      "parameters": {
+        "complaint_id": {
+          "type": "string",
+          "required": true
+        },
+        "category": {
+          "type": "string",
+          "required": true
+        },
+        "severity": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "response": {
+        "complaint_id": "{{complaint_id}}",
+        "escalated": false,
+        "assigned_owner": "frontline_team",
+        "message": "Triaged to frontline_team."
+      },
+      "scenarios": [
+        {
+          "_comment": "High severity escalation",
+          "when": {
+            "severity": {
+              "equals": "high"
+            }
+          },
+          "response": {
+            "escalated": true,
+            "assigned_owner": "escalation_team",
+            "message": "Triaged to escalation_team. (escalated)"
+          }
+        },
+        {
+          "_comment": "Fraud cases always escalated",
+          "when": {
+            "category": {
+              "in": [
+                "fraud",
+                "regulatory"
+              ]
+            }
+          },
+          "response": {
+            "escalated": true,
+            "assigned_owner": "escalation_team",
+            "message": "Triaged to escalation_team. (escalated)"
+          }
+        }
+      ]
+    }
+  ]
+}
