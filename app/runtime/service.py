@@ -184,6 +184,60 @@ def test_tool(name: str, req: ToolTestRequest):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+# ---------- Guardrail admin endpoints ----------
+
+
+class GuardrailToggleRequest(BaseModel):
+    enabled: bool
+
+
+@app.get("/guardrails")
+def list_guardrails():
+    """List all guardrail rules with their current enabled state."""
+    return {
+        "rules": pack.rules_summary(),
+        "transaction_slot_keys": pack.transaction_slot_keys,
+        "policy_pack": pack.name,
+        "version": pack.version,
+    }
+
+
+@app.patch("/guardrails/{rule_id}")
+def toggle_guardrail(rule_id: str, req: GuardrailToggleRequest):
+    """Enable or disable a specific guardrail rule at runtime."""
+    success = pack.set_rule_enabled(rule_id, req.enabled)
+    if not success:
+        available = [r.id for r in pack.guardrail_rules]
+        raise HTTPException(
+            status_code=404,
+            detail=f"Rule '{rule_id}' not found. Available: {available}",
+        )
+
+    # Persist change to disk so it survives restarts
+    if policy_path.exists():
+        pack.save(policy_path)
+
+    # Rebuild guardrails so the inner PolicyGuardrails picks up the change
+    _rebuild_guardrails()
+
+    rule = pack.get_rule(rule_id)
+    return {
+        "rule_id": rule_id,
+        "enabled": req.enabled,
+        "rule": rule.to_dict() if rule else None,
+    }
+
+
+def _rebuild_guardrails():
+    """Rebuild the guardrails stack after a rule toggle."""
+    global guardrails
+    from app.runtime.governance_guardrails import GovernanceAwareGuardrails
+
+    guardrails = GovernanceAwareGuardrails(pack, _gov_config)
+    if spine is not None:
+        spine.guardrails = guardrails
+
+
 @app.post("/chat")
 def chat(req: ChatRequest):
     q = req.query.strip()

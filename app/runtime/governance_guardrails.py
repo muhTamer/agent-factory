@@ -91,7 +91,7 @@ class GovernanceAwareGuardrails(Guardrails):
         if self.config.hallucination_detection:
             # Delegate to inner post and check if it blocks for hallucination
             inner_result = self._inner.post(response, context)
-            if not inner_result.allowed and "refund_initiated" in (inner_result.reason or ""):
+            if not inner_result.allowed and "hallucination" in (inner_result.reason or ""):
                 self._log(
                     "governance_post_block",
                     check="hallucination",

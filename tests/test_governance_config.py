@@ -6,7 +6,7 @@ import pytest
 
 from app.runtime.governance_config import GovernanceConfig, GovernanceLevel
 from app.runtime.governance_guardrails import GovernanceAwareGuardrails
-from app.runtime.policy_pack import PolicyPack
+from app.runtime.policy_pack import GuardrailRule, PolicyPack
 
 
 @pytest.fixture
@@ -18,6 +18,39 @@ def pack():
         intent_rules={"blocked_intent": {"mode": "block", "reason": "test_blocked"}},
         route_to_intent={"refunds_workflow": "refund_request"},
         blocked_phrases=["guaranteed refund"],
+        guardrail_rules=[
+            GuardrailRule(
+                id="hallucination_action_claims",
+                label="Block hallucinated action claims",
+                category="safety",
+                severity="high",
+                enabled=True,
+                patterns=[
+                    r"(refund\s+(has been|was|is)\s+(initiated|processed|approved|completed)"
+                    r"|refund_id\s*[:=]"
+                    r"|successfully\s+refunded)",
+                ],
+            ),
+            GuardrailRule(
+                id="transaction_context",
+                label="Transaction context detection",
+                category="safety",
+                severity="high",
+                enabled=True,
+                patterns=[
+                    r"(order\s*#?\d|transaction\s*#?\d|EUR\s*\d|USD\s*\d|\$\d)",
+                ],
+            ),
+            GuardrailRule(
+                id="tone_strip_jargon",
+                label="Hide system jargon",
+                category="internal",
+                severity="medium",
+                enabled=True,
+                patterns=[r"\b(?:workflow|FSM|slot[s]?|router|guardrail|pipeline)\b"],
+            ),
+        ],
+        transaction_slot_keys=["payment_id", "transaction_id", "refund_id", "order_id"],
     )
 
 
