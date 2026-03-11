@@ -432,6 +432,7 @@ ToolRegistry
 |-------|-------------|
 | **Startup** | `ToolRegistry.load_mcp_servers()` → `MCPManager.get_instance()` → `connect_servers()` → `list_tools()` → register `MCPTool` instances |
 | **Runtime** | `MCPTool.execute()` → `MCPManager.call_tool_sync()` → async `session.call_tool()` → parse result → return slot updates |
+| **Hot-reload** | Configurable MCP server re-reads `mcp_tools_config.json` on each tool call; response/scenario changes take effect immediately |
 | **Shutdown** | `ToolRegistry.shutdown()` → `MCPManager.shutdown()` → close sessions → close transports → stop event loop |
 
 ### Configuration
@@ -446,13 +447,15 @@ MCP servers are declared in `.factory/tools_config.json` under `mcp_servers`:
       "id": "demo",
       "transport": "stdio",
       "command": "python",
-      "args": ["tests/fixtures/mock_mcp_server.py"],
+      "args": ["tests/fixtures/configurable_mcp_server.py", "tests/fixtures/mcp_tools_config.json"],
       "timeout": 30,
       "tool_prefix": true
     }
   ]
 }
 ```
+
+The default demo server uses the **configurable MCP server**, which reads tool definitions from `mcp_tools_config.json`. Responses and scenarios are hot-reloaded on every tool call — edits take effect immediately without restarting the runtime. See [docs/tools-and-rag.md](docs/tools-and-rag.md#configurable-mcp-server-testsfixturesconfigurablemcpserverpy) for the config format and template syntax.
 
 | Field | Required | Description |
 |-------|----------|-------------|
@@ -470,6 +473,8 @@ MCP servers are declared in `.factory/tools_config.json` under `mcp_servers`:
 |-----------|---------------|
 | `tests/test_mcp_integration.py` | 31 tests: MCPTool adapter, MCPManager lifecycle, mock server integration, error handling, argument extraction, result parsing |
 | `tests/fixtures/mock_mcp_server.py` | FastMCP test server with 12 tools covering happy paths, error scenarios, and edge cases |
+| `tests/fixtures/configurable_mcp_server.py` | Config-driven MCP server: reads tool definitions, parameters, responses, and scenarios from JSON; supports hot-reload |
+| `tests/fixtures/mcp_tools_config.json` | Default tool config: 11 tools (echo, add, lookup_customer, verify_identity, lookup_payment, initiate_refund, create_ticket, handoff_to_human, create_complaint_record, compute_compensation, apply_triage_rules) |
 
 ---
 
