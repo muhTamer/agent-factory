@@ -1,5 +1,5 @@
 import type { ChatResponse } from "@/types/api";
-import type { ResponseKind, WorkflowSnapshot, AopSnapshot, AopTaskMenuSnapshot } from "@/types/chat";
+import type { ResponseKind, WorkflowSnapshot, AopSnapshot, AopTaskMenuSnapshot, AopTaskResultSnapshot } from "@/types/chat";
 
 export function classifyResponse(data: ChatResponse): ResponseKind {
   if (data.error) {
@@ -83,6 +83,34 @@ export function extractAopTaskMenu(
         solvabilityScore: t.solvability_score,
       })
     ),
+    planQuery: data.plan_query || "",
+  };
+}
+
+export function extractAopTaskResult(
+  data: ChatResponse
+): AopTaskResultSnapshot | undefined {
+  if (data.orchestration_pattern !== "aop_task_result") return undefined;
+  const ex = data.executed_subtask;
+  if (!ex) return undefined;
+
+  return {
+    executedSubtask: {
+      subtask: ex.subtask || "",
+      agentId: ex.agent_id ?? null,
+      success: !!ex.success,
+      solvabilityScore: ex.solvability_score ?? 0,
+      latencyMs: ex.latency_ms ?? 0,
+    },
+    remainingSubtasks: Array.isArray(data.remaining_subtasks)
+      ? data.remaining_subtasks.map(
+          (r: { index: number; subtask: string; agent_id: string | null }) => ({
+            index: r.index,
+            subtask: r.subtask,
+            agentId: r.agent_id,
+          })
+        )
+      : [],
     planQuery: data.plan_query || "",
   };
 }

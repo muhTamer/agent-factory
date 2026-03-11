@@ -10,6 +10,7 @@ import { GovernancePanel } from "@/components/debug/GovernancePanel";
 import { RawJsonViewer } from "@/components/debug/RawJsonViewer";
 import { StatusSummaryStrip } from "@/components/debug/StatusSummaryStrip";
 import { X, Eye, Bug } from "lucide-react";
+import { useRef, useEffect, useState } from "react";
 import { getAgentDisplay } from "@/lib/constants";
 
 interface Props {

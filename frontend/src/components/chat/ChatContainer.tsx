@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useChatStore } from "@/store/chatStore";
 import { useThreadStore } from "@/store/threadStore";
 import { useChat } from "@/hooks/useChat";
@@ -30,6 +30,21 @@ export function ChatContainer() {
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [explainOpen, setExplainOpen] = useState(false);
+
+  // On mount, hydrate chatStore from the active (or first) persisted thread
+  useEffect(() => {
+    const ts = useThreadStore.getState();
+    const targetId = ts.activeThreadId ?? ts.threads[0]?.id;
+    if (!targetId) return;
+    // Ensure it's marked active
+    if (ts.activeThreadId !== targetId) ts.switchThread(targetId);
+    const msgs = ts.getMessages(targetId);
+    const thread = ts.getThread(targetId);
+    useChatStore.setState({
+      messages: [...msgs],
+      threadId: thread?.backendThreadId ?? null,
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const agentCount = Object.keys(agents).length;
 

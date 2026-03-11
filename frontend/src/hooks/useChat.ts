@@ -10,6 +10,7 @@ import {
   extractWorkflowSnapshot,
   extractAopSnapshot,
   extractAopTaskMenu,
+  extractAopTaskResult,
 } from "@/lib/classify";
 import { getAgentDisplay } from "@/lib/constants";
 import type { ChatMessage } from "@/types/chat";
@@ -97,6 +98,7 @@ export function useChat() {
       const workflowState = extractWorkflowSnapshot(data);
       const aopData = extractAopSnapshot(data);
       const aopTaskMenu = extractAopTaskMenu(data);
+      const aopTaskResult = extractAopTaskResult(data);
 
       const agents = useChatStore.getState().agents;
       const agentId = data.agent_id || "";
@@ -118,6 +120,7 @@ export function useChat() {
         workflowState,
         aopData,
         aopTaskMenu,
+        aopTaskResult,
       };
 
       // Always persist to threadStore under the correct thread

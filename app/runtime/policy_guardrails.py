@@ -111,7 +111,10 @@ class PolicyGuardrails(Guardrails):
         has_transaction_context = (
             bool(
                 re.search(
-                    r"(order\s*#?\d|transaction\s*#?\d|EUR\s*\d|USD\s*\d|\$\d)",
+                    r"(order\s*(id|#|no\.?|number)?\s*:?\s*\d"
+                    r"|transaction\s*(id|#|no\.?|number)?\s*:?\s*\d"
+                    r"|ORD-\d"
+                    r"|EUR\s*\d|USD\s*\d|\$\d)",
                     original_query,
                     re.IGNORECASE,
                 )
@@ -128,6 +131,7 @@ class PolicyGuardrails(Guardrails):
                 acc_slots.get("payment_id")
                 or acc_slots.get("transaction_id")
                 or acc_slots.get("refund_id")
+                or acc_slots.get("order_id")
             ):
                 has_transaction_context = True
             # A pinned workflow_runner with populated slots is always legitimate

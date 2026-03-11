@@ -49,6 +49,22 @@ export interface AopTaskMenuSnapshot {
   planQuery: string;
 }
 
+export interface AopTaskResultSnapshot {
+  executedSubtask: {
+    subtask: string;
+    agentId: string | null;
+    success: boolean;
+    solvabilityScore: number;
+    latencyMs: number;
+  };
+  remainingSubtasks: Array<{
+    index: number;
+    subtask: string;
+    agentId: string | null;
+  }>;
+  planQuery: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -64,4 +80,5 @@ export interface ChatMessage {
   workflowState?: WorkflowSnapshot;
   aopData?: AopSnapshot;
   aopTaskMenu?: AopTaskMenuSnapshot;
+  aopTaskResult?: AopTaskResultSnapshot;
 }

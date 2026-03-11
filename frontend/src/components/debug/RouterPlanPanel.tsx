@@ -40,33 +40,27 @@ export function RouterPlanPanel({ message }: Props) {
             </span>
             <span className="font-mono text-blue-600">{pctTop}%</span>
             <span className="text-slate-300">|</span>
-            <span className="capitalize">{plan.strategy}</span>
+            <span>{orchestrationPattern === "hierarchical_delegation" ? "Multi-agent" : "Single"}</span>
           </div>
         ) : undefined
       }
     >
       <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <div
-          className="rounded-lg bg-slate-50 px-3 py-2 cursor-help"
-          title="'single' runs only the top agent; 'fanout' runs all candidates in parallel and picks the best scoring response"
-        >
-          <p className="text-xs text-slate-400">Strategy</p>
-          <p className="text-sm font-medium text-slate-700 capitalize">
-            {plan.strategy}
-          </p>
-        </div>
-        <div
-          className="rounded-lg bg-slate-50 px-3 py-2 cursor-help"
-          title="'Direct' routes to a single agent; 'Multi-agent' delegates subtasks across multiple specialized agents"
-        >
-          <p className="text-xs text-slate-400">Pattern</p>
-          <p className="text-sm font-medium text-slate-700">
-            {orchestrationPattern === "hierarchical_delegation"
-              ? "Multi-agent"
-              : "Direct"}
-          </p>
-        </div>
+      {/* Orchestration pattern */}
+      <div
+        className="rounded-lg bg-slate-50 px-3 py-2 cursor-help"
+        title={
+          orchestrationPattern === "hierarchical_delegation"
+            ? "The router delegates subtasks across multiple specialized agents via AOP decomposition"
+            : "The router sends the query to a single best-matched agent"
+        }
+      >
+        <p className="text-xs text-slate-400">Orchestration Pattern</p>
+        <p className="text-sm font-medium text-slate-700">
+          {orchestrationPattern === "hierarchical_delegation"
+            ? "Multi-agent (AOP)"
+            : "Single Agent"}
+        </p>
       </div>
 
       {winnerAgent && (
