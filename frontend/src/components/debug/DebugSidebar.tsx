@@ -7,6 +7,7 @@ import { PolicyCheckPanel } from "./PolicyCheckPanel";
 import { SourcesPanel } from "./SourcesPanel";
 import { ReActTracePanel } from "./ReActTracePanel";
 import { GovernancePanel } from "./GovernancePanel";
+import { GuardrailsAdminPanel } from "./GuardrailsAdminPanel";
 import { RawJsonViewer } from "./RawJsonViewer";
 import { StatusSummaryStrip } from "./StatusSummaryStrip";
 import { X } from "lucide-react";
@@ -38,6 +39,7 @@ export function DebugSidebar() {
             <RouterPlanPanel message={selected} />
             <SolvabilityPanel message={selected} />
             <PolicyCheckPanel message={selected} />
+            <GuardrailsAdminPanel />
             <SourcesPanel message={selected} />
             <ReActTracePanel message={selected} />
             <GovernancePanel message={selected} />

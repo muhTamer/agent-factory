@@ -7,6 +7,7 @@ import { PolicyCheckPanel } from "@/components/debug/PolicyCheckPanel";
 import { SourcesPanel } from "@/components/debug/SourcesPanel";
 import { ReActTracePanel } from "@/components/debug/ReActTracePanel";
 import { GovernancePanel } from "@/components/debug/GovernancePanel";
+import { GuardrailsAdminPanel } from "@/components/debug/GuardrailsAdminPanel";
 import { RawJsonViewer } from "@/components/debug/RawJsonViewer";
 import { StatusSummaryStrip } from "@/components/debug/StatusSummaryStrip";
 import { X, Eye, Bug } from "lucide-react";
@@ -85,6 +86,7 @@ export function ExplainabilityPanel({ onClose }: Props) {
 
             <SectionGroup label="Safety & Compliance">
               <PolicyCheckPanel message={selected} />
+              <GuardrailsAdminPanel />
               <GovernancePanel message={selected} />
             </SectionGroup>
 
