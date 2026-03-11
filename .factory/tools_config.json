@@ -53,12 +53,12 @@
   "_mcp_docs": "MCP server configuration. Each entry declares one MCP server; tools are auto-discovered at startup.",
   "mcp_servers": [
     {
-      "_comment": "── EXAMPLE: stdio MCP server (local process) ────────────────────────",
-      "enabled": false,
-      "id": "my_tools",
+      "_comment": "── Config-driven MCP server (edit mcp_tools_config.json to customize) ──",
+      "enabled": true,
+      "id": "demo",
       "transport": "stdio",
       "command": "python",
-      "args": ["-m", "my_mcp_server"],
+      "args": ["tests/fixtures/configurable_mcp_server.py", "tests/fixtures/mcp_tools_config.json"],
       "env": {},
       "timeout": 30,
       "tool_prefix": true

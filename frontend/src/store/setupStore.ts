@@ -5,6 +5,7 @@ import type {
   FactoryPlan,
   DeploymentInfo,
   WorkspaceFile,
+  McpToolDef,
 } from "@/types/concierge";
 
 interface SetupState {
@@ -59,6 +60,11 @@ interface SetupState {
   setDocVisibility: (v: Record<string, "customer_facing" | "internal">) => void;
   initDocVisibilityDefaults: (filenames: string[]) => void;
 
+  mcpTools: McpToolDef[];
+  setMcpTools: (tools: McpToolDef[]) => void;
+  isSavingTools: boolean;
+  setSavingTools: (v: boolean) => void;
+
   reset: () => void;
 }
 
@@ -80,6 +86,8 @@ const INITIAL: Pick<
   | "error"
   | "isQuickstart"
   | "docVisibility"
+  | "mcpTools"
+  | "isSavingTools"
 > = {
   currentStep: "welcome",
   vertical: "retail",
@@ -97,6 +105,8 @@ const INITIAL: Pick<
   error: null,
   isQuickstart: false,
   docVisibility: {},
+  mcpTools: [],
+  isSavingTools: false,
 };
 
 export const useSetupStore = create<SetupState>((set) => ({
@@ -134,6 +144,8 @@ export const useSetupStore = create<SetupState>((set) => ({
   setQuickstart: (v) => set({ isQuickstart: v }),
 
   setDocVisibility: (v) => set({ docVisibility: v }),
+  setMcpTools: (tools) => set({ mcpTools: tools }),
+  setSavingTools: (v) => set({ isSavingTools: v }),
   initDocVisibilityDefaults: (filenames) =>
     set((s) => {
       const next: Record<string, "customer_facing" | "internal"> = { ...s.docVisibility };

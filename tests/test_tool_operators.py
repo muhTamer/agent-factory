@@ -137,7 +137,7 @@ def test_stub_tools_verify_identity():
 def test_stub_tools_lookup_payment():
     from app.runtime.tools.stub_tools import STUB_TOOLS
 
-    result = STUB_TOOLS["lookup_payment"]({"amount": 500}, {})
+    result = STUB_TOOLS["lookup_payment"]({"amount": 1000}, {})
     assert result["payment_found"] is True
     assert result["settlement_status"] == "settled"
 

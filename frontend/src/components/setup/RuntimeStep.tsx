@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSetupStore } from "@/store/setupStore";
 import { useRuntimePoller } from "@/hooks/useRuntimePoller";
@@ -8,13 +8,21 @@ import { startRuntime, stopRuntime } from "@/lib/concierge-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { ToolConfigStep } from "./ToolConfigStep";
+import {
   ArrowLeft,
   MessageSquare,
   Loader2,
   Play,
   Square,
-  Check,
   Wifi,
+  Wrench,
 } from "lucide-react";
 
 export function RuntimeStep() {
@@ -26,8 +34,15 @@ export function RuntimeStep() {
   const [started, setStarted] = useState(false);
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
-  const { online, agentCount } = useRuntimePoller(started);
+  // Always poll so we detect an already-running runtime
+  const { online, agentCount } = useRuntimePoller(true);
+
+  // Sync local "started" flag when poller detects a running runtime
+  useEffect(() => {
+    if (online) setStarted(true);
+  }, [online]);
 
   async function handleStart() {
     setError(null);
@@ -143,6 +158,14 @@ export function RuntimeStep() {
         </Button>
 
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setToolsOpen(true)}
+          >
+            <Wrench size={16} />
+            Configure Tools
+          </Button>
+
           {!started && (
             <Button onClick={handleStart} disabled={starting}>
               {starting ? (
@@ -172,6 +195,21 @@ export function RuntimeStep() {
           )}
         </div>
       </div>
+
+      {/* Tool configuration slide-over */}
+      <Sheet open={toolsOpen} onOpenChange={setToolsOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Configure MCP Tools</SheetTitle>
+            <SheetDescription>
+              Edit tool responses and scenarios for the demo MCP server.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4">
+            <ToolConfigStep />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

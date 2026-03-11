@@ -13,10 +13,15 @@ build/
 # VSCode
 .vscode/
 
-# data
-data/
+# data (track policy YAML files, ignore large data files)
+data/*
+!data/*.yaml
+!data/*.yml
 *.csv
 *.parquet
+
+# Node
+node_modules/
 
 # pytest cache
 .pytest_cache/

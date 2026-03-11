@@ -4,6 +4,8 @@ import type {
   AnalysisResponse,
   DeployResponse,
   WorkspaceFile,
+  McpToolsConfig,
+  McpToolDef,
 } from "@/types/concierge";
 
 export async function initSession(
@@ -121,5 +123,48 @@ export async function deleteWorkspaceFile(filename: string) {
     { method: "DELETE" }
   );
   if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+  return res.json();
+}
+
+// ── MCP Tool Configuration ──────────────────────────────────────────
+
+export async function getMcpToolsConfig(): Promise<McpToolsConfig> {
+  const res = await fetch(`${CONCIERGE_API}/concierge/mcp-tools`);
+  if (!res.ok) throw new Error(`MCP tools fetch failed: ${res.status}`);
+  return res.json();
+}
+
+export async function saveMcpToolsConfig(
+  tools: McpToolDef[],
+  serverName = "demo-server"
+) {
+  const res = await fetch(`${CONCIERGE_API}/concierge/mcp-tools`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tools, server_name: serverName }),
+  });
+  if (!res.ok) throw new Error(`MCP tools save failed: ${res.status}`);
+  return res.json();
+}
+
+export async function saveSingleMcpTool(toolName: string, tool: McpToolDef) {
+  const res = await fetch(
+    `${CONCIERGE_API}/concierge/mcp-tools/${encodeURIComponent(toolName)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tool }),
+    }
+  );
+  if (!res.ok) throw new Error(`MCP tool save failed: ${res.status}`);
+  return res.json();
+}
+
+export async function deleteMcpTool(toolName: string) {
+  const res = await fetch(
+    `${CONCIERGE_API}/concierge/mcp-tools/${encodeURIComponent(toolName)}`,
+    { method: "DELETE" }
+  );
+  if (!res.ok) throw new Error(`MCP tool delete failed: ${res.status}`);
   return res.json();
 }
