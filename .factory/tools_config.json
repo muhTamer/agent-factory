@@ -48,5 +48,32 @@
       "dsn": "sqlite:///data/payments.db",
       "query": "SELECT settlement_status, transaction_age_days FROM payments WHERE id = :request_id"
     }
+  ],
+
+  "_mcp_docs": "MCP server configuration. Each entry declares one MCP server; tools are auto-discovered at startup.",
+  "mcp_servers": [
+    {
+      "_comment": "── Config-driven MCP server (edit mcp_tools_config.json to customize) ──",
+      "enabled": true,
+      "id": "demo",
+      "transport": "stdio",
+      "command": "python",
+      "args": ["tests/fixtures/configurable_mcp_server.py", "tests/fixtures/mcp_tools_config.json"],
+      "env": {},
+      "timeout": 30,
+      "tool_prefix": true
+    },
+    {
+      "_comment": "── EXAMPLE: HTTP MCP server (remote) ────────────────────────────────",
+      "enabled": false,
+      "id": "remote_tools",
+      "transport": "streamable_http",
+      "url": "https://example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCP_TOKEN}"
+      },
+      "timeout": 15,
+      "tool_prefix": true
+    }
   ]
 }

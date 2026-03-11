@@ -10,15 +10,19 @@ import { ChatInput } from "./ChatInput";
 import { QuickReplies } from "./QuickReplies";
 import { ConversationSidebar } from "./ConversationSidebar";
 import { ExplainabilityPanel } from "./ExplainabilityPanel";
+import { useRouter } from "next/navigation";
+import { useSetupStore } from "@/store/setupStore";
 import {
   Bot,
   Menu,
   Plus,
+  Settings,
   Wifi,
   WifiOff,
 } from "lucide-react";
 
 export function ChatContainer() {
+  const router = useRouter();
   useHealth();
   const { sendMessage } = useChat();
 
@@ -118,6 +122,18 @@ export function ChatContainer() {
               className="rounded p-2 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 lg:hidden"
             >
               <Plus size={18} />
+            </button>
+
+            {/* Back to runtime controls */}
+            <button
+              onClick={() => {
+                useSetupStore.getState().setStep("runtime");
+                router.push("/");
+              }}
+              title="Back to runtime"
+              className="rounded p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            >
+              <Settings size={18} />
             </button>
           </div>
         </header>
