@@ -219,6 +219,7 @@ agent-factory-orchestration/
 │       ├── app/                     # Pages (/, /chat)
 │       ├── components/
 │       │   ├── chat/                # Chat UI components
+│       │   ├── setup/               # Onboarding wizard & tool config panel
 │       │   └── debug/               # Explainability panels
 │       ├── hooks/                   # useChat, useHealth, useAutoScroll
 │       ├── store/                   # Zustand state management
@@ -237,6 +238,7 @@ agent-factory-orchestration/
 │
 ├── .factory/                         # Factory configuration
 │   ├── factory_spec.json            # Agent & tool definitions
+│   ├── tools_config.json            # Tool adapter config (stub/HTTP/SQL/MCP)
 │   └── audit/                       # Runtime trace logs
 │
 ├── factory/blueprints/               # Agent blueprint templates
@@ -247,6 +249,10 @@ agent-factory-orchestration/
 │   ├── test_domain_agent_engine.py  # ReAct engine unit tests
 │   ├── test_domain_agent_workflows.py
 │   ├── test_multi_intent_workflows.py
+│   ├── test_complaint_pipeline.py   # Complaint flow scenario tests
+│   ├── fixtures/
+│   │   ├── configurable_mcp_server.py  # Config-driven MCP server (hot-reload)
+│   │   └── mcp_tools_config.json       # Tool definitions & scenarios
 │   └── ...
 │
 ├── docs/                             # Detailed documentation
@@ -377,6 +383,7 @@ pytest tests/test_e2e_scenarios.py -v
 | `test_faq_rag_agent.py` | FAQ retrieval and solvability |
 | `test_tool_operators.py` | Tool operator agent loading |
 | `test_mcp_integration.py` | MCP adapter, manager, and server integration |
+| `test_complaint_pipeline.py` | Complaint flow: triage, compensation, escalation scenarios |
 
 ---
 

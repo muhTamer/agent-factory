@@ -394,7 +394,7 @@ MCP servers are declared in the `mcp_servers` array. Each entry describes one se
       "id": "demo",
       "transport": "stdio",
       "command": "python",
-      "args": ["tests/fixtures/mock_mcp_server.py"],
+      "args": ["tests/fixtures/configurable_mcp_server.py", "tests/fixtures/mcp_tools_config.json"],
       "env": {},
       "timeout": 30,
       "tool_prefix": true
@@ -428,6 +428,72 @@ MCP servers are declared in the `mcp_servers` array. Each entry describes one se
 | `env` | No | Environment variables passed to the subprocess |
 | `timeout` | No | Connection/call timeout in seconds (default: 30) |
 | `tool_prefix` | No | Prefix tool names with `{id}.` to avoid collisions (default: `true`) |
+
+### Configurable MCP Server (`tests/fixtures/configurable_mcp_server.py`)
+
+A config-driven MCP server that reads tool definitions from a JSON file. Users define tools, parameters, responses, and conditional scenarios — no Python code required.
+
+**Config file format** (`tests/fixtures/mcp_tools_config.json`):
+
+```json
+{
+  "server_name": "demo-server",
+  "tools": [
+    {
+      "name": "lookup_payment",
+      "description": "Look up a payment by transaction ID.",
+      "parameters": {
+        "transaction_id": { "type": "string", "required": true }
+      },
+      "response": {
+        "transaction_id": "{{transaction_id}}",
+        "payment_found": true,
+        "settlement_status": "settled",
+        "original_transaction_amount": 2000
+      },
+      "scenarios": [
+        {
+          "_comment": "Payment not found",
+          "when": { "transaction_id": { "starts_with": "FAIL" } },
+          "response": { "payment_found": false, "message": "Not found." }
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Template syntax:**
+- `{{param_name}}` — Replaced with the input parameter value
+- `{{param_name:default}}` — Replaced with value, or `default` if not provided
+
+**Scenario condition operators:**
+
+| Operator | Example | Description |
+|----------|---------|-------------|
+| `starts_with` | `"starts_with": "FAIL"` | String prefix match (case-insensitive) |
+| `equals` | `"equals": "high"` | Exact match |
+| `contains` | `"contains": "fraud"` | Substring match (case-insensitive) |
+| `greater_than` | `"greater_than": 5000` | Numeric comparison |
+| `less_than` | `"less_than": 100` | Numeric comparison |
+| `in` | `"in": ["fraud", "regulatory"]` | Membership check |
+
+Scenarios are evaluated in order; the first match wins. The matched scenario's response is merged on top of the default response.
+
+**Hot-reload:** The server re-reads `mcp_tools_config.json` on every tool call, so edits to response values and scenarios take effect immediately without restarting the runtime. Tool names, parameters, and descriptions are registered once at startup (a restart is needed to add/remove tools or change signatures).
+
+### MCP Tool Config API (Concierge)
+
+The concierge API exposes CRUD endpoints for editing `mcp_tools_config.json` from the frontend:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/concierge/mcp-tools` | GET | Read the full tool config |
+| `/concierge/mcp-tools` | PUT | Replace the full tool config (tools list + server_name) |
+| `/concierge/mcp-tools/{tool_name}` | PUT | Update a single tool definition |
+| `/concierge/mcp-tools/{tool_name}` | DELETE | Delete a tool by name |
+
+The frontend exposes these via a **Configure Tools** slide-over panel in the Runtime step, allowing users to edit tool responses and scenarios while testing in the chat.
 
 ### Startup Sequence
 
