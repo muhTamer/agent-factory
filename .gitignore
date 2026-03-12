@@ -13,7 +13,7 @@ build/
 # VSCode
 .vscode/
 
-# data (track policy YAML files and test fixtures, ignore large data files)
+# data (track policy YAML files and BankFAQs, ignore other large data files)
 data/*
 !data/*.yaml
 !data/*.yml
