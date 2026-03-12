@@ -14,8 +14,11 @@ build/
 .vscode/
 
 # data
-data/
+data/*
+!data/BankFAQs.csv
+!data/refunds_policy.yaml
 *.csv
+!data/BankFAQs.csv
 *.parquet
 
 # pytest cache
