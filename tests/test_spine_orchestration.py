@@ -2,6 +2,7 @@
 """
 Integration tests for AOP orchestration path in RuntimeSpine.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -12,7 +13,6 @@ from app.runtime.guardrails import NoOpGuardrails
 from app.runtime.registry import AgentRegistry
 from app.runtime.routing import Candidate, RoutePlan
 from app.runtime.spine import RuntimeSpine
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -62,7 +62,9 @@ def _build_spine_with_aop(tmp_path, monkeypatch, classify_result="direct"):
     }
     registry.register("refund_agent", refund, refund.metadata())
 
-    faq = StubAgent("faq_agent", {"answer": "Our return window is 30 days.", "score": 0.85})
+    faq = StubAgent(
+        "faq_agent", {"answer": "Our return window is 30 days.", "score": 0.85}
+    )
     faq._meta = {
         "type": "faq_rag",
         "description": "Answers customer FAQs about policies",
@@ -162,8 +164,12 @@ def test_spine_aop_path_multi_subtask_presents_menu(monkeypatch, tmp_path):
     spine, _, store = _build_spine_with_aop(tmp_path, monkeypatch)
 
     monkeypatch.setattr("app.llm_client.chat_json", _mock_aop_chat_json)
-    monkeypatch.setattr("app.orchestration.aop_coordinator.chat_json", _mock_aop_chat_json)
-    monkeypatch.setattr("app.orchestration.completeness_detector.chat_json", _mock_aop_chat_json)
+    monkeypatch.setattr(
+        "app.orchestration.aop_coordinator.chat_json", _mock_aop_chat_json
+    )
+    monkeypatch.setattr(
+        "app.orchestration.completeness_detector.chat_json", _mock_aop_chat_json
+    )
 
     result = spine.handle_chat(
         "I need a refund for order #123 AND what is the return window?",
@@ -186,8 +192,12 @@ def test_spine_aop_task_selection(monkeypatch, tmp_path):
     spine, _, store = _build_spine_with_aop(tmp_path, monkeypatch)
 
     monkeypatch.setattr("app.llm_client.chat_json", _mock_aop_chat_json)
-    monkeypatch.setattr("app.orchestration.aop_coordinator.chat_json", _mock_aop_chat_json)
-    monkeypatch.setattr("app.orchestration.completeness_detector.chat_json", _mock_aop_chat_json)
+    monkeypatch.setattr(
+        "app.orchestration.aop_coordinator.chat_json", _mock_aop_chat_json
+    )
+    monkeypatch.setattr(
+        "app.orchestration.completeness_detector.chat_json", _mock_aop_chat_json
+    )
 
     # Step 1: Present menu
     result1 = spine.handle_chat(
@@ -217,8 +227,12 @@ def test_spine_aop_decline_clears_plan(monkeypatch, tmp_path):
     spine, _, _ = _build_spine_with_aop(tmp_path, monkeypatch)
 
     monkeypatch.setattr("app.llm_client.chat_json", _mock_aop_chat_json)
-    monkeypatch.setattr("app.orchestration.aop_coordinator.chat_json", _mock_aop_chat_json)
-    monkeypatch.setattr("app.orchestration.completeness_detector.chat_json", _mock_aop_chat_json)
+    monkeypatch.setattr(
+        "app.orchestration.aop_coordinator.chat_json", _mock_aop_chat_json
+    )
+    monkeypatch.setattr(
+        "app.orchestration.completeness_detector.chat_json", _mock_aop_chat_json
+    )
 
     # Present menu
     spine.handle_chat(
@@ -291,8 +305,12 @@ def test_spine_aop_clarification_preserves_plan(monkeypatch, tmp_path):
     registry.register("faq_agent", clarifying, clarifying.metadata())
 
     monkeypatch.setattr("app.llm_client.chat_json", _mock_aop_chat_json)
-    monkeypatch.setattr("app.orchestration.aop_coordinator.chat_json", _mock_aop_chat_json)
-    monkeypatch.setattr("app.orchestration.completeness_detector.chat_json", _mock_aop_chat_json)
+    monkeypatch.setattr(
+        "app.orchestration.aop_coordinator.chat_json", _mock_aop_chat_json
+    )
+    monkeypatch.setattr(
+        "app.orchestration.completeness_detector.chat_json", _mock_aop_chat_json
+    )
 
     # Step 1: Present task menu
     r1 = spine.handle_chat(
@@ -352,7 +370,12 @@ def test_spine_no_aop_coordinator(tmp_path):
     """Spine without AOP coordinator should work normally (backward compat)."""
     registry = AgentRegistry()
     agent = StubAgent("agent_a", {"answer": "Hello", "score": 1.0})
-    agent._meta = {"type": "faq", "description": "Test", "capabilities": [], "ready": True}
+    agent._meta = {
+        "type": "faq",
+        "description": "Test",
+        "capabilities": [],
+        "ready": True,
+    }
     registry.register("agent_a", agent, agent.metadata())
 
     router = FixedRouter("agent_a")

@@ -9,6 +9,7 @@ policy YAML (not refund) through the same pipeline and verifying:
   Layer 2 — Policy bridge: eligibility, approval, risk control evaluation
   Layer 3 — Spec builder: auto-wiring of policy config (slot_map, domain)
 """
+
 import pytest
 from pathlib import Path
 
@@ -74,14 +75,18 @@ def test_complaints_pack_has_rules(compiled_pack):
 def test_complaints_pack_has_eligibility_rules(compiled_pack):
     from app.runtime.policy.policy_ast import RuleType
 
-    eligibility_rules = [r for r in compiled_pack.rules if r.rule_type == RuleType.ELIGIBILITY]
+    eligibility_rules = [
+        r for r in compiled_pack.rules if r.rule_type == RuleType.ELIGIBILITY
+    ]
     assert len(eligibility_rules) >= 2, "Expected at least 2 eligibility rules"
 
 
 def test_complaints_pack_has_amount_threshold_rules(compiled_pack):
     from app.runtime.policy.policy_ast import RuleType
 
-    amount_rules = [r for r in compiled_pack.rules if r.rule_type == RuleType.AMOUNT_THRESHOLD]
+    amount_rules = [
+        r for r in compiled_pack.rules if r.rule_type == RuleType.AMOUNT_THRESHOLD
+    ]
     assert len(amount_rules) >= 1, "Expected at least 1 amount threshold rule"
 
 
@@ -151,7 +156,9 @@ def test_amount_slot_uses_compensation_name(compiled_pack):
     """Amount threshold rules use 'compensation_amount', not 'refund_amount_requested'."""
     from app.runtime.policy.policy_ast import RuleType
 
-    amount_rules = [r for r in compiled_pack.rules if r.rule_type == RuleType.AMOUNT_THRESHOLD]
+    amount_rules = [
+        r for r in compiled_pack.rules if r.rule_type == RuleType.AMOUNT_THRESHOLD
+    ]
     for rule in amount_rules:
         if rule.conditions:
             slot_names = _extract_slot_names(rule.conditions)

@@ -1,5 +1,6 @@
 # tests/test_rag_retrieval_clarification.py
 """Tests for post-retrieval ambiguity detection and proactive clarification."""
+
 from __future__ import annotations
 
 import math
@@ -11,7 +12,6 @@ from app.runtime.rag_fsm import (
     RAGState,
     _tok,
 )
-
 
 # ── Test data: diverse FAQ corpus about different account types ────────
 

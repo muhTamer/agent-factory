@@ -14,7 +14,9 @@ class AgentRegistry:
         self._agents: Dict[str, IAgent] = {}
         self._meta: Dict[str, Dict[str, Any]] = {}
 
-    def register(self, agent_id: str, agent: IAgent, meta: Optional[Dict[str, Any]] = None) -> None:
+    def register(
+        self, agent_id: str, agent: IAgent, meta: Optional[Dict[str, Any]] = None
+    ) -> None:
         self._agents[agent_id] = agent
         self._meta[agent_id] = meta or {}
 
@@ -74,6 +76,8 @@ class AgentRegistry:
         spec.loader.exec_module(mod)  # type: ignore
 
         if not hasattr(mod, "Agent"):
-            raise AttributeError(f"Generated agent module has no Agent class: {agent_py}")
+            raise AttributeError(
+                f"Generated agent module has no Agent class: {agent_py}"
+            )
 
         return mod.Agent()

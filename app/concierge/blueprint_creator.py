@@ -8,7 +8,6 @@ from typing import Any
 from app.llm_client import chat_json
 from app.shared.schemas.validate import validate_agent_blueprint, validate_workflow_spec
 
-
 DEFAULT_MODEL = "gpt-5-mini"
 
 
@@ -91,7 +90,11 @@ class BlueprintCreatorAgent:
                     del s["action"]
 
                 # Remove empty action strings — schema requires minLength: 1 if field is present
-                if "action" in s and isinstance(s.get("action"), str) and not s["action"].strip():
+                if (
+                    "action" in s
+                    and isinstance(s.get("action"), str)
+                    and not s["action"].strip()
+                ):
                     del s["action"]
 
                 # If LLM produced actions as a string → wrap into list
@@ -117,7 +120,9 @@ class BlueprintCreatorAgent:
             raise ValueError("plan must be a dict")
 
         vertical = str(
-            plan.get("vertical") or plan.get("primary_vertical") or "generic_customer_service"
+            plan.get("vertical")
+            or plan.get("primary_vertical")
+            or "generic_customer_service"
         ).strip()
         user_goals = (user_goals or str(plan.get("user_goals") or "")).strip()
 
@@ -134,7 +139,12 @@ class BlueprintCreatorAgent:
             llm_out, vertical=vertical
         )
 
-        EXECUTABLE_KINDS = {"knowledge_rag", "workflow_runner", "tool_operator", "domain_agent"}
+        EXECUTABLE_KINDS = {
+            "knowledge_rag",
+            "workflow_runner",
+            "tool_operator",
+            "domain_agent",
+        }
 
         filtered = []
         for bp in blueprints:
@@ -174,7 +184,9 @@ class BlueprintCreatorAgent:
                     )
 
         if hard_errors:
-            raise ValueError("Blueprint plan validation failed:\n" + "\n".join(hard_errors))
+            raise ValueError(
+                "Blueprint plan validation failed:\n" + "\n".join(hard_errors)
+            )
 
         return BlueprintPlan(
             vertical=vertical,
@@ -238,8 +250,12 @@ class BlueprintCreatorAgent:
             ),
             "kinds": sorted(list(set([str(k) for k in kinds if k]))),
             "filenames": sorted(list(set([str(f) for f in filenames if f]))),
-            "missing_docs": ([str(x) for x in missing] if isinstance(missing, list) else []),
-            "capability_signals": ([str(x) for x in caps] if isinstance(caps, list) else []),
+            "missing_docs": (
+                [str(x) for x in missing] if isinstance(missing, list) else []
+            ),
+            "capability_signals": (
+                [str(x) for x in caps] if isinstance(caps, list) else []
+            ),
         }
 
     # -------------------------
@@ -420,7 +436,9 @@ class BlueprintCreatorAgent:
 
             norm_bps.append(bp)
 
-        missing_docs = [str(x) for x in missing_docs] if isinstance(missing_docs, list) else []
+        missing_docs = (
+            [str(x) for x in missing_docs] if isinstance(missing_docs, list) else []
+        )
         warnings = [str(x) for x in warnings] if isinstance(warnings, list) else []
         rationale = str(rationale)
 

@@ -1,5 +1,6 @@
 # tests/test_ieee_compliance.py
 """Tests for IEEE compliance checker, message envelope, and compliance report."""
+
 from __future__ import annotations
 
 import sys
@@ -21,7 +22,6 @@ from app.governance.message_envelope import (  # noqa: E402
     wrap_response,
 )
 from app.runtime.trace import Trace  # noqa: E402
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────
 
@@ -57,7 +57,9 @@ def _make_response() -> dict:
         "router_plan": {
             "primary": "faq_agent",
             "strategy": "single",
-            "candidates": [{"id": "faq_agent", "score": 0.9, "reason": "keyword match"}],
+            "candidates": [
+                {"id": "faq_agent", "score": 0.9, "reason": "keyword match"}
+            ],
         },
     }
 
@@ -190,7 +192,8 @@ class TestIEEE2894Compliance:
 
         engine = ExplainabilityEngine()
         explanations = {
-            k: v.to_dict() for k, v in engine.generate_all_levels(trace, response).items()
+            k: v.to_dict()
+            for k, v in engine.generate_all_levels(trace, response).items()
         }
 
         results = checker.check_2894(trace, explanations)
@@ -272,7 +275,8 @@ class TestComplianceReport:
 
         engine = ExplainabilityEngine()
         explanations = {
-            k: v.to_dict() for k, v in engine.generate_all_levels(trace, response).items()
+            k: v.to_dict()
+            for k, v in engine.generate_all_levels(trace, response).items()
         }
 
         report = checker.check_all(

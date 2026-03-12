@@ -10,6 +10,7 @@ Thread-scoped conversation memory with:
 Uses a dict-based in-memory backend (POC). The MemoryBackend Protocol
 allows swapping to Redis/Postgres later.
 """
+
 from __future__ import annotations
 
 import time
@@ -150,7 +151,9 @@ class ConversationMemory:
         self._backend.store_snapshot(thread_id, snapshot)
         return snapshot
 
-    def get_conversation_context(self, thread_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_conversation_context(
+        self, thread_id: str, limit: int = 10
+    ) -> List[Dict[str, Any]]:
         """Return turns as simple dicts for LLM context injection."""
         turns = self._backend.get_turns(thread_id, limit=limit)
         return [

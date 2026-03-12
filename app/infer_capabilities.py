@@ -90,7 +90,11 @@ class InferCapabilities:
             vertical=vertical,
             documents=documents,
             agents=agents,
-            notes=llm_plan.get("notes", []) if isinstance(llm_plan.get("notes"), list) else [],
+            notes=(
+                llm_plan.get("notes", [])
+                if isinstance(llm_plan.get("notes"), list)
+                else []
+            ),
         )
         return {
             "vertical": out.vertical,
@@ -127,7 +131,9 @@ class InferCapabilities:
     # -----------------------------
     # Document classification
     # -----------------------------
-    def _classify_documents(self, files: List[Path], vertical: str) -> List[Dict[str, Any]]:
+    def _classify_documents(
+        self, files: List[Path], vertical: str
+    ) -> List[Dict[str, Any]]:
         docs: List[Dict[str, Any]] = []
         for p in files:
             prior = self._heuristic_doc_type(p)
@@ -207,7 +213,12 @@ class InferCapabilities:
                 or "privacy" in name
             ):
                 return "policy"
-            if "sop" in name or "process" in name or "onboard" in name or "workflow" in name:
+            if (
+                "sop" in name
+                or "process" in name
+                or "onboard" in name
+                or "workflow" in name
+            ):
                 return "procedure"
             return "policy"
         if ext in {".md", ".txt"}:
@@ -215,7 +226,12 @@ class InferCapabilities:
                 return "procedure"
             return "other"
         if ext in {".json"}:
-            if "openapi" in name or "swagger" in name or "tool" in name or "api" in name:
+            if (
+                "openapi" in name
+                or "swagger" in name
+                or "tool" in name
+                or "api" in name
+            ):
                 return "tool_spec"
             return "other"
 
@@ -238,7 +254,9 @@ class InferCapabilities:
             return "\n".join(lines[:5])
         return "\n".join(lines[:40])
 
-    def _classify_doc_llm(self, *, filename: str, prior: str, snippet: str) -> Dict[str, Any]:
+    def _classify_doc_llm(
+        self, *, filename: str, prior: str, snippet: str
+    ) -> Dict[str, Any]:
         system = (
             "You classify uploaded customer-service documents into ONE doc_type:\n"
             "knowledge_base, policy, procedure, tool_spec, other.\n"
@@ -421,10 +439,16 @@ class InferCapabilities:
 
             # Ensure list fields and only include known doc names
             typed = {
-                "knowledge_base": self._normalize_doc_list(inputs.get("knowledge_base"), doc_names),
+                "knowledge_base": self._normalize_doc_list(
+                    inputs.get("knowledge_base"), doc_names
+                ),
                 "policy": self._normalize_doc_list(inputs.get("policy"), doc_names),
-                "procedure": self._normalize_doc_list(inputs.get("procedure"), doc_names),
-                "tool_spec": self._normalize_doc_list(inputs.get("tool_spec"), doc_names),
+                "procedure": self._normalize_doc_list(
+                    inputs.get("procedure"), doc_names
+                ),
+                "tool_spec": self._normalize_doc_list(
+                    inputs.get("tool_spec"), doc_names
+                ),
             }
 
             # Bridge to runtime/spec_builder-friendly keys (generic mapping)
@@ -445,7 +469,9 @@ class InferCapabilities:
                 )
                 runtime_inputs["policies_text"] = a.get("policies_text") or []
                 # knowledge_sources = knowledge_base + policy docs for RAG corpus
-                runtime_inputs["knowledge_sources"] = typed["knowledge_base"] + typed["policy"]
+                runtime_inputs["knowledge_sources"] = (
+                    typed["knowledge_base"] + typed["policy"]
+                )
 
             # aop_eligible: declarative flag from LLM (default True for
             # backward compat — the spec_builder/aop_coordinator apply
@@ -496,7 +522,9 @@ class InferCapabilities:
         # stable unique
         return sorted(set(out))
 
-    def _minimal_generic_fallback(self, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _minimal_generic_fallback(
+        self, documents: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """
         Only used if LLM fails completely. Still generic: no FAQ/complaint naming.
         """
@@ -647,7 +675,9 @@ class InferCapabilities:
                         "category": str(r.get("category", "general")),
                         "severity": str(r.get("severity", "medium")),
                         "enabled": bool(r.get("enabled", True)),
-                        "patterns": [str(p) for p in r["patterns"] if isinstance(p, str)],
+                        "patterns": [
+                            str(p) for p in r["patterns"] if isinstance(p, str)
+                        ],
                     }
                 )
 
@@ -657,7 +687,9 @@ class InferCapabilities:
 
             return {
                 "guardrail_rules": validated_rules,
-                "transaction_slot_keys": [str(k) for k in tx_keys if isinstance(k, str)],
+                "transaction_slot_keys": [
+                    str(k) for k in tx_keys if isinstance(k, str)
+                ],
             }
 
         except Exception as e:

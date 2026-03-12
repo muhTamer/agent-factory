@@ -13,6 +13,7 @@ Tests use:
   - Minimal FSM specs with injected policy_state_map
   - The real refunds_workflow_agent to test end-to-end auto-chain behaviour
 """
+
 import importlib.util
 import sys
 from pathlib import Path
@@ -335,6 +336,10 @@ class TestAutoChainToolExecOnly:
         assert result["current_state"] == "done"
         assert result["terminal"] is True
 
+    @pytest.mark.skipif(
+        not AGENT_PATH.exists(),
+        reason="refunds_workflow agent not generated — run factory deploy first",
+    )
     def test_tool_exec_state_map_returns_pass_event_directly(self):
         """
         _try_policy_auto_event with tool_exec config returns pass_event immediately.

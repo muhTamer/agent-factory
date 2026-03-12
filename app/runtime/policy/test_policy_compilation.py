@@ -8,6 +8,7 @@ This demonstrates:
 2. Testing rule evaluation
 3. Showing how workflows would use it
 """
+
 import json
 import sys
 from pathlib import Path

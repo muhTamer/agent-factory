@@ -34,7 +34,16 @@ def _heuristic_counts(files: List[Path]) -> Dict[str, int]:
     signals = {"fintech": 0, "retail": 0, "telco": 0, "generic_cs": 0}
     names = " ".join([p.name.lower() for p in files])
 
-    fintech_terms = ("kyc", "aml", "iban", "swift", "card", "refund", "chargeback", "bank")
+    fintech_terms = (
+        "kyc",
+        "aml",
+        "iban",
+        "swift",
+        "card",
+        "refund",
+        "chargeback",
+        "bank",
+    )
     retail_terms = ("order", "return", "rma", "shipment", "warehouse", "sku")
     telco_terms = ("sim", "plan", "bundle", "roaming", "outage")
     generic_terms = ("faq", "policy", "sop", "onboarding", "complaint", "ticket")
@@ -90,7 +99,14 @@ def infer_capabilities(files: List[Path]) -> List[str]:
         caps.add("faq")
 
     # Complaint / refund workflow
-    complaint_terms = ("complaint", "dispute", "refund", "chargeback", "issue", "ticket")
+    complaint_terms = (
+        "complaint",
+        "dispute",
+        "refund",
+        "chargeback",
+        "issue",
+        "ticket",
+    )
     if any(t in names for t in complaint_terms):
         caps.add("complaint")
 
@@ -111,7 +127,9 @@ def infer_capabilities(files: List[Path]) -> List[str]:
 # ------------------------------------------------------------
 
 
-def build_requirements(vertical: str, capabilities: List[str], files: List[Path]) -> dict:
+def build_requirements(
+    vertical: str, capabilities: List[str], files: List[Path]
+) -> dict:
     """
     Build a minimal requirements.json payload (v0).
     Entities + workflows are minimal right now; we’ll enrich later.
@@ -140,7 +158,9 @@ def build_requirements(vertical: str, capabilities: List[str], files: List[Path]
         "constraints": {},
         "kpis": {
             "faq_accuracy_target": 0.90 if "faq" in capabilities else None,
-            "guardrail_block_rate_target": 0.99 if "guardrails" in capabilities else None,
+            "guardrail_block_rate_target": (
+                0.99 if "guardrails" in capabilities else None
+            ),
         },
     }
 
@@ -190,7 +210,9 @@ def main() -> None:
     from pathlib import Path
 
     parser = argparse.ArgumentParser(description="Domain Understanding Agent (DUA) v0")
-    parser.add_argument("--data", type=str, default="./data", help="Path to docs folder")
+    parser.add_argument(
+        "--data", type=str, default="./data", help="Path to docs folder"
+    )
     parser.add_argument(
         "--vertical",
         type=str,
@@ -203,7 +225,9 @@ def main() -> None:
         default=os.getenv("AZURE_OPENAI_DEPLOYMENT") or "gpt-5-mini",
         help="LLM deployment/model for advisory classification",
     )
-    parser.add_argument("--spec", type=str, default="./spec", help="Path to spec folder (schemas)")
+    parser.add_argument(
+        "--spec", type=str, default="./spec", help="Path to spec folder (schemas)"
+    )
     parser.add_argument(
         "--out", type=str, default="./data/requirements.json", help="Output JSON path"
     )
@@ -235,7 +259,9 @@ def main() -> None:
         print("[DUA] LLM unavailable → using heuristic only.")
     print(f"[DUA] heuristic counts: {heuristics}")
 
-    strongest = llm_guess.get("primary") if llm_guess else max(heuristics, key=heuristics.get)
+    strongest = (
+        llm_guess.get("primary") if llm_guess else max(heuristics, key=heuristics.get)
+    )
     if files and strongest and args.vertical.lower() != strongest:
         print(
             f"[DUA][ADVISORY] Docs look like '{strongest}', "

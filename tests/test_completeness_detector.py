@@ -83,7 +83,10 @@ def test_redundant_subtasks(monkeypatch):
 
     assert result.complete is True
     assert len(result.redundant) == 1
-    assert result.redundant[0] == ("Process refund for order", "Handle return for order")
+    assert result.redundant[0] == (
+        "Process refund for order",
+        "Handle return for order",
+    )
 
 
 def test_empty_subtasks():

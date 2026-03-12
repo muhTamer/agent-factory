@@ -12,6 +12,7 @@ with required fields for inter-agent communication:
 The envelope is stored in the audit trail alongside the trace.
 It does NOT replace the existing Dict response format — it wraps it.
 """
+
 from __future__ import annotations
 
 import time

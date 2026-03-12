@@ -15,6 +15,7 @@ class LLMRouterAdapter(Router):
             primary=plan.primary,
             strategy=plan.strategy,
             candidates=[
-                Candidate(id=c.id, score=c.score, reason=c.reason) for c in plan.candidates
+                Candidate(id=c.id, score=c.score, reason=c.reason)
+                for c in plan.candidates
             ],
         )

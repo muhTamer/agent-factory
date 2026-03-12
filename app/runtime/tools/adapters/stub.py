@@ -15,6 +15,7 @@ StubTool also wraps a static response dict for even simpler cases:
 
     tool = StubTool.from_response("verify_identity", {"kyc_status": "verified"})
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, Dict

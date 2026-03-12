@@ -123,7 +123,11 @@ def _inputs_from_blueprint(
             return None
         hint = v[len("<UPLOAD:") :].rstrip(">").strip().lower()
         # try match by hint in filename
-        matches = [f for f in data_dir.iterdir() if f.is_file() and hint and hint in f.name.lower()]
+        matches = [
+            f
+            for f in data_dir.iterdir()
+            if f.is_file() and hint and hint in f.name.lower()
+        ]
         return _abs(matches[0]) if matches else None
 
     # knowledge sources / policies may include placeholder paths
@@ -291,7 +295,9 @@ def _inputs_from_blueprint(
 # ------------------------------------------------------------
 # 🔗 Policy config auto-detection for workflow_runner agents
 # ------------------------------------------------------------
-def _build_policy_config(workflow_spec: Dict[str, Any], base_dir: Path) -> Dict[str, Any]:
+def _build_policy_config(
+    workflow_spec: Dict[str, Any], base_dir: Path
+) -> Dict[str, Any]:
     """
     Scan a workflow_spec for states whose event sets match known policy check patterns,
     then wire them to the compiled policy pack automatically.
@@ -320,11 +326,23 @@ def _build_policy_config(workflow_spec: Dict[str, Any], base_dir: Path) -> Dict[
     # Normalise states dict (handles both dict and list forms)
     raw_states = workflow_spec.get("states") or {}
     if isinstance(raw_states, list):
-        raw_states = {s["name"]: s for s in raw_states if isinstance(s, dict) and "name" in s}
+        raw_states = {
+            s["name"]: s for s in raw_states if isinstance(s, dict) and "name" in s
+        }
 
     # Eligibility events: vocab-based (superset-safe — event_set may include "error" etc.)
-    _ELIG_PASS = {"eligible", "eligibility_pass", "eligibility_met", "eligibility_passed"}
-    _ELIG_FAIL = {"ineligible", "eligibility_fail", "eligibility_failed", "not_eligible"}
+    _ELIG_PASS = {
+        "eligible",
+        "eligibility_pass",
+        "eligibility_met",
+        "eligibility_passed",
+    }
+    _ELIG_FAIL = {
+        "ineligible",
+        "eligibility_fail",
+        "eligibility_failed",
+        "not_eligible",
+    }
 
     # Approval events: vocab-based
     _APPROV_PASS = {"approval_required", "approval_needed", "requires_approval"}
@@ -366,7 +384,8 @@ def _build_policy_config(workflow_spec: Dict[str, Any], base_dir: Path) -> Dict[
             return [
                 e
                 for e in es
-                if e.lower().startswith("eligible") and not e.lower().startswith("ineligible")
+                if e.lower().startswith("eligible")
+                and not e.lower().startswith("ineligible")
             ]
 
         def _elig_fail_events(es):
@@ -374,7 +393,9 @@ def _build_policy_config(workflow_spec: Dict[str, Any], base_dir: Path) -> Dict[
             if exact:
                 return exact
             return [
-                e for e in es if e.lower().startswith("ineligible") or e.lower() == "not_eligible"
+                e
+                for e in es
+                if e.lower().startswith("ineligible") or e.lower() == "not_eligible"
             ]
 
         pass_candidates = _elig_pass_events(event_set)
@@ -428,10 +449,15 @@ def _build_policy_config(workflow_spec: Dict[str, Any], base_dir: Path) -> Dict[
         # (no plain user-input words like "submit", "close", "yes").
         non_neutral = {e for e in event_set if e.lower() not in _NEUTRAL_EVENTS}
         if non_neutral:
-            pass_events = [e for e in non_neutral if any(e.lower().endswith(s) for s in _PASS_SFXS)]
-            fail_events = [e for e in non_neutral if any(e.lower().endswith(s) for s in _FAIL_SFXS)]
+            pass_events = [
+                e for e in non_neutral if any(e.lower().endswith(s) for s in _PASS_SFXS)
+            ]
+            fail_events = [
+                e for e in non_neutral if any(e.lower().endswith(s) for s in _FAIL_SFXS)
+            ]
             all_matched = all(
-                any(e.lower().endswith(s) for s in _PASS_SFXS + _FAIL_SFXS) for e in non_neutral
+                any(e.lower().endswith(s) for s in _PASS_SFXS + _FAIL_SFXS)
+                for e in non_neutral
             )
             if all_matched and pass_events:
                 state_auto_events[state_name] = {
@@ -561,7 +587,9 @@ def build_factory_spec(
     )
 
     # Store plan info for UI/debugging
-    print(f"[SPEC] Blueprint plan: {len(bp_plan.blueprints)} agents | vertical={bp_plan.vertical}")
+    print(
+        f"[SPEC] Blueprint plan: {len(bp_plan.blueprints)} agents | vertical={bp_plan.vertical}"
+    )
     if bp_plan.missing_docs:
         print(f"[SPEC] missing_docs: {bp_plan.missing_docs}")
     if bp_plan.warnings:
@@ -588,7 +616,9 @@ def build_factory_spec(
         agent_kind = str(bp.get("agent_kind", "")).strip()
         blueprint_id = kind_to_blueprint.get(agent_kind)
         if not blueprint_id:
-            raise ValueError(f"Unsupported agent_kind '{agent_kind}' for blueprint id='{agent_id}'")
+            raise ValueError(
+                f"Unsupported agent_kind '{agent_kind}' for blueprint id='{agent_id}'"
+            )
 
         agents_block.append(
             {
@@ -608,7 +638,8 @@ def build_factory_spec(
                     # details (order ID, amount, etc.).  The AOPCoordinator reads this flag
                     # to decide whether to block execution until the user supplies context.
                     # Add new action agent kinds here as the platform grows.
-                    "requires_user_context": agent_kind in {"workflow_runner", "domain_agent"},
+                    "requires_user_context": agent_kind
+                    in {"workflow_runner", "domain_agent"},
                     "customer_facing": _is_customer_facing_agent(bp),
                     # Declarative AOP eligibility: set by the planning LLMs
                     # (infer_capabilities → blueprint_creator).  AOPCoordinator
@@ -652,7 +683,11 @@ def build_factory_spec(
         root_spec_dir.mkdir(parents=True, exist_ok=True)
         mirror_path = root_spec_dir / "factory_spec.json"
         mirror_path.write_text(spec_json, encoding="utf-8")
-        print(f"[INFO] Factory spec written to both:\n" f"  - {spec_path}\n" f"  - {mirror_path}")
+        print(
+            f"[INFO] Factory spec written to both:\n"
+            f"  - {spec_path}\n"
+            f"  - {mirror_path}"
+        )
     except Exception as e:
         print(f"[WARN] Could not mirror spec to repo root: {e}")
 

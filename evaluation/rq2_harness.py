@@ -10,6 +10,7 @@ Usage:
     python -m evaluation.rq2_harness
     python -m evaluation.rq2_harness --output evaluation/results/rq2/
 """
+
 from __future__ import annotations
 
 import argparse
@@ -146,7 +147,9 @@ class RQ2Harness:
             )
         if resp.get("agent_id"):
             trace.add("execute", agent_id=resp["agent_id"])
-            trace.add("select", selected_agent=resp["agent_id"], score=resp.get("score", 0))
+            trace.add(
+                "select", selected_agent=resp["agent_id"], score=resp.get("score", 0)
+            )
         if resp.get("subtask_results"):
             trace.add(
                 "aop_execute",
@@ -160,7 +163,10 @@ class RQ2Harness:
                 ],
             )
         if resp.get("solvability"):
-            trace.add("aop_solvability", assignments=resp["solvability"].get("assignments", {}))
+            trace.add(
+                "aop_solvability",
+                assignments=resp["solvability"].get("assignments", {}),
+            )
         if resp.get("completeness"):
             trace.add(
                 "aop_completeness",
@@ -202,7 +208,9 @@ class RQ2Harness:
         result.has_detailed = "detailed" in expl_dicts and bool(
             expl_dicts["detailed"].get("narrative")
         )
-        result.has_full = "full" in expl_dicts and bool(expl_dicts["full"].get("narrative"))
+        result.has_full = "full" in expl_dicts and bool(
+            expl_dicts["full"].get("narrative")
+        )
         result.explanation_levels_available = sum(
             [result.has_summary, result.has_detailed, result.has_full]
         )
@@ -222,10 +230,17 @@ class RQ2Harness:
         result.decisions_documented = len(detailed.get("decisions", []))
 
         # Governance activity (from trace)
-        guard_stages = {"guard_pre_ok", "guard_post_ok", "guard_pre_block", "guard_post_block"}
+        guard_stages = {
+            "guard_pre_ok",
+            "guard_post_ok",
+            "guard_pre_block",
+            "guard_post_block",
+        }
         guard_events = [e for e in trace.events if e.stage in guard_stages]
         result.guardrail_checks = len(guard_events)
-        result.guardrail_interventions = sum(1 for e in guard_events if "block" in e.stage)
+        result.guardrail_interventions = sum(
+            1 for e in guard_events if "block" in e.stage
+        )
         result.trace_event_count = len(trace.events)
 
         return result
@@ -247,9 +262,15 @@ class RQ2Harness:
             "errors": n - len(valid),
             # IEEE compliance
             "p3394_compliance": round(sum(r.p3394_compliance for r in valid) / nv, 4),
-            "ieee_2894_compliance": round(sum(r.ieee_2894_compliance for r in valid) / nv, 4),
-            "ieee_3152_compliance": round(sum(r.ieee_3152_compliance for r in valid) / nv, 4),
-            "overall_compliance": round(sum(r.overall_compliance for r in valid) / nv, 4),
+            "ieee_2894_compliance": round(
+                sum(r.ieee_2894_compliance for r in valid) / nv, 4
+            ),
+            "ieee_3152_compliance": round(
+                sum(r.ieee_3152_compliance for r in valid) / nv, 4
+            ),
+            "overall_compliance": round(
+                sum(r.overall_compliance for r in valid) / nv, 4
+            ),
             # Explainability
             "mean_explanation_levels": round(
                 sum(r.explanation_levels_available for r in valid) / nv, 2
@@ -257,14 +278,22 @@ class RQ2Harness:
             "summary_coverage": round(sum(1 for r in valid if r.has_summary) / nv, 4),
             "detailed_coverage": round(sum(1 for r in valid if r.has_detailed) / nv, 4),
             "full_coverage": round(sum(1 for r in valid if r.has_full) / nv, 4),
-            "provenance_rate": round(sum(1 for r in valid if r.provenance_present) / nv, 4),
+            "provenance_rate": round(
+                sum(1 for r in valid if r.provenance_present) / nv, 4
+            ),
             "agent_identity_rate": round(
                 sum(1 for r in valid if r.agent_identity_disclosed) / nv, 4
             ),
-            "mean_decisions_documented": round(sum(r.decisions_documented for r in valid) / nv, 2),
+            "mean_decisions_documented": round(
+                sum(r.decisions_documented for r in valid) / nv, 2
+            ),
             # Governance
-            "mean_guardrail_checks": round(sum(r.guardrail_checks for r in valid) / nv, 2),
-            "total_guardrail_interventions": sum(r.guardrail_interventions for r in valid),
+            "mean_guardrail_checks": round(
+                sum(r.guardrail_checks for r in valid) / nv, 2
+            ),
+            "total_guardrail_interventions": sum(
+                r.guardrail_interventions for r in valid
+            ),
             "mean_trace_events": round(sum(r.trace_event_count for r in valid) / nv, 2),
             # Latency
             "mean_latency_ms": round(sum(r.latency_ms for r in valid) / nv, 2),
@@ -391,7 +420,9 @@ def run_rq2_evaluation(output_dir: Path) -> Dict[str, Any]:
 
         with _mock.patch("app.llm_client.chat_json", mock_fn), _mock.patch(
             "app.orchestration.aop_coordinator.chat_json", mock_fn
-        ), _mock.patch("app.orchestration.completeness_detector.chat_json", mock_fn), _mock.patch(
+        ), _mock.patch(
+            "app.orchestration.completeness_detector.chat_json", mock_fn
+        ), _mock.patch(
             "app.runtime.voice.chat_json", voice_mock
         ):
             try:

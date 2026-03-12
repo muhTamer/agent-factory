@@ -1,5 +1,6 @@
 # tests/test_spine_rag_delegation.py
 """Tests for RAG delegation, clarification pinning, and memory in RuntimeSpine."""
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -9,7 +10,6 @@ from app.runtime.memory import ConversationMemory
 from app.runtime.registry import AgentRegistry
 from app.runtime.routing import Candidate, RoutePlan
 from app.runtime.spine import THREAD_CTX, RuntimeSpine
-
 
 # ── Stub Agents ──────────────────────────────────────────────────────
 
@@ -83,7 +83,12 @@ class TestRAGPinning:
         _clear_thread("pin_test")
         registry = AgentRegistry()
         rag = StubRAGAgent(
-            {"intent": "faq", "answer": "What topic?", "score": 0.5, "rag_clarification": True}
+            {
+                "intent": "faq",
+                "answer": "What topic?",
+                "score": 0.5,
+                "rag_clarification": True,
+            }
         )
         registry.register("faq_agent", rag, rag.metadata())
 
@@ -111,7 +116,12 @@ class TestRAGPinning:
 
         # First call: clarification
         rag = StubRAGAgent(
-            {"intent": "faq", "answer": "What topic?", "score": 0.5, "rag_clarification": True}
+            {
+                "intent": "faq",
+                "answer": "What topic?",
+                "score": 0.5,
+                "rag_clarification": True,
+            }
         )
         registry.register("faq_agent", rag, rag.metadata())
 
@@ -154,7 +164,12 @@ class TestRAGPinning:
 
         registry = AgentRegistry()
         rag = StubRAGAgent(
-            {"intent": "faq", "answer": "Here is the answer.", "score": 0.9, "rag_answered": True}
+            {
+                "intent": "faq",
+                "answer": "Here is the answer.",
+                "score": 0.9,
+                "rag_answered": True,
+            }
         )
         registry.register("faq_agent", rag, rag.metadata())
 
@@ -199,7 +214,9 @@ class TestDelegationSignals:
             guardrails=NoOpGuardrails(),
         )
 
-        result = spine.handle_chat("I want a refund", context={"thread_id": "delegate_test"})
+        result = spine.handle_chat(
+            "I want a refund", context={"thread_id": "delegate_test"}
+        )
         # Should have been re-routed to refund_agent
         assert result.get("agent_id") == "refund_agent"
         assert result.get("answer") == "Refund processed."
@@ -227,7 +244,9 @@ class TestDelegationSignals:
             guardrails=NoOpGuardrails(),
         )
 
-        result = spine.handle_chat("quantum physics", context={"thread_id": "unknown_delegate"})
+        result = spine.handle_chat(
+            "quantum physics", context={"thread_id": "unknown_delegate"}
+        )
         # Original agent's response should still be there (delegation failed gracefully)
         assert result.get("agent_id") == "faq_agent"
         _clear_thread("unknown_delegate")
@@ -254,7 +273,9 @@ class TestMemoryRecording:
             memory=memory,
         )
 
-        spine.handle_chat("What is the refund policy?", context={"thread_id": "mem_test"})
+        spine.handle_chat(
+            "What is the refund policy?", context={"thread_id": "mem_test"}
+        )
 
         turns = memory.get_turns("mem_test")
         assert len(turns) == 1

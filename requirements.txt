@@ -1,14 +1,14 @@
-fastapi==0.115.2
-uvicorn[standard]==0.30.6
-pydantic==2.9.2
-python-dotenv==1.0.1
-loguru==0.7.2
+fastapi>=0.115.2
+uvicorn[standard]>=0.30.6
+pydantic>=2.11.0
+python-dotenv>=1.0.1
+loguru>=0.7.2
 
 # dev/test
-pytest==8.3.3
-black==24.8.0
-ruff==0.6.9
-pre-commit==4.0.1
+pytest>=8.3.3
+black>=24.8.0
+ruff>=0.6.9
+pre-commit>=4.0.1
 
 # LLM client for DUA
 openai>=1.40.0
@@ -16,9 +16,8 @@ openai>=1.40.0
 # Core runtime
 jsonschema>=4.0.0
 
-# LLM + YAML + testing deps (if not already there)
+# LLM + YAML + testing deps
 PyYAML>=6.0
-pytest>=8.0.0
 
 streamlit>=1.37.0
 python-multipart>=0.0.7

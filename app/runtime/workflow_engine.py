@@ -130,7 +130,8 @@ class GenericWorkflowEngine:
                 actions.append(oe.strip())
 
         terminal = bool(
-            spec.get("terminal") or str(spec.get("type", "")).lower() in {"final", "terminal"}
+            spec.get("terminal")
+            or str(spec.get("type", "")).lower() in {"final", "terminal"}
         )
 
         return {
@@ -277,7 +278,9 @@ class GenericWorkflowEngine:
     def _clarification_message(self, missing_required: List[str]) -> str:
         if not missing_required:
             # This can happen if the workflow needs an event but doesn't require slots.
-            allowed = list((self.states.get(self.current_state, {}).get("on") or {}).keys())
+            allowed = list(
+                (self.states.get(self.current_state, {}).get("on") or {}).keys()
+            )
             if allowed:
                 return "I need a bit more information to proceed. Please clarify what you want to do next."
             return "I need a bit more information to proceed."
@@ -291,7 +294,9 @@ class GenericWorkflowEngine:
             return
 
         if event not in state["on"]:
-            self.logger(f"[WF][WARN] event '{event}' ignored in state '{self.current_state}'")
+            self.logger(
+                f"[WF][WARN] event '{event}' ignored in state '{self.current_state}'"
+            )
             return
 
         next_state = state["on"][event]

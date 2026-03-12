@@ -11,6 +11,7 @@ Supports a **separate** Azure OpenAI resource for embeddings via:
   AZURE_OPENAI_EMBEDDING_DEPLOYMENT (falls back to model param)
   AZURE_OPENAI_EMBEDDING_API_VERSION (falls back to AZURE_OPENAI_API_VERSION)
 """
+
 from __future__ import annotations
 
 import logging

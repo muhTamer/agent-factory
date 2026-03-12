@@ -114,7 +114,9 @@ def startup_event():
             print(f"[BOOT] Skipping unrecognized type {a_type} ({a_id})")
 
     llm_router = LLMRouter(registry=registry)
-    router = LLMRouterAdapter(llm_router) if registry.all_ids() else DefaultRouter(registry)
+    router = (
+        LLMRouterAdapter(llm_router) if registry.all_ids() else DefaultRouter(registry)
+    )
 
     # Conversation memory (shared across spine + AOP)
     memory = ConversationMemory()
@@ -124,7 +126,11 @@ def startup_event():
     aop = AOPCoordinator(registry=registry, performance_store=perf_store, memory=memory)
 
     spine = RuntimeSpine(
-        registry=registry, router=router, guardrails=guardrails, aop_coordinator=aop, memory=memory
+        registry=registry,
+        router=router,
+        guardrails=guardrails,
+        aop_coordinator=aop,
+        memory=memory,
     )
 
     print(f"[BOOT] All agents loaded: {registry.all_ids()}")
@@ -144,7 +150,9 @@ def startup_event():
         print(f"[TOOLS] Loaded customer config: {tool_registry.all_names()}")
     else:
         tool_registry = DEFAULT_REGISTRY
-        print(f"[TOOLS] No tools_config.json found — using stubs: {tool_registry.all_names()}")
+        print(
+            f"[TOOLS] No tools_config.json found — using stubs: {tool_registry.all_names()}"
+        )
 
 
 # ---------- Shutdown ----------

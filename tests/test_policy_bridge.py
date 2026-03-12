@@ -9,11 +9,13 @@ Loads the real compiled refunds_policy_pack.json and exercises:
   - check_approval_needed: above threshold → approval required
   - check_risk_controls: normal customer (no flags)
 """
+
 import pytest
 from pathlib import Path
 
 PACK_PATH = (
-    Path(__file__).resolve().parents[1] / ".factory/compiled_policies/refunds_policy_pack.json"
+    Path(__file__).resolve().parents[1]
+    / ".factory/compiled_policies/refunds_policy_pack.json"
 )
 
 pytestmark = pytest.mark.skipif(

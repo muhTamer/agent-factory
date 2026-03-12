@@ -25,6 +25,7 @@ This test simulates the complete lifecycle that a customer goes through:
 No real LLM calls are made.  The LLM router + workflow mapper are both mocked.
 The policy bridge uses the real compiled policy pack (if present).
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -76,7 +77,12 @@ FULL_REFUND_SLOTS = {
 
 def _mapper_json(event: Optional[str], slots: Dict[str, Any]) -> Dict[str, Any]:
     """Return dict that workflow_mapper.chat_json would return."""
-    return {"event": event, "slots": slots, "confidence": 0.99, "rationale": "e2e test mock"}
+    return {
+        "event": event,
+        "slots": slots,
+        "confidence": 0.99,
+        "rationale": "e2e test mock",
+    }
 
 
 def _load_agent_from_dir(agent_id: str, agent_dir: Path):
@@ -112,7 +118,9 @@ class _MockRouter:
                 return RoutePlan(
                     primary=agent_id,
                     strategy="single",
-                    candidates=[Candidate(id=agent_id, score=1.0, reason=f"matched '{keyword}'")],
+                    candidates=[
+                        Candidate(id=agent_id, score=1.0, reason=f"matched '{keyword}'")
+                    ],
                 )
         # Fallback: first agent
         fallback = self._all_ids[0]
@@ -183,7 +191,9 @@ class TestPhase1DocumentAnalysis:
         assert "entities" in req
         assert "workflows" in req
 
-    def test_detect_signals_llm_returns_advisory_when_mocked(self, tmp_path, monkeypatch):
+    def test_detect_signals_llm_returns_advisory_when_mocked(
+        self, tmp_path, monkeypatch
+    ):
         """
         The LLM advisory is consumed but not required — verifies the interface contract.
         """
@@ -226,8 +236,12 @@ class TestPhase2AgentSuggestions:
         """
         import json
 
-        faq_meta = json.loads((FAQ_AGENT_DIR / "metadata.json").read_text(encoding="utf-8"))
-        ref_meta = json.loads((REFUNDS_AGENT_DIR / "metadata.json").read_text(encoding="utf-8"))
+        faq_meta = json.loads(
+            (FAQ_AGENT_DIR / "metadata.json").read_text(encoding="utf-8")
+        )
+        ref_meta = json.loads(
+            (REFUNDS_AGENT_DIR / "metadata.json").read_text(encoding="utf-8")
+        )
 
         # Both agents should be present
         assert faq_meta["id"] == "customer_facing_rag"
@@ -410,7 +424,9 @@ class TestPhase4MultipleAgents:
     # ── Refund Workflow — Turn 1 (info gathering) ─────────────────────────
 
     def test_refund_query_routes_to_refunds_agent(self, runtime_spine):
-        with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
+        with patch(
+            "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})
+        ):
             result = runtime_spine.handle_chat(
                 "I need to process a refund for a customer",
                 context={"thread_id": "e2e-refund-001"},
@@ -418,7 +434,9 @@ class TestPhase4MultipleAgents:
         assert result.get("agent_id") == "refunds_workflow"
 
     def test_refund_turn1_starts_in_start_state(self, runtime_spine):
-        with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
+        with patch(
+            "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})
+        ):
             result = runtime_spine.handle_chat(
                 "I need to process a refund for a customer",
                 context={"thread_id": "e2e-refund-turn1-001"},
@@ -426,7 +444,9 @@ class TestPhase4MultipleAgents:
         assert result.get("current_state") == "start"
 
     def test_refund_turn1_returns_clarification(self, runtime_spine):
-        with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
+        with patch(
+            "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})
+        ):
             result = runtime_spine.handle_chat(
                 "I'd like to refund a payment",
                 context={"thread_id": "e2e-refund-turn1-002"},
@@ -439,7 +459,9 @@ class TestPhase4MultipleAgents:
         from app.runtime.spine import THREAD_CTX
 
         tid = "e2e-refund-pin-001"
-        with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
+        with patch(
+            "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})
+        ):
             runtime_spine.handle_chat(
                 "I need to process a refund",
                 context={"thread_id": tid},
@@ -463,7 +485,9 @@ class TestPhase4MultipleAgents:
         THREAD_CTX.pop(tid, None)
 
         # Turn 1: start the workflow (no slots yet)
-        with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
+        with patch(
+            "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})
+        ):
             r1 = runtime_spine.handle_chat(
                 "I need to process a refund",
                 context={"thread_id": tid},
@@ -490,7 +514,9 @@ class TestPhase4MultipleAgents:
         tid = "e2e-refund-unpin-001"
         THREAD_CTX.pop(tid, None)
 
-        with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
+        with patch(
+            "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})
+        ):
             runtime_spine.handle_chat("I need a refund", context={"thread_id": tid})
 
         with patch(
@@ -517,7 +543,9 @@ class TestPhase4MultipleAgents:
         THREAD_CTX.pop(tid, None)
 
         # Turn 1: initiate workflow
-        with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
+        with patch(
+            "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})
+        ):
             runtime_spine.handle_chat("I need a refund", context={"thread_id": tid})
 
         # Turn 2: send a generic query — should STILL hit the workflow agent (sticky)
@@ -562,7 +590,9 @@ class TestPhase4MultipleAgents:
         )
 
         # Session B: Refund workflow
-        with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
+        with patch(
+            "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})
+        ):
             r_refund = runtime_spine.handle_chat(
                 "I need to process a refund for a customer",
                 context={"thread_id": tid_refund},

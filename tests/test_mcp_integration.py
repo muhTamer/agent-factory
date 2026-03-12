@@ -5,6 +5,7 @@ Tests for MCP (Model Context Protocol) tool integration.
 Unit tests use mocks for the MCPManager.
 Integration tests spawn a real MCP server process via stdio.
 """
+
 from __future__ import annotations
 
 import sys
@@ -13,7 +14,6 @@ from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Unit tests — MCPTool adapter
@@ -80,7 +80,9 @@ class TestMCPToolAdapter:
                 "required": ["a", "b"],
             }
         )
-        args = tool._extract_arguments({"a": 1, "b": 2, "thread_id": "t1", "extra": "noise"})
+        args = tool._extract_arguments(
+            {"a": 1, "b": 2, "thread_id": "t1", "extra": "noise"}
+        )
         assert args == {"a": 1, "b": 2}
 
     def test_extract_arguments_no_schema_passes_all(self):
@@ -187,7 +189,12 @@ class TestRegistryMCPLoading:
             registry = ToolRegistry()
             registry.load_mcp_servers(
                 [
-                    {"id": "srv", "transport": "stdio", "command": "python", "args": ["-m", "x"]},
+                    {
+                        "id": "srv",
+                        "transport": "stdio",
+                        "command": "python",
+                        "args": ["-m", "x"],
+                    },
                 ]
             )
 
@@ -240,7 +247,9 @@ class TestBuildRegistryMCP:
         from app.runtime.tools import build_registry
 
         with patch.object(
-            __import__("app.runtime.tools.registry", fromlist=["ToolRegistry"]).ToolRegistry,
+            __import__(
+                "app.runtime.tools.registry", fromlist=["ToolRegistry"]
+            ).ToolRegistry,
             "load_mcp_servers",
         ) as mock_load:
             build_registry(mcp_servers=[{"id": "test"}])

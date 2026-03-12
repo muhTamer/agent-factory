@@ -9,6 +9,7 @@ Usage:
     python -m app.runtime.policy.policy_refiner_cli validate customer_policy.yaml
     python -m app.runtime.policy.policy_refiner_cli batch-refine input_dir/ output_dir/
 """
+
 import argparse
 import json
 import sys
@@ -303,8 +304,12 @@ def main():
         "refine", help="Refine a customer policy to make it compilable"
     )
     refine_parser.add_argument("input", help="Input policy file")
-    refine_parser.add_argument("-o", "--output", help="Output path (default: input_refined.yaml)")
-    refine_parser.add_argument("-d", "--domain", default="general", help="Business domain")
+    refine_parser.add_argument(
+        "-o", "--output", help="Output path (default: input_refined.yaml)"
+    )
+    refine_parser.add_argument(
+        "-d", "--domain", default="general", help="Business domain"
+    )
     refine_parser.add_argument(
         "--allow-review", action="store_true", help="Exit 0 even if review needed"
     )
@@ -314,20 +319,30 @@ def main():
         "validate", help="Validate a customer policy without refinement"
     )
     validate_parser.add_argument("input", help="Input policy file")
-    validate_parser.add_argument("-d", "--domain", default="general", help="Business domain")
+    validate_parser.add_argument(
+        "-d", "--domain", default="general", help="Business domain"
+    )
 
     # Batch refine command
-    batch_parser = subparsers.add_parser("batch-refine", help="Refine multiple policies in batch")
+    batch_parser = subparsers.add_parser(
+        "batch-refine", help="Refine multiple policies in batch"
+    )
     batch_parser.add_argument("input_dir", help="Directory with policy files")
     batch_parser.add_argument("output_dir", help="Output directory")
-    batch_parser.add_argument("-d", "--domain", default="general", help="Business domain")
+    batch_parser.add_argument(
+        "-d", "--domain", default="general", help="Business domain"
+    )
     batch_parser.add_argument("-m", "--model", default="gpt-4o", help="LLM model")
 
     # Compare command
-    compare_parser = subparsers.add_parser("compare", help="Compare original and refined policies")
+    compare_parser = subparsers.add_parser(
+        "compare", help="Compare original and refined policies"
+    )
     compare_parser.add_argument("original", help="Original policy file")
     compare_parser.add_argument("refined", help="Refined policy file")
-    compare_parser.add_argument("-v", "--verbose", action="store_true", help="Show side-by-side")
+    compare_parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Show side-by-side"
+    )
 
     args = parser.parse_args()
 

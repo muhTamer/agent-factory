@@ -6,6 +6,7 @@ Evaluates compiled rules against runtime slot values WITHOUT any LLM calls.
 This is where the magic happens: workflow decisions are made by evaluating
 rules, not by asking an LLM to guess.
 """
+
 from __future__ import annotations
 
 import re
@@ -177,9 +178,13 @@ class RuleEngine:
             )
 
             if matched:
-                explanation = f"{condition.slot_name}={slot_value} satisfies {condition}"
+                explanation = (
+                    f"{condition.slot_name}={slot_value} satisfies {condition}"
+                )
             else:
-                explanation = f"{condition.slot_name}={slot_value} does not satisfy {condition}"
+                explanation = (
+                    f"{condition.slot_name}={slot_value} does not satisfy {condition}"
+                )
 
             return matched, explanation
 
@@ -201,16 +206,24 @@ class RuleEngine:
             return slot_value != condition_value
 
         elif operator == OperatorType.LT:
-            return self._compare_numeric(slot_value, condition_value, lambda a, b: a < b)
+            return self._compare_numeric(
+                slot_value, condition_value, lambda a, b: a < b
+            )
 
         elif operator == OperatorType.LE:
-            return self._compare_numeric(slot_value, condition_value, lambda a, b: a <= b)
+            return self._compare_numeric(
+                slot_value, condition_value, lambda a, b: a <= b
+            )
 
         elif operator == OperatorType.GT:
-            return self._compare_numeric(slot_value, condition_value, lambda a, b: a > b)
+            return self._compare_numeric(
+                slot_value, condition_value, lambda a, b: a > b
+            )
 
         elif operator == OperatorType.GE:
-            return self._compare_numeric(slot_value, condition_value, lambda a, b: a >= b)
+            return self._compare_numeric(
+                slot_value, condition_value, lambda a, b: a >= b
+            )
 
         elif operator == OperatorType.IN:
             if not isinstance(condition_value, (list, set, tuple)):
@@ -278,7 +291,9 @@ class RuleEngine:
 
         return final_result, explanation
 
-    def check_eligibility(self, slots: Dict[str, Any]) -> Tuple[bool, List[RuleEvaluationResult]]:
+    def check_eligibility(
+        self, slots: Dict[str, Any]
+    ) -> Tuple[bool, List[RuleEvaluationResult]]:
         """
         Check if current state is eligible based on eligibility rules.
 
@@ -366,7 +381,10 @@ class RuleEngine:
 
         for result in results:
             for action in result.actions:
-                if action.action_type == "call_tool" and action.parameters.get("tool") == tool_name:
+                if (
+                    action.action_type == "call_tool"
+                    and action.parameters.get("tool") == tool_name
+                ):
                     return True, result
 
         return False, None

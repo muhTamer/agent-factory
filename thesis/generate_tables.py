@@ -11,6 +11,7 @@ Outputs (to thesis/output/tables/):
     scenario_detail.md / .tex     — Table 3: per-scenario results
     solvability_by_category.md / .tex — Table 4: solvability distribution
 """
+
 from __future__ import annotations
 
 import json
@@ -34,11 +35,15 @@ CATEGORY_LABELS = {
 
 
 def _load_summary() -> dict:
-    return json.loads((RESULTS_DIR / "evaluation_summary.json").read_text(encoding="utf-8"))
+    return json.loads(
+        (RESULTS_DIR / "evaluation_summary.json").read_text(encoding="utf-8")
+    )
 
 
 def _load_results() -> list:
-    return json.loads((RESULTS_DIR / "evaluation_results.json").read_text(encoding="utf-8"))
+    return json.loads(
+        (RESULTS_DIR / "evaluation_results.json").read_text(encoding="utf-8")
+    )
 
 
 def _fmt(val, fmt=".2f"):
@@ -119,7 +124,12 @@ def table_latency_by_category(summary: dict, results: list) -> str:
         "| Pattern | N | Mean Latency (ms) | Std (ms) | Mean Agent Calls |",
         "|---------|--:|------------------:|---------:|-----------------:|",
     ]
-    for key in ["simple_routing", "fsm_workflow", "hierarchical_delegation", "hitl_escalation"]:
+    for key in [
+        "simple_routing",
+        "fsm_workflow",
+        "hierarchical_delegation",
+        "hitl_escalation",
+    ]:
         if key not in cats:
             continue
         data = cats[key]
@@ -128,7 +138,9 @@ def table_latency_by_category(summary: dict, results: list) -> str:
         std_lat = _stdev(data["latencies"])
         mean_calls = statistics.mean(data["calls"])
         label = CATEGORY_LABELS.get(key, key)
-        lines.append(f"| {label} | {n} | {mean_lat:.1f} | {std_lat:.1f} | {mean_calls:.1f} |")
+        lines.append(
+            f"| {label} | {n} | {mean_lat:.1f} | {std_lat:.1f} | {mean_calls:.1f} |"
+        )
     return "\n".join(lines)
 
 
@@ -168,7 +180,12 @@ def table_solvability_by_category(summary: dict, results: list) -> str:
         "| Pattern | N | Min | Max | Mean | Std |",
         "|---------|--:|----:|----:|-----:|----:|",
     ]
-    for key in ["simple_routing", "fsm_workflow", "hierarchical_delegation", "hitl_escalation"]:
+    for key in [
+        "simple_routing",
+        "fsm_workflow",
+        "hierarchical_delegation",
+        "hitl_escalation",
+    ]:
         if key not in cats:
             continue
         vals = cats[key]
@@ -249,7 +266,9 @@ def main():
     for name, fn in tables.items():
         md = fn(summary, results)
         (OUTPUT_DIR / f"{name}.md").write_text(md, encoding="utf-8")
-        (OUTPUT_DIR / f"{name}.tex").write_text(_md_table_to_latex(md), encoding="utf-8")
+        (OUTPUT_DIR / f"{name}.tex").write_text(
+            _md_table_to_latex(md), encoding="utf-8"
+        )
         print(f"  [OK] {name}.md + .tex")
 
     print(f"\n  Output: {OUTPUT_DIR.resolve()}")

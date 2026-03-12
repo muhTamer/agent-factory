@@ -7,10 +7,11 @@ existing agent factory workflow system.
 
 BEFORE (LLM guesses decisions):
     workflow_mapper.py → LLM decides next event → might get stuck
-    
+
 AFTER (Rules make decisions):
     policy_compiler.py → compile rules → workflow uses rules → deterministic
 """
+
 import json
 from pathlib import Path
 from typing import Any, Dict, List
@@ -21,7 +22,6 @@ from app.runtime.workflow_mapper import map_query_to_event_and_slots
 # New policy imports
 from app.runtime.policy.policy_compiler import PolicyCompiler
 from app.runtime.policy.workflow_policy_bridge import WorkflowPolicyBridge
-
 
 # ============================================================================
 # STEP 1: Compile Policies (ONE-TIME or on change)
@@ -137,7 +137,9 @@ class PolicyAwareWorkflowRunner:
             }
 
         # STEP 3: Check approval needed (RULE-BASED, not LLM)
-        approval_needed, approval_reason, _ = self.policy_bridge.check_approval_needed(slots)
+        approval_needed, approval_reason, _ = self.policy_bridge.check_approval_needed(
+            slots
+        )
 
         # STEP 4: Check risk controls (RULE-BASED)
         has_risks, risk_reasons, _ = self.policy_bridge.check_risk_controls(slots)
@@ -173,7 +175,9 @@ class PolicyAwareWorkflowRunner:
             "compliance_check",
             "notification_service",
         ]:
-            should_call, tool_params, _ = self.policy_bridge.should_call_tool(tool_name, slots)
+            should_call, tool_params, _ = self.policy_bridge.should_call_tool(
+                tool_name, slots
+            )
             if should_call:
                 tools_to_call.append({"tool": tool_name, "params": tool_params})
 
@@ -190,7 +194,9 @@ class PolicyAwareWorkflowRunner:
 
         if approval_needed:
             response["approval_reason"] = approval_reason
-            response["approval_teams"] = self.policy_bridge.get_required_approvals(slots)
+            response["approval_teams"] = self.policy_bridge.get_required_approvals(
+                slots
+            )
 
         if has_risks:
             response["risk_flags"] = risk_reasons
@@ -310,8 +316,12 @@ def example_usage():
         "states": {
             "start": {"on": {"submit_request": "validating"}},
             "validating": {"on": {"valid": "processing", "invalid": "rejected"}},
-            "processing": {"on": {"approved": "executing", "needs_approval": "approval_pending"}},
-            "approval_pending": {"on": {"approved": "executing", "rejected": "rejected"}},
+            "processing": {
+                "on": {"approved": "executing", "needs_approval": "approval_pending"}
+            },
+            "approval_pending": {
+                "on": {"approved": "executing", "rejected": "rejected"}
+            },
             "executing": {"on": {"success": "completed", "failed": "failed"}},
             "completed": {"terminal": True},
             "rejected": {"terminal": True},

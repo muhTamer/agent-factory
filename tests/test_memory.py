@@ -167,8 +167,18 @@ def test_turn_with_all_fields():
 
 def test_snapshot_trigger_types():
     mem = ConversationMemory()
-    mem.record_state_snapshot("t1", state="s1", slots={}, agent_id="a", trigger="state_entry")
-    mem.record_state_snapshot("t1", state="s2", slots={}, agent_id="a", trigger="policy_decision")
-    mem.record_state_snapshot("t1", state="s3", slots={}, agent_id="a", trigger="delegation")
+    mem.record_state_snapshot(
+        "t1", state="s1", slots={}, agent_id="a", trigger="state_entry"
+    )
+    mem.record_state_snapshot(
+        "t1", state="s2", slots={}, agent_id="a", trigger="policy_decision"
+    )
+    mem.record_state_snapshot(
+        "t1", state="s3", slots={}, agent_id="a", trigger="delegation"
+    )
     snaps = mem.get_snapshots("t1")
-    assert [s.trigger for s in snaps] == ["state_entry", "policy_decision", "delegation"]
+    assert [s.trigger for s in snaps] == [
+        "state_entry",
+        "policy_decision",
+        "delegation",
+    ]

@@ -20,7 +20,9 @@ class GuardrailRule:
     patterns: List[str] = field(default_factory=list)
 
     # Compiled patterns (populated lazily)
-    _compiled: Optional[List[re.Pattern]] = field(default=None, repr=False, compare=False)
+    _compiled: Optional[List[re.Pattern]] = field(
+        default=None, repr=False, compare=False
+    )
 
     @property
     def compiled_patterns(self) -> List[re.Pattern]:
@@ -202,7 +204,9 @@ class PolicyPack:
         # Parse guardrail rules from JSON, or fall back to defaults
         raw_rules = data.get("guardrail_rules")
         if isinstance(raw_rules, list) and raw_rules:
-            rules = [GuardrailRule.from_dict(r) for r in raw_rules if isinstance(r, dict)]
+            rules = [
+                GuardrailRule.from_dict(r) for r in raw_rules if isinstance(r, dict)
+            ]
         else:
             rules = [GuardrailRule.from_dict(r) for r in _DEFAULT_RULES]
 

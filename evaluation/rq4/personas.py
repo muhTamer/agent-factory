@@ -8,6 +8,7 @@ from different user perspectives (transparency, trust, satisfaction).
 
 Based on HCI and customer service literature cited in the thesis Theory chapter.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -16,6 +16,7 @@ Tests verify:
   - Empty query returns a helpful prompt
   - metadata() reports correct id/type/docs count
 """
+
 import importlib.util
 import sys
 from pathlib import Path

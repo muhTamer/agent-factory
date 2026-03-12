@@ -29,6 +29,7 @@ Behaviour:
 - On HTTP errors, raises WorkflowExecutionError so the FSM can route
   to an escalation state.
 """
+
 from __future__ import annotations
 
 import json
@@ -93,7 +94,9 @@ class HttpTool(ITool):
             if params:
                 url = url + "?" + urllib.parse.urlencode(params)
 
-        req = urllib.request.Request(url, data=body, headers=headers, method=self.method)
+        req = urllib.request.Request(
+            url, data=body, headers=headers, method=self.method
+        )
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 raw = resp.read().decode("utf-8")

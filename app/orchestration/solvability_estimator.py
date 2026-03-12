@@ -14,6 +14,7 @@ Textual similarity is computed via TF-IDF cosine similarity — deterministic,
 fast, and testable without LLM calls.  The TF-IDF implementation reuses the
 same tokenizer/cosine pattern from app/shared/rag.py.
 """
+
 from __future__ import annotations
 
 import math
@@ -147,7 +148,9 @@ class SolvabilityEstimator:
             return SolvabilityResult(assignments={}, scores=[], assignment_scores={})
 
         # Build IDF from the combined corpus of subtask + agent texts.
-        all_texts = list(subtasks) + [self._build_agent_text(m) for m in agent_catalog.values()]
+        all_texts = list(subtasks) + [
+            self._build_agent_text(m) for m in agent_catalog.values()
+        ]
         idf = self._build_idf(all_texts)
 
         # Pre-compute agent vectors.
@@ -220,7 +223,9 @@ class SolvabilityEstimator:
                     modifiers += f" [penalty={self._ACTION_PENALTY} {direction}]"
                 if bonus_applied:
                     direction = (
-                        "info→knowledge" if subtask_intent == "informational" else "action→workflow"
+                        "info→knowledge"
+                        if subtask_intent == "informational"
+                        else "action→workflow"
                     )
                     modifiers += f" [bonus=+{self._INTENT_KIND_BONUS} {direction}]"
                 reasoning = (

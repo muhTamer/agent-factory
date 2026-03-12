@@ -13,6 +13,7 @@ Tests verify behavioral properties for queries with multiple intents:
   - Task decline clears plan
   - Full lifecycle: decompose → menu → execute → remaining → complete
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -25,7 +26,6 @@ from app.runtime.guardrails import NoOpGuardrails
 from app.runtime.registry import AgentRegistry
 from app.runtime.routing import Candidate, RoutePlan
 from app.runtime.spine import THREAD_CTX, RuntimeSpine
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -281,11 +281,15 @@ class TestDecompositionAndMenu:
         """After menu presentation, the plan should be stored in thread context."""
         agent_a = TrackingAgent(
             "agent_a",
-            meta=_domain_agent_meta("Handles refund processing tasks", ["refund_processing"]),
+            meta=_domain_agent_meta(
+                "Handles refund processing tasks", ["refund_processing"]
+            ),
         )
         agent_b = TrackingAgent(
             "agent_b",
-            meta=_domain_agent_meta("Handles complaint handling tasks", ["complaint_handling"]),
+            meta=_domain_agent_meta(
+                "Handles complaint handling tasks", ["complaint_handling"]
+            ),
         )
 
         subtasks = ["ACTION: refund processing", "ACTION: complaint handling"]
@@ -321,7 +325,13 @@ class TestSequentialExecution:
         """User selects '1' → only one task executes."""
         refund = TrackingAgent(
             "refund_agent",
-            responses=[{"answer": "Refund processed.", "text": "Refund processed.", "score": 0.9}],
+            responses=[
+                {
+                    "answer": "Refund processed.",
+                    "text": "Refund processed.",
+                    "score": 0.9,
+                }
+            ],
             meta=_domain_agent_meta("Refund payment processing", ["refund_payment"]),
         )
         faq = TrackingAgent(
@@ -379,7 +389,9 @@ class TestSequentialExecution:
             subtasks,
         )
 
-        spine.handle_chat("Refund and account questions", context={"thread_id": "test_seq_2"})
+        spine.handle_chat(
+            "Refund and account questions", context={"thread_id": "test_seq_2"}
+        )
         result = spine.handle_chat("1", context={"thread_id": "test_seq_2"})
 
         remaining = result.get("remaining_subtasks")
@@ -390,12 +402,16 @@ class TestSequentialExecution:
         """After all tasks execute, plan should be removed from context."""
         refund = TrackingAgent(
             "refund_agent",
-            responses=[{"answer": "Refund done.", "text": "Refund done.", "score": 0.9}],
+            responses=[
+                {"answer": "Refund done.", "text": "Refund done.", "score": 0.9}
+            ],
             meta=_domain_agent_meta("Refund processing", ["refund_processing"]),
         )
         faq = TrackingAgent(
             "faq_agent",
-            responses=[{"answer": "Account info.", "text": "Account info.", "score": 0.85}],
+            responses=[
+                {"answer": "Account info.", "text": "Account info.", "score": 0.85}
+            ],
             meta=_domain_agent_meta("Account questions answers", ["account_questions"]),
         )
 
@@ -408,7 +424,9 @@ class TestSequentialExecution:
             subtasks,
         )
 
-        spine.handle_chat("Refund and account questions", context={"thread_id": "test_seq_3"})
+        spine.handle_chat(
+            "Refund and account questions", context={"thread_id": "test_seq_3"}
+        )
         spine.handle_chat("1", context={"thread_id": "test_seq_3"})
         spine.handle_chat("1", context={"thread_id": "test_seq_3"})
 
@@ -468,12 +486,16 @@ class TestAgentRouting:
         faq = TrackingAgent(
             "faq_agent",
             responses=[{"answer": "Info.", "text": "Info.", "score": 0.85}],
-            meta=_domain_agent_meta("Answers policy questions about returns", ["policy_questions"]),
+            meta=_domain_agent_meta(
+                "Answers policy questions about returns", ["policy_questions"]
+            ),
         )
         other = TrackingAgent(
             "other_agent",
             responses=[{"answer": "Done.", "text": "Done.", "score": 0.8}],
-            meta=_domain_agent_meta("Handles order tracking and shipment", ["order_tracking"]),
+            meta=_domain_agent_meta(
+                "Handles order tracking and shipment", ["order_tracking"]
+            ),
         )
 
         subtasks = [
@@ -563,9 +585,13 @@ class TestTaskDecline:
             subtasks,
         )
 
-        spine.handle_chat("Refund and complaint", context={"thread_id": "test_decline_partial_1"})
+        spine.handle_chat(
+            "Refund and complaint", context={"thread_id": "test_decline_partial_1"}
+        )
         spine.handle_chat("1", context={"thread_id": "test_decline_partial_1"})
-        result = spine.handle_chat("no thanks", context={"thread_id": "test_decline_partial_1"})
+        result = spine.handle_chat(
+            "no thanks", context={"thread_id": "test_decline_partial_1"}
+        )
 
         assert result.get("orchestration_pattern") == "aop_plan_declined"
         ctx = THREAD_CTX.get("test_decline_partial_1", {})
@@ -589,7 +615,9 @@ class TestSelectionMethods:
         agent_b = TrackingAgent(
             "agent_b",
             responses=[{"answer": "B done.", "text": "B done.", "score": 0.85}],
-            meta=_domain_agent_meta("Handles account questions tasks", ["account_questions"]),
+            meta=_domain_agent_meta(
+                "Handles account questions tasks", ["account_questions"]
+            ),
         )
 
         subtasks = [
@@ -748,7 +776,9 @@ class TestDomainAgentMultiTurnInAOP:
         )
         spine.handle_chat("1", context={"thread_id": "test_followup_1"})
         # Answer clarification
-        r3 = spine.handle_chat("john@email.com", context={"thread_id": "test_followup_1"})
+        r3 = spine.handle_chat(
+            "john@email.com", context={"thread_id": "test_followup_1"}
+        )
 
         # Should have been handled by refund_agent (sticky route)
         assert r3.get("agent_id") == "refund_agent"
@@ -857,8 +887,12 @@ class TestSlotPropagation:
         )
         agent_b = TrackingAgent(
             "agent_b",
-            responses=[{"answer": "Task B done.", "text": "Task B done.", "score": 0.85}],
-            meta=_domain_agent_meta("Complaint with slot handling", ["complaint_with_slots"]),
+            responses=[
+                {"answer": "Task B done.", "text": "Task B done.", "score": 0.85}
+            ],
+            meta=_domain_agent_meta(
+                "Complaint with slot handling", ["complaint_with_slots"]
+            ),
         )
 
         subtasks = [
@@ -992,7 +1026,13 @@ class TestFullLifecycle:
         """Simple lifecycle: menu → task 1 → remaining → task 2 → done."""
         refund = TrackingAgent(
             "refund_agent",
-            responses=[{"answer": "Refund processed.", "text": "Refund processed.", "score": 0.9}],
+            responses=[
+                {
+                    "answer": "Refund processed.",
+                    "text": "Refund processed.",
+                    "score": 0.9,
+                }
+            ],
             meta=_domain_agent_meta("Refund payment processing", ["refund_payment"]),
         )
         faq = TrackingAgent(
@@ -1049,17 +1089,23 @@ class TestThreeTaskLifecycle:
         agent_a = TrackingAgent(
             "agent_a",
             responses=[{"answer": "A done.", "text": "A done.", "score": 0.9}],
-            meta=_domain_agent_meta("Handles refund processing tasks", ["refund_processing"]),
+            meta=_domain_agent_meta(
+                "Handles refund processing tasks", ["refund_processing"]
+            ),
         )
         agent_b = TrackingAgent(
             "agent_b",
             responses=[{"answer": "B done.", "text": "B done.", "score": 0.85}],
-            meta=_domain_agent_meta("Handles complaint handling tasks", ["complaint_handling"]),
+            meta=_domain_agent_meta(
+                "Handles complaint handling tasks", ["complaint_handling"]
+            ),
         )
         agent_c = TrackingAgent(
             "agent_c",
             responses=[{"answer": "C done.", "text": "C done.", "score": 0.8}],
-            meta=_domain_agent_meta("Handles account inquiry tasks", ["account_inquiry"]),
+            meta=_domain_agent_meta(
+                "Handles account inquiry tasks", ["account_inquiry"]
+            ),
         )
 
         subtasks = [

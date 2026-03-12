@@ -28,7 +28,6 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import yaml
 
-
 # ------------------------------------------------------------
 # Upload placeholder resolution
 # ------------------------------------------------------------
@@ -143,7 +142,9 @@ def generate_agent(agent_spec: Dict[str, Any]) -> Path:
         print(f"[GEN] Copied template files for {agent_id}")
     else:
         # Minimal stub if no entrypoint and no template
-        (gen_dir / "agent.py").write_text(_default_agent_stub(agent_id), encoding="utf-8")
+        (gen_dir / "agent.py").write_text(
+            _default_agent_stub(agent_id), encoding="utf-8"
+        )
 
     print(f"[GEN] Agent '{agent_id}' generated at {gen_dir}")
     return gen_dir

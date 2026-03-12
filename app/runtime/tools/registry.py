@@ -26,6 +26,7 @@ Usage:
     # Pass to engine — no engine changes required
     engine = GenericWorkflowEngine(..., tools=registry.as_callable_dict())
 """
+
 from __future__ import annotations
 
 import logging
@@ -133,7 +134,8 @@ class ToolRegistry:
 
             else:
                 raise ValueError(
-                    f"Unknown tool type '{kind}' for tool '{name}'. " "Expected: stub | http | sql"
+                    f"Unknown tool type '{kind}' for tool '{name}'. "
+                    "Expected: stub | http | sql"
                 )
 
     def load_mcp_servers(self, mcp_configs: List[Dict[str, Any]]) -> None:
@@ -158,7 +160,9 @@ class ToolRegistry:
             )
             return
 
-        enabled = [c for c in mcp_configs if c.get("enabled", True) and not c.get("_disabled")]
+        enabled = [
+            c for c in mcp_configs if c.get("enabled", True) and not c.get("_disabled")
+        ]
         if not enabled:
             return
 

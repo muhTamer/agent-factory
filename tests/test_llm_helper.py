@@ -8,11 +8,10 @@ def test_detect_signals_llm_normalizes_generic(monkeypatch):
         del sys.modules["app.dua_v0"]
     dua = importlib.import_module("app.dua_v0")
 
-    # Patch chat_json used inside the helper
-    from app import llm_client
-
+    # Patch chat_json on the dua_v0 module directly, since it imports
+    # chat_json at the top level (from app.llm_client import chat_json).
     monkeypatch.setattr(
-        llm_client,
+        dua,
         "chat_json",
         lambda **kw: {
             "primary": "general",  # should normalize to general_service if normalization is in helper

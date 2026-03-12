@@ -17,6 +17,7 @@ Usage:
     for name, tool in tools.items():
         registry.register(name, tool)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -102,10 +103,14 @@ class MCPManager:
 
     def __init__(self) -> None:
         if not _MCP_AVAILABLE:
-            raise ImportError("MCP package not installed. Install with: pip install 'mcp>=1.26.0'")
+            raise ImportError(
+                "MCP package not installed. Install with: pip install 'mcp>=1.26.0'"
+            )
         self._connections: Dict[str, MCPServerConnection] = {}
         self._loop = asyncio.new_event_loop()
-        self._thread = threading.Thread(target=self._run_loop, daemon=True, name="mcp-event-loop")
+        self._thread = threading.Thread(
+            target=self._run_loop, daemon=True, name="mcp-event-loop"
+        )
         self._thread.start()
 
     def _run_loop(self) -> None:
@@ -123,7 +128,9 @@ class MCPManager:
     def is_connected(self) -> bool:
         return len(self._connections) > 0
 
-    def connect_servers(self, server_configs: List[Dict[str, Any]]) -> Dict[str, List[str]]:
+    def connect_servers(
+        self, server_configs: List[Dict[str, Any]]
+    ) -> Dict[str, List[str]]:
         """
         Connect to all enabled MCP servers and discover their tools.
 
@@ -133,7 +140,11 @@ class MCPManager:
         Returns:
             {server_id: [tool_names]} for logging/diagnostics.
         """
-        enabled = [c for c in server_configs if c.get("enabled", True) and not c.get("_disabled")]
+        enabled = [
+            c
+            for c in server_configs
+            if c.get("enabled", True) and not c.get("_disabled")
+        ]
         if not enabled:
             _log.info("[MCP] No enabled MCP servers configured.")
             return {}
@@ -182,7 +193,11 @@ class MCPManager:
                 schema = {}
                 description = ""
                 if hasattr(mcp_tool, "inputSchema"):
-                    schema = mcp_tool.inputSchema if isinstance(mcp_tool.inputSchema, dict) else {}
+                    schema = (
+                        mcp_tool.inputSchema
+                        if isinstance(mcp_tool.inputSchema, dict)
+                        else {}
+                    )
                 if hasattr(mcp_tool, "description"):
                     description = mcp_tool.description or ""
 
@@ -232,7 +247,9 @@ class MCPManager:
 
     # ---- Async internals --------------------------------------------------
 
-    async def _connect_server(self, config: Dict[str, Any]) -> Optional[MCPServerConnection]:
+    async def _connect_server(
+        self, config: Dict[str, Any]
+    ) -> Optional[MCPServerConnection]:
         """Connect to a single MCP server and discover its tools."""
         server_id = config.get("id", "unnamed")
         transport = config.get("transport", "stdio").lower()
@@ -243,7 +260,9 @@ class MCPManager:
             elif transport in ("streamable_http", "sse", "http"):
                 transport_cm, streams = await self._enter_http(config)
             else:
-                _log.warning("[MCP] Unknown transport '%s' for server '%s'", transport, server_id)
+                _log.warning(
+                    "[MCP] Unknown transport '%s' for server '%s'", transport, server_id
+                )
                 return None
 
             read_stream, write_stream = streams
@@ -331,7 +350,9 @@ class MCPManager:
                 for item in result.content:
                     if hasattr(item, "text"):
                         error_text += item.text
-            raise RuntimeError(f"MCP tool returned error: {error_text or 'unknown error'}")
+            raise RuntimeError(
+                f"MCP tool returned error: {error_text or 'unknown error'}"
+            )
 
         # Prefer structuredContent if available (already dict-like)
         if hasattr(result, "structuredContent") and result.structuredContent:

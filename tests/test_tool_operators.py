@@ -12,6 +12,7 @@ Tests verify:
   - metadata() returns correct id, type, ready
   - handle() returns the stub response with correct fields
 """
+
 import importlib.util
 import sys
 from pathlib import Path

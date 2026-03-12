@@ -7,6 +7,7 @@ Supports:
 - Plain text policies (LLM-assisted extraction)
 - PDF policies (OCR + LLM extraction)
 """
+
 from __future__ import annotations
 
 import yaml
@@ -62,13 +63,17 @@ class YAMLPolicyParser(PolicyParser):
         # Parse eligibility rules
         if "eligibility" in data:
             rules.extend(
-                self._parse_eligibility_section(data["eligibility"], source_file, "eligibility")
+                self._parse_eligibility_section(
+                    data["eligibility"], source_file, "eligibility"
+                )
             )
 
         # Parse amount rules
         if "amount_rules" in data:
             rules.extend(
-                self._parse_amount_rules_section(data["amount_rules"], source_file, "amount_rules")
+                self._parse_amount_rules_section(
+                    data["amount_rules"], source_file, "amount_rules"
+                )
             )
 
         # Parse risk controls
@@ -81,17 +86,25 @@ class YAMLPolicyParser(PolicyParser):
 
         # Parse execution rules
         if "execution" in data:
-            rules.extend(self._parse_execution_section(data["execution"], source_file, "execution"))
+            rules.extend(
+                self._parse_execution_section(
+                    data["execution"], source_file, "execution"
+                )
+            )
 
         # Parse escalation rules
         if "escalation" in data:
             rules.extend(
-                self._parse_escalation_section(data["escalation"], source_file, "escalation")
+                self._parse_escalation_section(
+                    data["escalation"], source_file, "escalation"
+                )
             )
 
         # Parse privacy rules
         if "privacy" in data:
-            rules.extend(self._parse_privacy_section(data["privacy"], source_file, "privacy"))
+            rules.extend(
+                self._parse_privacy_section(data["privacy"], source_file, "privacy")
+            )
 
         return rules
 
@@ -164,7 +177,9 @@ class YAMLPolicyParser(PolicyParser):
                     else:
                         op = OperatorType.LE
 
-                    conditions_list.append(Condition("refund_amount_requested", op, threshold))
+                    conditions_list.append(
+                        Condition("refund_amount_requested", op, threshold)
+                    )
 
             if item.get("conditions"):
                 conditions_list.append(self._parse_conditions(item["conditions"]))
@@ -231,7 +246,11 @@ class YAMLPolicyParser(PolicyParser):
             action_type = item.get("action", "escalate")
             action = Action(
                 action_type,
-                {"reason": (description[:100] if description else "Risk control triggered")},
+                {
+                    "reason": (
+                        description[:100] if description else "Risk control triggered"
+                    )
+                },
             )
 
             citation = Citation(
@@ -276,7 +295,9 @@ class YAMLPolicyParser(PolicyParser):
                         # Extract condition from if statement
                         condition_str = if_clause.split("==")[0].strip()
                         condition_val = (
-                            if_clause.split("==")[1].strip() if "==" in if_clause else "true"
+                            if_clause.split("==")[1].strip()
+                            if "==" in if_clause
+                            else "true"
                         )
 
                         # Parse value (remove quotes)
@@ -287,7 +308,9 @@ class YAMLPolicyParser(PolicyParser):
                         elif condition_val.lower() == "false":
                             condition_val = False
 
-                        conditions = Condition(condition_str, OperatorType.EQ, condition_val)
+                        conditions = Condition(
+                            condition_str, OperatorType.EQ, condition_val
+                        )
                         action_type = nested.get("action", "execute")
 
                         action = Action(
@@ -355,7 +378,11 @@ class YAMLPolicyParser(PolicyParser):
 
             action = Action(
                 "escalate",
-                {"reason": (description[:100] if description else "Escalation triggered")},
+                {
+                    "reason": (
+                        description[:100] if description else "Escalation triggered"
+                    )
+                },
             )
 
             citation = Citation(

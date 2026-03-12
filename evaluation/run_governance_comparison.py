@@ -21,6 +21,7 @@ Outputs:
     governance_comparison.json  — per-level metrics + trade-off deltas
     governance_results.csv      — one row per (scenario, governance_level)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,7 +41,10 @@ if str(ROOT) not in sys.path:
 
 from app.orchestration.aop_coordinator import AOPCoordinator  # noqa: E402
 from app.orchestration.performance_store import PerformanceStore  # noqa: E402
-from app.runtime.governance_config import GovernanceConfig, GovernanceLevel  # noqa: E402
+from app.runtime.governance_config import (  # noqa: E402
+    GovernanceConfig,
+    GovernanceLevel,
+)
 from app.runtime.governance_guardrails import GovernanceAwareGuardrails  # noqa: E402
 from app.runtime.policy_pack import PolicyPack  # noqa: E402
 from app.runtime.registry import AgentRegistry  # noqa: E402
@@ -56,7 +60,9 @@ from evaluation.mock_factory import build_scenario_mock  # noqa: E402
 from evaluation.run_evaluation import StubAgent  # noqa: E402
 
 # ── Scenarios path (governance-specific ONLY) ────────────────────────
-RQ3_SCENARIOS_PATH = Path(__file__).resolve().parent / "scenarios" / "governance_scenarios.json"
+RQ3_SCENARIOS_PATH = (
+    Path(__file__).resolve().parent / "scenarios" / "governance_scenarios.json"
+)
 
 
 # ── Governance-specific stub agents ──────────────────────────────────
@@ -255,7 +261,9 @@ class GovernanceRouter:
             return self._plan("jargon_agent", "explanation keyword")
 
         # 3. General refund inquiry (NO transaction ref) → inquiry_agent
-        has_tx = bool(re.search(r"(order\s*#?\d|transaction\s*#?\d|EUR\s*\d)", q, re.IGNORECASE))
+        has_tx = bool(
+            re.search(r"(order\s*#?\d|transaction\s*#?\d|EUR\s*\d)", q, re.IGNORECASE)
+        )
         if ("information" in q or "tell me" in q or "about" in q) and not has_tx:
             if "refund" in q:
                 return self._plan("inquiry_agent", "refund inquiry without tx")
@@ -313,7 +321,9 @@ def build_governed_spine(
 
     guardrails = GovernanceAwareGuardrails(pack=pack, config=config)
 
-    perf_store = PerformanceStore(path=str(tmp_dir / f"eval_perf_{config.level.value}.json"))
+    perf_store = PerformanceStore(
+        path=str(tmp_dir / f"eval_perf_{config.level.value}.json")
+    )
     aop = AOPCoordinator(registry=registry, performance_store=perf_store)
     router = GovernanceRouter(registry)
 
@@ -429,7 +439,9 @@ def export_comparison(
 
     # JSON summary
     summary_path = output_dir / "governance_comparison.json"
-    summary_path.write_text(json.dumps(comparison, indent=2, default=str), encoding="utf-8")
+    summary_path.write_text(
+        json.dumps(comparison, indent=2, default=str), encoding="utf-8"
+    )
 
     # CSV: one row per (scenario, level)
     csv_path = output_dir / "governance_results.csv"

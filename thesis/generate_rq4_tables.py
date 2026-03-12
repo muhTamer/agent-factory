@@ -11,6 +11,7 @@ Outputs (to thesis/output/tables/):
     rq4_strategy_persona_matrix.md / .tex — Table: Strategy x Persona grid
     rq4_tts_by_category.md / .tex      — Table: TTS scores by scenario category
 """
+
 from __future__ import annotations
 
 import json
@@ -280,7 +281,9 @@ def main():
     for name, fn in tables.items():
         md = fn(metrics)
         (OUTPUT_DIR / f"{name}.md").write_text(md, encoding="utf-8")
-        (OUTPUT_DIR / f"{name}.tex").write_text(_md_table_to_latex(md), encoding="utf-8")
+        (OUTPUT_DIR / f"{name}.tex").write_text(
+            _md_table_to_latex(md), encoding="utf-8"
+        )
         print(f"  [OK] {name}.md + .tex")
 
     print(f"\n  Output: {OUTPUT_DIR.resolve()}")
