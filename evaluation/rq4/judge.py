@@ -11,6 +11,7 @@ Supports two modes:
   - Real mode: Uses app.llm_client.chat_json for actual LLM evaluation
   - Mock mode: Returns deterministic persona-biased scores for CI/testing
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -19,7 +20,6 @@ from typing import Any, Dict, Optional, Protocol
 
 from evaluation.rq4.personas import Persona
 from evaluation.rq4.strategies import Strategy
-
 
 # ── Result dataclass ──────────────────────────────────────────────────
 
@@ -82,7 +82,9 @@ class LLMJudge:
         from app.llm_client import chat_json
 
         system_prompt = self._build_system_prompt(persona)
-        user_prompt = self._build_user_prompt(persona, scenario_description, query, response_text)
+        user_prompt = self._build_user_prompt(
+            persona, scenario_description, query, response_text
+        )
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -254,7 +256,9 @@ class MockJudge:
         )
 
         # Small deterministic perturbation from scenario_id
-        h = int(hashlib.md5(f"{scenario_id}:{persona.slug}".encode()).hexdigest()[:4], 16)
+        h = int(
+            hashlib.md5(f"{scenario_id}:{persona.slug}".encode()).hexdigest()[:4], 16
+        )
         perturbation = (h % 3) - 1  # -1, 0, or +1
 
         # Category adjustment

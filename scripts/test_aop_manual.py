@@ -45,7 +45,11 @@ class StubRefundAgent:
             "id": "refund_agent",
             "type": "workflow_runner",
             "description": "Handles refund requests and processes returns for customers",
-            "capabilities": ["refund_processing", "return_handling", "payment_reversal"],
+            "capabilities": [
+                "refund_processing",
+                "return_handling",
+                "payment_reversal",
+            ],
             "ready": True,
         }
 
@@ -113,7 +117,11 @@ def main():
             return RoutePlan(
                 primary=primary,
                 strategy="single",
-                candidates=[Candidate(id=primary, score=1.0, reason="default")] if primary else [],
+                candidates=(
+                    [Candidate(id=primary, score=1.0, reason="default")]
+                    if primary
+                    else []
+                ),
             )
 
     # -- Setup --
@@ -124,7 +132,9 @@ def main():
     registry = AgentRegistry()
     registry.register("refund_agent", StubRefundAgent(), StubRefundAgent().metadata())
     registry.register("faq_agent", StubFAQAgent(), StubFAQAgent().metadata())
-    registry.register("account_agent", StubAccountAgent(), StubAccountAgent().metadata())
+    registry.register(
+        "account_agent", StubAccountAgent(), StubAccountAgent().metadata()
+    )
     print(f"\n[SETUP] Registered agents: {registry.all_ids()}")
 
     store = PerformanceStore(path=".factory/test_performance_history.json")
@@ -142,11 +152,15 @@ def main():
     print("-" * 70)
     print("TEST 1: Multi-intent query (expecting hierarchical_delegation)")
     print("-" * 70)
-    multi_query = "I need a refund for order #12345 AND please update my email to new@example.com"
+    multi_query = (
+        "I need a refund for order #12345 AND please update my email to new@example.com"
+    )
     print(f"Query: {multi_query}\n")
 
     result1 = spine.handle_chat(multi_query, context={"thread_id": "test_multi"})
-    print(f"\nOrchestration pattern: {result1.get('orchestration_pattern', 'direct (no AOP)')}")
+    print(
+        f"\nOrchestration pattern: {result1.get('orchestration_pattern', 'direct (no AOP)')}"
+    )
     if "subtask_results" in result1:
         print(f"Subtasks: {len(result1['subtask_results'])}")
         for st in result1["subtask_results"]:
@@ -155,7 +169,9 @@ def main():
             )
             print(f"    Subtask: {st['subtask'][:80]}")
         print(f"\nCompleteness: {result1.get('completeness', {}).get('complete')}")
-        print(f"Coverage ratio: {result1.get('completeness', {}).get('coverage_ratio')}")
+        print(
+            f"Coverage ratio: {result1.get('completeness', {}).get('coverage_ratio')}"
+        )
     print(
         f"\nResponse text:\n{result1.get('text', result1.get('answer', result1.get('error', 'N/A')))[:500]}"
     )
@@ -194,7 +210,9 @@ def main():
             "I want a refund and also what is the return window?",
             context={"thread_id": "test_history"},
         )
-        print(f"Orchestration pattern: {result3.get('orchestration_pattern', 'direct')}")
+        print(
+            f"Orchestration pattern: {result3.get('orchestration_pattern', 'direct')}"
+        )
         if "solvability" in result3:
             print("Solvability scores (now includes history):")
             for subtask, score in result3["solvability"]["assignment_scores"].items():

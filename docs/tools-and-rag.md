@@ -87,6 +87,71 @@ class SQLTool(ITool):
 - **Named params** — `:param_name` substituted from slots
 - **First row returned** — Columns renamed via `slot_map`
 
+#### MCP Adapter (`app/runtime/tools/adapters/mcp.py`)
+
+Connects to any [Model Context Protocol](https://modelcontextprotocol.io/) server and exposes each of its tools as a standard `ITool`:
+
+```python
+class MCPTool(ITool):
+    def __init__(self, name, mcp_tool_name, server_id, schema, description, manager, timeout)
+    def execute(self, slots, context) -> Dict
+    def describe(self) -> Dict
+```
+
+- **Auto-discovery** — Tools are discovered at startup via `list_tools()`; no manual registration needed
+- **Schema extraction** — JSON Schema from the MCP server is used to filter relevant slot keys and generate parameter descriptions for the LLM prompt
+- **Sync bridge** — The async MCP SDK is bridged to the synchronous `ITool.execute()` contract via `MCPManager` (see below)
+- **Prefixed names** — When `tool_prefix: true`, tools are registered as `{server_id}.{tool_name}` to avoid collisions (e.g., `demo.lookup_customer`)
+
+### MCPManager (`app/runtime/tools/mcp_manager.py`)
+
+Singleton that manages MCP server connections, tool discovery, and lifecycle:
+
+```python
+class MCPManager:
+    @classmethod
+    def get_instance(cls) -> MCPManager        # Thread-safe singleton
+    def connect_servers(configs) -> Dict[str, List[str]]  # Connect + discover
+    def get_tools() -> Dict[str, MCPTool]      # All discovered tools
+    def call_tool_sync(server_id, tool_name, arguments, timeout) -> Dict
+    def shutdown() -> None                      # Graceful cleanup
+```
+
+**Architecture:**
+
+```
+Main thread (sync)          Background daemon thread (async)
+─────────────────           ─────────────────────────────────
+ITool.execute()
+  │
+  ├─► MCPManager.call_tool_sync()
+  │       │
+  │       ├─► asyncio.run_coroutine_threadsafe()  ─►  event loop
+  │       │                                             │
+  │       │                                        session.call_tool()
+  │       │                                             │
+  │       ◄─── future.result(timeout) ◄────────────────┘
+  │
+  ▼
+  slot updates merged into ReAct state
+```
+
+**Transport support:**
+
+| Transport | Config keys | Use case |
+|-----------|-------------|----------|
+| `stdio` | `command`, `args`, `env` | Local process (subprocess) |
+| `streamable_http` | `url`, `headers` | Remote MCP server |
+
+**Result parsing priority:**
+1. `structuredContent` — Used directly if present (MCP 1.x)
+2. Text content — Parsed as JSON; if dict, merged as slot updates
+3. Fallback — `{"status": "completed"}` if no parseable content
+
+**Optional dependency** — The `mcp` package import is guarded. If not installed, MCP configuration is silently skipped and the system falls back to stub/HTTP/SQL tools.
+
+---
+
 ### Stub Tools (`app/runtime/tools/stub_tools.py`)
 
 Pre-defined demo implementations that return happy-path results for any input:
@@ -317,4 +382,125 @@ Tools can be configured via `tools_config.json`:
 }
 ```
 
-When `tools_config.json` exists in `.factory/`, agents attempt to load HTTP/SQL tools from it as a secondary source after stub tools.
+### MCP Server Configuration
+
+MCP servers are declared in the `mcp_servers` array. Each entry describes one server; tools are auto-discovered at startup:
+
+```json
+{
+  "mcp_servers": [
+    {
+      "enabled": true,
+      "id": "demo",
+      "transport": "stdio",
+      "command": "python",
+      "args": ["tests/fixtures/configurable_mcp_server.py", "tests/fixtures/mcp_tools_config.json"],
+      "env": {},
+      "timeout": 30,
+      "tool_prefix": true
+    },
+    {
+      "enabled": false,
+      "id": "remote_tools",
+      "transport": "streamable_http",
+      "url": "https://example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCP_TOKEN}"
+      },
+      "timeout": 15,
+      "tool_prefix": true
+    }
+  ]
+}
+```
+
+**MCP server config fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Unique server identifier; used as tool name prefix |
+| `enabled` | No | `true` (default) to connect at startup |
+| `transport` | Yes | `"stdio"` (local process) or `"streamable_http"` (remote) |
+| `command` | stdio | Executable to launch (e.g., `"python"`) |
+| `args` | stdio | Command-line arguments (e.g., `["server.py"]`) |
+| `url` | http | Remote MCP endpoint URL |
+| `headers` | http | Static headers; `${ENV_VAR}` tokens expanded from `os.environ` |
+| `env` | No | Environment variables passed to the subprocess |
+| `timeout` | No | Connection/call timeout in seconds (default: 30) |
+| `tool_prefix` | No | Prefix tool names with `{id}.` to avoid collisions (default: `true`) |
+
+### Configurable MCP Server (`tests/fixtures/configurable_mcp_server.py`)
+
+A config-driven MCP server that reads tool definitions from a JSON file. Users define tools, parameters, responses, and conditional scenarios — no Python code required.
+
+**Config file format** (`tests/fixtures/mcp_tools_config.json`):
+
+```json
+{
+  "server_name": "demo-server",
+  "tools": [
+    {
+      "name": "lookup_payment",
+      "description": "Look up a payment by transaction ID.",
+      "parameters": {
+        "transaction_id": { "type": "string", "required": true }
+      },
+      "response": {
+        "transaction_id": "{{transaction_id}}",
+        "payment_found": true,
+        "settlement_status": "settled",
+        "original_transaction_amount": 2000
+      },
+      "scenarios": [
+        {
+          "_comment": "Payment not found",
+          "when": { "transaction_id": { "starts_with": "FAIL" } },
+          "response": { "payment_found": false, "message": "Not found." }
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Template syntax:**
+- `{{param_name}}` — Replaced with the input parameter value
+- `{{param_name:default}}` — Replaced with value, or `default` if not provided
+
+**Scenario condition operators:**
+
+| Operator | Example | Description |
+|----------|---------|-------------|
+| `starts_with` | `"starts_with": "FAIL"` | String prefix match (case-insensitive) |
+| `equals` | `"equals": "high"` | Exact match |
+| `contains` | `"contains": "fraud"` | Substring match (case-insensitive) |
+| `greater_than` | `"greater_than": 5000` | Numeric comparison |
+| `less_than` | `"less_than": 100` | Numeric comparison |
+| `in` | `"in": ["fraud", "regulatory"]` | Membership check |
+
+Scenarios are evaluated in order; the first match wins. The matched scenario's response is merged on top of the default response.
+
+**Hot-reload:** The server re-reads `mcp_tools_config.json` on every tool call, so edits to response values and scenarios take effect immediately without restarting the runtime. Tool names, parameters, and descriptions are registered once at startup (a restart is needed to add/remove tools or change signatures).
+
+### MCP Tool Config API (Concierge)
+
+The concierge API exposes CRUD endpoints for editing `mcp_tools_config.json` from the frontend:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/concierge/mcp-tools` | GET | Read the full tool config |
+| `/concierge/mcp-tools` | PUT | Replace the full tool config (tools list + server_name) |
+| `/concierge/mcp-tools/{tool_name}` | PUT | Update a single tool definition |
+| `/concierge/mcp-tools/{tool_name}` | DELETE | Delete a tool by name |
+
+The frontend exposes these via a **Configure Tools** slide-over panel in the Runtime step, allowing users to edit tool responses and scenarios while testing in the chat.
+
+### Startup Sequence
+
+When `tools_config.json` exists in `.factory/`, the service loads tools in this order:
+
+1. **Stub tools** — All 6 built-in stubs registered as baseline
+2. **Config overrides** — `tools` array entries replace stubs with HTTP/SQL implementations
+3. **MCP tools** — `mcp_servers` array entries connect to MCP servers and register discovered tools
+
+MCP tools are additive — they do not replace stub tools unless they share the same name (unlikely with `tool_prefix: true`).

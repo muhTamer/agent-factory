@@ -13,13 +13,16 @@ build/
 # VSCode
 .vscode/
 
-# data
+
+# data (track policy YAML files and BankFAQs, ignore other large data files)
 data/*
-!data/BankFAQs.csv
-!data/refunds_policy.yaml
-*.csv
+!data/*.yaml
+!data/*.yml
 !data/BankFAQs.csv
 *.parquet
+
+# Node
+node_modules/
 
 # pytest cache
 .pytest_cache/

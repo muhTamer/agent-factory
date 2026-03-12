@@ -221,6 +221,43 @@ Strips patterns that expose internal system behavior:
 | Internal jargon | "workflow", "FSM", "slots", "router", "guardrail", "pipeline" |
 | File references | Any `*.csv`, `*.yaml`, `*.json`, `*.txt`, `*.md` references |
 
+### Configurable Guardrail Rules
+
+Guardrail rules are data-driven and can be toggled at runtime without restarting the system.
+
+#### GuardrailRule Dataclass
+
+```python
+@dataclass
+class GuardrailRule:
+    id: str            # Unique identifier (e.g., "hallucination_refund")
+    label: str         # Display name (e.g., "Hallucinated Refund Action")
+    description: str   # What this rule checks
+    category: str      # "safety" | "tone" | "internal" | "privacy"
+    severity: str      # "high" | "medium" | "low"
+    enabled: bool      # Active flag — toggled at runtime
+    patterns: List[str] # Regex patterns for detection
+```
+
+Rules are stored in `PolicyPack.guardrail_rules` and persisted to `spec/base_policy_pack.yaml`. Each rule maps to one or more regex patterns used by pre- or post-guardrails.
+
+#### Admin API
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/guardrails` | List all rules with current enabled state, policy pack name, version |
+| `PATCH` | `/guardrails/{rule_id}` | Toggle a rule on/off (`{"enabled": true/false}`) |
+
+Toggling a rule:
+1. Updates `PolicyPack.guardrail_rules[rule_id].enabled` in memory
+2. Persists the change to `spec/base_policy_pack.yaml` on disk
+3. Calls `_rebuild_guardrails()` to hot-swap `spine.guardrails` — no restart needed
+4. Takes effect on the next request immediately
+
+#### Frontend Admin Panel
+
+The `GuardrailsAdminPanel` component (see [Frontend docs](frontend.md#guardrailsadminpanel)) provides a UI for toggling rules. It appears in the Safety & Compliance section of the explainability sidebar.
+
 ### Governance-Level Guardrails
 
 `GovernanceGuardrails` (`app/runtime/governance_guardrails.py`) wraps `PolicyGuardrails` with governance-level-aware feature toggles for RQ3 trade-off evaluation:

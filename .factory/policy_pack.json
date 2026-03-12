@@ -1,20 +1,95 @@
 {
-    "name": "default",
-    "version": "2",
-    "max_query_chars": 4000,
-    "route_to_intent": {
-        "refunds_workflow": "refund_request",
-        "faq_rag": "refund_policy_query",
-        "policy_guardrails": "refund_policy_query"
+  "name": "fintech",
+  "version": "3",
+  "max_query_chars": 4000,
+  "route_to_intent": {
+    "refunds_workflow": "refund_request",
+    "faq_rag": "refund_policy_query",
+    "policy_guardrails": "refund_policy_query"
+  },
+  "intent_rules": {
+    "refund_request": {
+      "mode": "allow"
     },
-    "intent_rules": {
-        "refund_request": {
-            "mode": "allow"
-        },
-        "refund_policy_query": {
-            "mode": "allow"
-        }
+    "refund_policy_query": {
+      "mode": "allow"
+    }
+  },
+  "blocked_phrases": [],
+  "pii_redaction": false,
+  "transaction_slot_keys": [
+    "payment_id",
+    "transaction_id",
+    "refund_id",
+    "order_id"
+  ],
+  "guardrail_rules": [
+    {
+      "id": "hallucination_action_claims",
+      "label": "Block hallucinated action claims",
+      "description": "Blocks responses that claim a refund or action was performed without evidence of a real workflow execution.",
+      "category": "safety",
+      "severity": "high",
+      "enabled": true,
+      "patterns": [
+        "(refund\\s+(has been|was|is)\\s+(initiated|processed|approved|completed)|refund_id\\s*[:=]|successfully\\s+refunded|refund\\s+of\\s+(EUR|USD|\\$)\\s*\\d+.*(?:initiated|processed))"
+      ]
     },
-    "blocked_phrases": [],
-    "pii_redaction": false
+    {
+      "id": "transaction_context",
+      "label": "Transaction context detection",
+      "description": "Detects when the user query contains a real transaction/order/case identifier. Used to avoid false positives in hallucination detection.",
+      "category": "safety",
+      "severity": "high",
+      "enabled": true,
+      "patterns": [
+        "(order\\s*(id|#|no\\.?|number)?\\s*:?\\s*\\d|transaction\\s*(id|#|no\\.?|number)?\\s*:?\\s*\\d|ORD-\\d|EUR\\s*\\d|USD\\s*\\d|\\$\\d)"
+      ]
+    },
+    {
+      "id": "tone_urgency",
+      "label": "Strip urgency questions",
+      "description": "Remove questions like 'Is this urgent?' from customer-facing text. Urgency is an internal triage signal.",
+      "category": "tone",
+      "severity": "low",
+      "enabled": true,
+      "patterns": [
+        "[\\s,]*\\b(?:is\\s+this|would\\s+you\\s+(?:say|consider)\\s+(?:this|it))\\s+urgent\\??\\s*"
+      ]
+    },
+    {
+      "id": "tone_async_promises",
+      "label": "Strip async follow-up promises",
+      "description": "Remove promises like 'I have forwarded your case' or 'I will get back to you' that the system cannot fulfil.",
+      "category": "tone",
+      "severity": "medium",
+      "enabled": true,
+      "patterns": [
+        "I(?:'ve| have)\\s+(?:forwarded|escalated|sent)\\s+(?:this|your|the)\\b[^.!?]*[.!?]?\\s*",
+        "I\\s+will\\s+(?:get back to you|follow up|notify you|let you know)\\b[^.!?]*[.!?]?\\s*"
+      ]
+    },
+    {
+      "id": "tone_strip_jargon",
+      "label": "Hide system jargon",
+      "description": "Remove internal system terms like 'workflow', 'FSM', 'pipeline', 'slots' from customer-facing text.",
+      "category": "internal",
+      "severity": "medium",
+      "enabled": true,
+      "patterns": [
+        "\\b(?:workflow|FSM|slot[s]?|router|guardrail|pipeline)\\b"
+      ]
+    },
+    {
+      "id": "tone_strip_file_refs",
+      "label": "Hide internal file names",
+      "description": "Remove references to internal files like 'BankFAQs.csv' or 'refunds_policy.yaml' from customer-facing text.",
+      "category": "internal",
+      "severity": "medium",
+      "enabled": true,
+      "patterns": [
+        "(?:\\(?(?:source|from|in|per|see|ref)\\s*:\\s*)?\\b\\w+\\.(?:csv|yaml|yml|json|txt|md|tsv|xlsx?|pdf)\\b\\)?"
+      ]
+    }
+  ]
 }

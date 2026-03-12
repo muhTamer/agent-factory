@@ -15,7 +15,9 @@ def _resolve_file_hint(hint: str) -> str | None:
     """Find a file in _DATA_DIRS whose name matches the hint (case-insensitive)."""
     hint_lower = hint.lower()
     # Also try segments: "refunds_policy" → ["refunds_policy", "refunds", "policy"]
-    segments = [hint_lower] + [s for s in hint_lower.replace(".", "_").split("_") if len(s) > 3]
+    segments = [hint_lower] + [
+        s for s in hint_lower.replace(".", "_").split("_") if len(s) > 3
+    ]
     for d in _DATA_DIRS:
         if not d.exists():
             continue
@@ -28,7 +30,9 @@ def _resolve_file_hint(hint: str) -> str | None:
     return None
 
 
-def _extract_file_refs_from_slots(workflow_spec: dict, docs: list, policies: list) -> None:
+def _extract_file_refs_from_slots(
+    workflow_spec: dict, docs: list, policies: list
+) -> None:
     """Scan workflow slot descriptions for file references and add to context.
 
     Mutates ``docs`` and ``policies`` in-place so resolved paths are
@@ -82,7 +86,9 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
 
     workflow_spec = inputs.get("workflow_spec")
     if not isinstance(workflow_spec, dict):
-        raise ValueError("workflow.build_agent requires inputs['workflow_spec'] as dict")
+        raise ValueError(
+            "workflow.build_agent requires inputs['workflow_spec'] as dict"
+        )
 
     docs = inputs.get("docs") or []
     policies = inputs.get("policies") or []
@@ -121,9 +127,7 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
 
     # Generate the wrapper agent.py
     # NOTE: use Template ($agent_id) to avoid f-string brace collisions inside generated code
-    agent_src = Template(
-        textwrap.dedent(
-            """\
+    agent_src = Template(textwrap.dedent("""\
         # Auto-generated Workflow Runner agent ($agent_id)
         from __future__ import annotations
 
@@ -698,9 +702,7 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                     ),
                     "capabilities": ["multi_turn", "followups", "workflow", "policy_auto_events"],
                 }
-        """
-        )
-    ).substitute(agent_id=agent_id)
+        """)).substitute(agent_id=agent_id)
 
     (gen_dir / "agent.py").write_text(agent_src, encoding="utf-8")
     return gen_dir

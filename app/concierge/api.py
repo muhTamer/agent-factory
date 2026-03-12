@@ -6,6 +6,7 @@ Run with: python -m uvicorn app.concierge.api:app --port 8001
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -14,7 +15,7 @@ import requests as http_requests
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import app.llm_client as llm_client
 from app.concierge.concierge_agent import ConciergeAgent
@@ -25,6 +26,7 @@ from app.concierge.concierge_agent import ConciergeAgent
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "data"
 WORKSPACE = REPO_ROOT / ".workspace"
+MCP_TOOLS_CONFIG = REPO_ROOT / "tests" / "fixtures" / "mcp_tools_config.json"
 
 FINTECH_DATA_FILES = [
     DATA_DIR / "BankFAQs.csv",
@@ -56,7 +58,9 @@ _vertical: str = "retail"
 _model: str = "gpt-5-mini"
 
 
-def _get_or_create_agent(vertical: str | None = None, model: str | None = None) -> ConciergeAgent:
+def _get_or_create_agent(
+    vertical: str | None = None, model: str | None = None
+) -> ConciergeAgent:
     global _agent, _vertical, _model
     v = vertical or _vertical
     m = model or _model
@@ -204,7 +208,8 @@ def start_runtime(req: RuntimeRequest):
 def stop_runtime(req: RuntimeRequest):
     port = req.port
     kill_cmd = (
-        f'for /f "tokens=5" %%a in ' f"('netstat -ano ^| findstr :{port}') do taskkill /F /PID %%a"
+        f'for /f "tokens=5" %%a in '
+        f"('netstat -ano ^| findstr :{port}') do taskkill /F /PID %%a"
     )
     subprocess.Popen(kill_cmd, shell=True)
     return {"status": "stopped", "port": port}
@@ -244,3 +249,104 @@ def delete_workspace_file(filename: str):
         target.unlink()
         return {"deleted": filename}
     return {"error": f"File not found: {filename}"}
+
+
+# ---------------------------------------------------------------------------
+# MCP Tool Configuration endpoints
+# ---------------------------------------------------------------------------
+
+
+class McpToolUpdate(BaseModel):
+    """Full replacement for the mcp_tools_config.json content."""
+
+    tools: List[Dict[str, Any]]
+    server_name: str = "demo-server"
+
+
+class McpToolSingleUpdate(BaseModel):
+    """Update a single tool by name."""
+
+    tool: Dict[str, Any]
+
+
+@app.get("/concierge/mcp-tools")
+def get_mcp_tools_config():
+    """Return the current MCP tools configuration."""
+    if not MCP_TOOLS_CONFIG.exists():
+        return {"error": "mcp_tools_config.json not found", "tools": []}
+    try:
+        data = json.loads(MCP_TOOLS_CONFIG.read_text(encoding="utf-8"))
+        return data
+    except Exception as exc:
+        return {"error": str(exc), "tools": []}
+
+
+@app.put("/concierge/mcp-tools")
+def update_mcp_tools_config(req: McpToolUpdate):
+    """Replace the entire MCP tools configuration."""
+    try:
+        existing = {}
+        if MCP_TOOLS_CONFIG.exists():
+            existing = json.loads(MCP_TOOLS_CONFIG.read_text(encoding="utf-8"))
+        # Preserve metadata keys
+        existing["server_name"] = req.server_name
+        existing["tools"] = req.tools
+        MCP_TOOLS_CONFIG.write_text(
+            json.dumps(existing, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        return {"status": "saved", "tool_count": len(req.tools)}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@app.put("/concierge/mcp-tools/{tool_name}")
+def update_single_mcp_tool(tool_name: str, req: McpToolSingleUpdate):
+    """Update or add a single tool by name."""
+    try:
+        if not MCP_TOOLS_CONFIG.exists():
+            return {"error": "mcp_tools_config.json not found"}
+        data = json.loads(MCP_TOOLS_CONFIG.read_text(encoding="utf-8"))
+        tools: list = data.get("tools", [])
+        # Find and replace, or append
+        found = False
+        for i, t in enumerate(tools):
+            if t.get("name") == tool_name:
+                tools[i] = req.tool
+                found = True
+                break
+        if not found:
+            tools.append(req.tool)
+        data["tools"] = tools
+        MCP_TOOLS_CONFIG.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        return {
+            "status": "saved",
+            "tool_name": tool_name,
+            "action": "updated" if found else "added",
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@app.delete("/concierge/mcp-tools/{tool_name}")
+def delete_mcp_tool(tool_name: str):
+    """Delete a tool from the MCP tools configuration."""
+    try:
+        if not MCP_TOOLS_CONFIG.exists():
+            return {"error": "mcp_tools_config.json not found"}
+        data = json.loads(MCP_TOOLS_CONFIG.read_text(encoding="utf-8"))
+        tools: list = data.get("tools", [])
+        before = len(tools)
+        data["tools"] = [t for t in tools if t.get("name") != tool_name]
+        if len(data["tools"]) == before:
+            return {"error": f"Tool '{tool_name}' not found"}
+        MCP_TOOLS_CONFIG.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        return {"status": "deleted", "tool_name": tool_name}
+    except Exception as exc:
+        return {"error": str(exc)}

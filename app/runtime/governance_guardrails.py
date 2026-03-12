@@ -7,6 +7,7 @@ Each pre/post check can be independently enabled or disabled based on
 the GovernanceConfig, and every decision is logged as a governance event
 for RQ3 metrics collection.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -64,7 +65,9 @@ class GovernanceAwareGuardrails(Guardrails):
         # Delegate full pre-check to PolicyGuardrails
         result = self._inner.pre(query, context)
         action = "blocked" if not result.allowed else "allowed"
-        self._log("governance_pre_check", check="full", action=action, reason=result.reason)
+        self._log(
+            "governance_pre_check", check="full", action=action, reason=result.reason
+        )
         return result
 
     # ------------------------------------------------------------------
@@ -91,7 +94,9 @@ class GovernanceAwareGuardrails(Guardrails):
         if self.config.hallucination_detection:
             # Delegate to inner post and check if it blocks for hallucination
             inner_result = self._inner.post(response, context)
-            if not inner_result.allowed and "refund_initiated" in (inner_result.reason or ""):
+            if not inner_result.allowed and "hallucination" in (
+                inner_result.reason or ""
+            ):
                 self._log(
                     "governance_post_block",
                     check="hallucination",

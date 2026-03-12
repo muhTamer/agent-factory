@@ -11,6 +11,7 @@ Covers:
 - Tool invocation via call:<tool_name> actions
 - Unknown/invalid events are silently ignored
 """
+
 from app.runtime.workflow_engine import GenericWorkflowEngine
 
 # ---------------------------------------------------------------------------
@@ -22,9 +23,17 @@ SIMPLE_SPEC = {
     "description": "Simple test workflow",
     "engine": "fsm",
     "slots": {
-        "customer_id": {"type": "string", "required": True, "description": "Customer ID"},
+        "customer_id": {
+            "type": "string",
+            "required": True,
+            "description": "Customer ID",
+        },
         "amount": {"type": "number", "required": True, "description": "Amount"},
-        "reason": {"type": "string", "required": False, "description": "Optional reason"},
+        "reason": {
+            "type": "string",
+            "required": False,
+            "description": "Optional reason",
+        },
     },
     "states": {
         "collect_info": {
@@ -91,20 +100,26 @@ def test_slots_initialized_to_none():
 
 def test_valid_event_transitions_to_next_state():
     eng = _make_engine()
-    eng.handle({"event": "info_provided", "slots": {"customer_id": "C1", "amount": 100.0}})
+    eng.handle(
+        {"event": "info_provided", "slots": {"customer_id": "C1", "amount": 100.0}}
+    )
     assert eng.current_state == "process"
 
 
 def test_transition_appends_to_history():
     eng = _make_engine()
-    eng.handle({"event": "info_provided", "slots": {"customer_id": "C1", "amount": 100.0}})
+    eng.handle(
+        {"event": "info_provided", "slots": {"customer_id": "C1", "amount": 100.0}}
+    )
     assert len(eng.history) == 2
     assert eng.history[1]["state"] == "process"
 
 
 def test_success_event_reaches_completed_terminal():
     eng = _make_engine()
-    eng.handle({"event": "info_provided", "slots": {"customer_id": "C1", "amount": 100.0}})
+    eng.handle(
+        {"event": "info_provided", "slots": {"customer_id": "C1", "amount": 100.0}}
+    )
     res = eng.handle({"event": "success", "slots": {}})
     assert res["current_state"] == "completed"
     assert res["terminal"] is True
@@ -112,7 +127,9 @@ def test_success_event_reaches_completed_terminal():
 
 def test_failure_event_reaches_failed_terminal():
     eng = _make_engine()
-    eng.handle({"event": "info_provided", "slots": {"customer_id": "C1", "amount": 100.0}})
+    eng.handle(
+        {"event": "info_provided", "slots": {"customer_id": "C1", "amount": 100.0}}
+    )
     res = eng.handle({"event": "failure", "slots": {}})
     assert res["current_state"] == "failed"
     assert res["terminal"] is True
@@ -126,7 +143,9 @@ def test_unknown_event_is_silently_ignored():
 
 def test_event_in_terminal_state_returns_terminal_action():
     eng = _make_engine()
-    eng.handle({"event": "info_provided", "slots": {"customer_id": "C1", "amount": 100.0}})
+    eng.handle(
+        {"event": "info_provided", "slots": {"customer_id": "C1", "amount": 100.0}}
+    )
     eng.handle({"event": "success", "slots": {}})
     # Extra event after terminal → engine stays terminal
     res = eng.handle({"event": "info_provided", "slots": {}})
@@ -155,7 +174,9 @@ def test_slots_accumulate_across_multiple_calls():
 
 def test_slot_update_with_event_applies_before_transition():
     eng = _make_engine()
-    res = eng.handle({"event": "info_provided", "slots": {"customer_id": "C1", "amount": 75.0}})
+    res = eng.handle(
+        {"event": "info_provided", "slots": {"customer_id": "C1", "amount": 75.0}}
+    )
     assert res["slots"]["customer_id"] == "C1"
     assert res["slots"]["amount"] == 75.0
     assert res["current_state"] == "process"

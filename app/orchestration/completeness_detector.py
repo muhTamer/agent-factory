@@ -8,6 +8,7 @@ Audits a task decomposition plan for:
 
 Uses an LLM call to perform semantic analysis of coverage and overlap.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

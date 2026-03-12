@@ -7,6 +7,7 @@ Test 2: Multi-intent (documents + refund) — decompose → FAQ → refund actio
 
 Run:  pytest tests/test_e2e_scenarios.py -m integration -v
 """
+
 from __future__ import annotations
 
 import pytest
@@ -15,7 +16,6 @@ from typing import Dict, Any, List
 from app.runtime.domain_agent_engine import DomainAgentEngine, DomainAgentConfig
 from app.shared.rag import load_corpus, build_index
 from app.llm_client import chat_json
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -249,7 +249,9 @@ class TestMultiIntentDocumentsAndRefund:
         if r1.get("needs_input"):
             account_keywords = ["savings", "current", "fixed", "deposit", "account"]
             matches = sum(1 for kw in account_keywords if kw in answer)
-            assert matches >= 1, f"Clarification should mention account types, got: {answer[:200]}"
+            assert (
+                matches >= 1
+            ), f"Clarification should mention account types, got: {answer[:200]}"
             print(f"\n[Docs Turn 1] Agent asked: {r1['answer'][:200]}")
         else:
             # Direct answer — should mention documents
@@ -360,10 +362,18 @@ class TestMultiIntentDocumentsAndRefund:
         assert len(ks) > 0, "knowledge_sources must be populated"
         for entry in ks:
             assert "query" in entry, f"knowledge_source entry needs 'query': {entry}"
-            assert "sources" in entry, f"knowledge_source entry needs 'sources': {entry}"
-            assert len(entry["sources"]) > 0, f"sources list should not be empty: {entry}"
-            assert "passages" in entry, f"knowledge_source entry needs 'passages': {entry}"
-            assert len(entry["passages"]) > 0, f"passages list should not be empty: {entry}"
+            assert (
+                "sources" in entry
+            ), f"knowledge_source entry needs 'sources': {entry}"
+            assert (
+                len(entry["sources"]) > 0
+            ), f"sources list should not be empty: {entry}"
+            assert (
+                "passages" in entry
+            ), f"knowledge_source entry needs 'passages': {entry}"
+            assert (
+                len(entry["passages"]) > 0
+            ), f"passages list should not be empty: {entry}"
 
         print(f"\n[Explainability PASS] Sources: {ks[0].get('sources')}")
         print(f"  Query: {ks[0].get('query')}")

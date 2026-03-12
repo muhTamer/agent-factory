@@ -15,6 +15,7 @@ States:
   RESPOND  -> format answer with citations (terminal)
   DELEGATE -> signal spine to re-route (terminal)
 """
+
 from __future__ import annotations
 
 import json
@@ -131,8 +132,12 @@ class RAGFSMConfig:
 
     # Post-retrieval ambiguity detection (proactive clarification)
     enable_retrieval_clarification: bool = False  # Off by default for backward compat
-    ambiguity_score_flatness_threshold: float = 0.25  # top-k/top-1 ratio above this = flat
-    ambiguity_topic_diversity_threshold: float = 0.55  # avg pairwise Jaccard above this = diverse
+    ambiguity_score_flatness_threshold: float = (
+        0.25  # top-k/top-1 ratio above this = flat
+    )
+    ambiguity_topic_diversity_threshold: float = (
+        0.55  # avg pairwise Jaccard above this = diverse
+    )
     ambiguity_min_hits: int = 3  # Need at least this many hits to check ambiguity
     ambiguity_confidence_ceiling: float = 0.65  # Skip check if confidence is very high
 
@@ -408,14 +413,20 @@ class RAGFiniteStateMachine:
 
     # ── Clarification question generation ────────────────────────────
 
-    def _heuristic_clarification(self, query: str, passages: List[Dict[str, Any]]) -> str:
+    def _heuristic_clarification(
+        self, query: str, passages: List[Dict[str, Any]]
+    ) -> str:
         """Build a clarification question from passage topics without LLM."""
         query_tokens = set(_tok(query))
         options: List[str] = []
         for p in passages[:4]:
             text = p.get("text", "")
             # Extract the FAQ question part
-            q_part = text.split("A:")[0].replace("Q:", "").strip() if "A:" in text else text[:120]
+            q_part = (
+                text.split("A:")[0].replace("Q:", "").strip()
+                if "A:" in text
+                else text[:120]
+            )
             distinguishing = [t for t in _tok(q_part) if t not in query_tokens]
             if distinguishing:
                 options.append(" ".join(distinguishing[:5]))
@@ -431,7 +442,9 @@ class RAGFiniteStateMachine:
             "For example, what specific topic or product are you asking about?"
         )
 
-    def _generate_clarification_question(self, query: str, passages: List[Dict[str, Any]]) -> str:
+    def _generate_clarification_question(
+        self, query: str, passages: List[Dict[str, Any]]
+    ) -> str:
         """Generate a context-aware clarification question (LLM or heuristic fallback)."""
         if not self._llm_fn:
             return self._heuristic_clarification(query, passages)
@@ -443,10 +456,15 @@ class RAGFiniteStateMachine:
             "which topic they mean. List the 2-4 most distinct options.\n"
             'Return JSON: {"question": "your clarification question here"}'
         )
-        context = "\n\n".join(f"[{i + 1}] {p['text'][:200]}" for i, p in enumerate(passages))
+        context = "\n\n".join(
+            f"[{i + 1}] {p['text'][:200]}" for i, p in enumerate(passages)
+        )
         messages = [
             {"role": "system", "content": system},
-            {"role": "user", "content": f"Passages:\n{context}\n\nOriginal query: {query}"},
+            {
+                "role": "user",
+                "content": f"Passages:\n{context}\n\nOriginal query: {query}",
+            },
         ]
         try:
             raw = self._llm_fn(messages=messages, model=self.config.synthesis_model)
@@ -500,7 +518,10 @@ class RAGFiniteStateMachine:
             # Max rounds reached — delegate
             return self._state_delegate(
                 query,
-                solv or SolvabilitySignals(0.0, 0.0, 0.0, 0.0, True, "Max clarifications reached."),
+                solv
+                or SolvabilitySignals(
+                    0.0, 0.0, 0.0, 0.0, True, "Max clarifications reached."
+                ),
                 thread_id,
             )
 
@@ -568,7 +589,11 @@ class RAGFiniteStateMachine:
             sparse_scores.append((s, i))
 
         # Hybrid fusion if dense retrieval is enabled
-        if self.config.enable_dense_retrieval and self._embed_fn is not None and self._texts:
+        if (
+            self.config.enable_dense_retrieval
+            and self._embed_fn is not None
+            and self._texts
+        ):
             try:
                 scored = self._hybrid_retrieve(effective_query, sparse_scores)
             except Exception:
@@ -591,7 +616,10 @@ class RAGFiniteStateMachine:
             self.config.enable_retrieval_clarification
             and self._clarification_count < self.config.max_clarifications
             and len(top_hits) >= self.config.ambiguity_min_hits
-            and (solv is None or solv.confidence < self.config.ambiguity_confidence_ceiling)
+            and (
+                solv is None
+                or solv.confidence < self.config.ambiguity_confidence_ceiling
+            )
         ):
             # Use only the top ambiguity_min_hits entries for flatness
             # and diversity — we care whether the *best* matches are
@@ -769,7 +797,8 @@ class RAGFiniteStateMachine:
             dense_score = max(0.0, min(1.0, self._dot(q_vec, dv)))
             sparse_score = sparse_lookup.get(i, 0.0)
             combined = (
-                self.config.sparse_weight * sparse_score + self.config.dense_weight * dense_score
+                self.config.sparse_weight * sparse_score
+                + self.config.dense_weight * dense_score
             )
             fused.append((combined, i))
 
@@ -777,7 +806,9 @@ class RAGFiniteStateMachine:
 
     # ── LLM synthesis ─────────────────────────────────────────────
 
-    def _synthesize_answer(self, query: str, passages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _synthesize_answer(
+        self, query: str, passages: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Call LLM to synthesize a grounded answer from retrieved passages."""
         system = (
             "You are a helpful customer service assistant. "
@@ -794,7 +825,8 @@ class RAGFiniteStateMachine:
             'Return JSON: {"answer": "...", "cited_passages": [1, 2]}'
         )
         context = "\n\n".join(
-            f"[{i + 1}] (source: {p['source']}) {p['text']}" for i, p in enumerate(passages)
+            f"[{i + 1}] (source: {p['source']}) {p['text']}"
+            for i, p in enumerate(passages)
         )
         messages = [
             {"role": "system", "content": system},
@@ -843,7 +875,9 @@ class RAGFiniteStateMachine:
 
             # Deduplicate and append top tokens not already in query
             query_tokens = set(_tok(query))
-            new_tokens = [t for t in dict.fromkeys(prior_keywords) if t not in query_tokens][:5]
+            new_tokens = [
+                t for t in dict.fromkeys(prior_keywords) if t not in query_tokens
+            ][:5]
 
             if new_tokens:
                 return query + " " + " ".join(new_tokens)

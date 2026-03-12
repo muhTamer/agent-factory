@@ -12,6 +12,7 @@ Outputs (to thesis/output/traces/):
     trace_hitl_escalation.md
     traces_combined.md   — all four in one file
 """
+
 from __future__ import annotations
 
 import json
@@ -115,7 +116,9 @@ def synthesize_eval_trace(result: dict, title: str) -> str:
     """Build an annotated trace from evaluation result for AOP scenarios."""
     lines = [f"## {title}", ""]
     lines.append(f"**Query:** {result.get('turns', [{}])[0].get('query', 'N/A')}")
-    lines.append(f"**Scenario:** `{result['scenario_id']}` — {result.get('description', '')}")
+    lines.append(
+        f"**Scenario:** `{result['scenario_id']}` — {result.get('description', '')}"
+    )
     lines.append(f"**Category:** {result['category']}")
     lines.append(f"**Success:** {'✓' if result['success'] else '✗'}")
     lines.append(f"**Latency:** {result['latency_ms']:.1f} ms")
@@ -135,9 +138,13 @@ def synthesize_eval_trace(result: dict, title: str) -> str:
     lines.append("")
     lines.append("| Step | Stage | Details |")
     lines.append("|-----:|-------|---------|")
-    lines.append("| 1 | **Classification** | Pattern classified as " f"`{result['category']}`. |")
+    lines.append(
+        "| 1 | **Classification** | Pattern classified as " f"`{result['category']}`. |"
+    )
     if result["category"] in ("hierarchical_delegation", "hitl_escalation"):
-        lines.append("| 2 | **Task Decomposition** | " "LLM decomposed query into subtasks. |")
+        lines.append(
+            "| 2 | **Task Decomposition** | " "LLM decomposed query into subtasks. |"
+        )
         lines.append(
             "| 3 | **Agent Selection** | "
             f"Solvability estimator scored agents (best={solv:.2f}). |"
@@ -150,9 +157,12 @@ def synthesize_eval_trace(result: dict, title: str) -> str:
             else "| 4 | **Completeness Check** | Plan validated. |"
         )
         lines.append(
-            f"| 5 | **Execution** | " f"{result['agent_calls']} agent(s) executed subtasks. |"
+            f"| 5 | **Execution** | "
+            f"{result['agent_calls']} agent(s) executed subtasks. |"
         )
-        lines.append("| 6 | **Feedback** | " "Performance recorded to PerformanceStore. |")
+        lines.append(
+            "| 6 | **Feedback** | " "Performance recorded to PerformanceStore. |"
+        )
     else:
         lines.append(
             "| 2 | **Routing** | " f"Router selected agent (score={solv:.2f}). |"
@@ -160,7 +170,8 @@ def synthesize_eval_trace(result: dict, title: str) -> str:
             else "| 2 | **Routing** | Agent selected by router. |"
         )
         lines.append(
-            f"| 3 | **Execution** | " f"Agent handled query in {result['latency_ms']:.1f} ms. |"
+            f"| 3 | **Execution** | "
+            f"Agent handled query in {result['latency_ms']:.1f} ms. |"
         )
         lines.append(
             "| 4 | **Response** | "
@@ -197,7 +208,8 @@ def main():
     all_parts = [
         "# Execution Trace Examples",
         "",
-        "Annotated traces showing the RuntimeSpine pipeline " "for each orchestration pattern.",
+        "Annotated traces showing the RuntimeSpine pipeline "
+        "for each orchestration pattern.",
         "",
     ]
 
@@ -227,17 +239,30 @@ def main():
 
     # Hierarchical delegation — from eval results (AOP runs in mock mode)
     r = next(
-        (r for r in eval_results if r["category"] == "hierarchical_delegation" and r["success"]),
+        (
+            r
+            for r in eval_results
+            if r["category"] == "hierarchical_delegation" and r["success"]
+        ),
         None,
     )
     if r:
         md = synthesize_eval_trace(r, "Hierarchical Delegation (AOP)")
-        (OUTPUT_DIR / "trace_hierarchical_delegation.md").write_text(md, encoding="utf-8")
+        (OUTPUT_DIR / "trace_hierarchical_delegation.md").write_text(
+            md, encoding="utf-8"
+        )
         all_parts.append(md + "\n---\n")
         print("  [OK] trace_hierarchical_delegation.md")
 
     # HITL escalation — from eval results
-    r = next((r for r in eval_results if r["category"] == "hitl_escalation" and r["success"]), None)
+    r = next(
+        (
+            r
+            for r in eval_results
+            if r["category"] == "hitl_escalation" and r["success"]
+        ),
+        None,
+    )
     if r:
         md = synthesize_eval_trace(r, "HITL Escalation")
         (OUTPUT_DIR / "trace_hitl_escalation.md").write_text(md, encoding="utf-8")
@@ -245,7 +270,9 @@ def main():
         print("  [OK] trace_hitl_escalation.md")
 
     # Combined file
-    (OUTPUT_DIR / "traces_combined.md").write_text("\n".join(all_parts), encoding="utf-8")
+    (OUTPUT_DIR / "traces_combined.md").write_text(
+        "\n".join(all_parts), encoding="utf-8"
+    )
     print("  [OK] traces_combined.md")
 
     print(f"\n  Output: {OUTPUT_DIR.resolve()}")

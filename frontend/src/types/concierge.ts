@@ -64,3 +64,30 @@ export interface WorkspaceFile {
   size: number;
   extension: string;
 }
+
+// ── MCP Tool Configuration ──────────────────────────────────────────
+
+export interface McpToolParameter {
+  type: "string" | "number" | "integer" | "boolean";
+  required?: boolean;
+  default?: string | number | boolean;
+}
+
+export interface McpToolScenario {
+  _comment?: string;
+  when: Record<string, Record<string, unknown>>;
+  response: Record<string, unknown>;
+}
+
+export interface McpToolDef {
+  name: string;
+  description: string;
+  parameters: Record<string, McpToolParameter>;
+  response: Record<string, unknown>;
+  scenarios?: McpToolScenario[];
+}
+
+export interface McpToolsConfig {
+  server_name: string;
+  tools: McpToolDef[];
+}

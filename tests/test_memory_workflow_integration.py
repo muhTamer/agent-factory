@@ -1,12 +1,12 @@
 # tests/test_memory_workflow_integration.py
 """Tests for memory integration in workflow agents (PMPA audit trail)."""
+
 from __future__ import annotations
 
 import importlib
 from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import patch
-
 
 # ── Minimal workflow spec for testing ────────────────────────────────
 

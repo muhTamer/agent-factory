@@ -5,6 +5,7 @@ Policy Abstract Syntax Tree (AST) - Canonical representation of compiled rules.
 This module defines the immutable data structures that represent executable
 policy rules after compilation from human-readable formats (YAML, PDF, text).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

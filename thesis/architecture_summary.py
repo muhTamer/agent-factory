@@ -11,6 +11,7 @@ Outputs (to thesis/output/architecture/):
     component_map.md      — 4-layer architecture mapping
     codebase_stats.md     — summary statistics
 """
+
 from __future__ import annotations
 
 import ast
@@ -132,7 +133,9 @@ def generate_module_inventory() -> str:
     for r in sorted(rows, key=lambda x: x["path"]):
         lines.append(f"| `{r['path']}` | {r['lines']} | {r['docstring'][:80]} |")
 
-    lines.append(f"\n**Total**: {len(rows)} modules, " f"{sum(r['lines'] for r in rows):,} lines")
+    lines.append(
+        f"\n**Total**: {len(rows)} modules, " f"{sum(r['lines'] for r in rows):,} lines"
+    )
     return "\n".join(lines)
 
 
@@ -162,7 +165,9 @@ def generate_class_inventory() -> str:
         "|-------|--------|----------------|------:|",
     ]
     for r in sorted(rows, key=lambda x: x["module"]):
-        lines.append(f"| `{r['class']}` | `{r['module']}` | {r['methods']} | {r['method_count']} |")
+        lines.append(
+            f"| `{r['class']}` | `{r['module']}` | {r['methods']} | {r['method_count']} |"
+        )
     lines.append(f"\n**Total**: {len(rows)} classes")
     return "\n".join(lines)
 
@@ -172,7 +177,8 @@ def generate_component_map() -> str:
     lines = [
         "# Component Architecture Map",
         "",
-        "4-layer architecture aligned with Theory Chapter " "(Wang et al. PMPA + Li et al. AOP).",
+        "4-layer architecture aligned with Theory Chapter "
+        "(Wang et al. PMPA + Li et al. AOP).",
         "",
     ]
 
@@ -227,7 +233,9 @@ def generate_stats() -> str:
         layer_totals[layer] = layer_sum
 
     # Tests + evaluation
-    test_files = list((ROOT / "tests").rglob("*.py")) if (ROOT / "tests").exists() else []
+    test_files = (
+        list((ROOT / "tests").rglob("*.py")) if (ROOT / "tests").exists() else []
+    )
     test_lines = sum(
         len(f.read_text(encoding="utf-8").splitlines())
         for f in test_files

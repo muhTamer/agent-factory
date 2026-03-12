@@ -44,5 +44,7 @@ class DefaultRouter:
         return RoutePlan(
             primary=aid,
             strategy="single",
-            candidates=[Candidate(id=aid, score=0.0, reason="default_router_first_agent")],
+            candidates=[
+                Candidate(id=aid, score=0.0, reason="default_router_first_agent")
+            ],
         )

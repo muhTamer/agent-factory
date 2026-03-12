@@ -1,5 +1,6 @@
 # tests/test_explainability.py
 """Tests for multi-level explainability engine and PII redactor."""
+
 from __future__ import annotations
 
 import sys
@@ -16,7 +17,6 @@ from app.governance.explainability import (  # noqa: E402
 )
 from app.governance.pii_redactor import PIIRedactor, RedactionRecord  # noqa: E402
 from app.runtime.trace import Trace  # noqa: E402
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────
 

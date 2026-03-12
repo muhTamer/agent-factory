@@ -8,6 +8,7 @@ Uses LLM to extract structured rules from unstructured policy documents
 The LLM's job: transform messy human policy → structured JSON rules
 Runtime: evaluate structured rules deterministically (no LLM)
 """
+
 from __future__ import annotations
 
 import json
@@ -157,7 +158,9 @@ Return ONLY valid JSON matching the schema. No preamble, no explanation."""
         return []
 
 
-def _json_to_compiled_rule(data: Dict[str, Any], source_file: str) -> Optional[CompiledRule]:
+def _json_to_compiled_rule(
+    data: Dict[str, Any], source_file: str
+) -> Optional[CompiledRule]:
     """Convert JSON rule data to CompiledRule AST."""
     try:
         rule_id = data.get("rule_id", "unknown")
@@ -202,7 +205,9 @@ def _json_to_compiled_rule(data: Dict[str, Any], source_file: str) -> Optional[C
         return None
 
 
-def _parse_condition_json(cond_data: Dict[str, Any]) -> Optional[Union[Condition, ConditionGroup]]:
+def _parse_condition_json(
+    cond_data: Dict[str, Any],
+) -> Optional[Union[Condition, ConditionGroup]]:
     """Parse condition from JSON format."""
     if not cond_data:
         return None

@@ -90,7 +90,11 @@ class InferCapabilities:
             vertical=vertical,
             documents=documents,
             agents=agents,
-            notes=llm_plan.get("notes", []) if isinstance(llm_plan.get("notes"), list) else [],
+            notes=(
+                llm_plan.get("notes", [])
+                if isinstance(llm_plan.get("notes"), list)
+                else []
+            ),
         )
         return {
             "vertical": out.vertical,
@@ -127,7 +131,9 @@ class InferCapabilities:
     # -----------------------------
     # Document classification
     # -----------------------------
-    def _classify_documents(self, files: List[Path], vertical: str) -> List[Dict[str, Any]]:
+    def _classify_documents(
+        self, files: List[Path], vertical: str
+    ) -> List[Dict[str, Any]]:
         docs: List[Dict[str, Any]] = []
         for p in files:
             prior = self._heuristic_doc_type(p)
@@ -207,7 +213,12 @@ class InferCapabilities:
                 or "privacy" in name
             ):
                 return "policy"
-            if "sop" in name or "process" in name or "onboard" in name or "workflow" in name:
+            if (
+                "sop" in name
+                or "process" in name
+                or "onboard" in name
+                or "workflow" in name
+            ):
                 return "procedure"
             return "policy"
         if ext in {".md", ".txt"}:
@@ -215,7 +226,12 @@ class InferCapabilities:
                 return "procedure"
             return "other"
         if ext in {".json"}:
-            if "openapi" in name or "swagger" in name or "tool" in name or "api" in name:
+            if (
+                "openapi" in name
+                or "swagger" in name
+                or "tool" in name
+                or "api" in name
+            ):
                 return "tool_spec"
             return "other"
 
@@ -238,7 +254,9 @@ class InferCapabilities:
             return "\n".join(lines[:5])
         return "\n".join(lines[:40])
 
-    def _classify_doc_llm(self, *, filename: str, prior: str, snippet: str) -> Dict[str, Any]:
+    def _classify_doc_llm(
+        self, *, filename: str, prior: str, snippet: str
+    ) -> Dict[str, Any]:
         system = (
             "You classify uploaded customer-service documents into ONE doc_type:\n"
             "knowledge_base, policy, procedure, tool_spec, other.\n"
@@ -421,10 +439,16 @@ class InferCapabilities:
 
             # Ensure list fields and only include known doc names
             typed = {
-                "knowledge_base": self._normalize_doc_list(inputs.get("knowledge_base"), doc_names),
+                "knowledge_base": self._normalize_doc_list(
+                    inputs.get("knowledge_base"), doc_names
+                ),
                 "policy": self._normalize_doc_list(inputs.get("policy"), doc_names),
-                "procedure": self._normalize_doc_list(inputs.get("procedure"), doc_names),
-                "tool_spec": self._normalize_doc_list(inputs.get("tool_spec"), doc_names),
+                "procedure": self._normalize_doc_list(
+                    inputs.get("procedure"), doc_names
+                ),
+                "tool_spec": self._normalize_doc_list(
+                    inputs.get("tool_spec"), doc_names
+                ),
             }
 
             # Bridge to runtime/spec_builder-friendly keys (generic mapping)
@@ -445,7 +469,9 @@ class InferCapabilities:
                 )
                 runtime_inputs["policies_text"] = a.get("policies_text") or []
                 # knowledge_sources = knowledge_base + policy docs for RAG corpus
-                runtime_inputs["knowledge_sources"] = typed["knowledge_base"] + typed["policy"]
+                runtime_inputs["knowledge_sources"] = (
+                    typed["knowledge_base"] + typed["policy"]
+                )
 
             # aop_eligible: declarative flag from LLM (default True for
             # backward compat — the spec_builder/aop_coordinator apply
@@ -496,7 +522,9 @@ class InferCapabilities:
         # stable unique
         return sorted(set(out))
 
-    def _minimal_generic_fallback(self, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _minimal_generic_fallback(
+        self, documents: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """
         Only used if LLM fails completely. Still generic: no FAQ/complaint naming.
         """
@@ -545,6 +573,128 @@ class InferCapabilities:
             elif isinstance(v, list):
                 legacy.extend([x for x in v if isinstance(x, str)])
         return sorted(set(legacy))
+
+    # -----------------------------
+    # Guardrail rule generation
+    # -----------------------------
+    def generate_guardrail_rules(
+        self,
+        *,
+        vertical: str,
+        documents: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Ask the LLM to generate vertical-specific guardrail rules based on
+        the uploaded documents. Returns a dict with 'guardrail_rules' and
+        'transaction_slot_keys' ready for PolicyPack.
+        """
+        doc_summary = []
+        for d in documents:
+            doc_summary.append(
+                {
+                    "name": d.get("name", ""),
+                    "doc_type": d.get("doc_type", ""),
+                    "snippet": d.get("reason", "")[:400],
+                }
+            )
+
+        system = (
+            "You are generating GUARDRAIL RULES for a customer-service AI system.\n"
+            "The system uses these rules to detect hallucinated action claims,\n"
+            "strip inappropriate tone, and hide internal system details.\n\n"
+            "Based on the VERTICAL and DOCUMENTS provided, generate rules in these categories:\n\n"
+            "1. hallucination_action_claims (category: safety, severity: high)\n"
+            "   - Regex patterns that detect when the agent falsely claims to have\n"
+            "     performed a domain action (e.g. 'refund processed', 'prescription issued').\n"
+            "   - These patterns should match the ACTION VERBS and DOMAIN NOUNS from the policies.\n\n"
+            "2. transaction_context (category: safety, severity: high)\n"
+            "   - Regex pattern that detects when the user's query contains a real\n"
+            "     transaction/case/record identifier (e.g. order #123, patient MRN).\n"
+            "   - Used to avoid false positives in hallucination detection.\n\n"
+            "3. tone rules (category: tone, severity: low-medium)\n"
+            "   - Patterns for promises the system cannot fulfil (async follow-ups, escalation claims).\n"
+            "   - These are usually GENERIC across verticals.\n\n"
+            "4. internal rules (category: internal, severity: medium)\n"
+            "   - Patterns to strip system jargon and internal file references.\n"
+            "   - These are usually GENERIC across verticals.\n\n"
+            "5. transaction_slot_keys (list of strings)\n"
+            "   - Slot field names that indicate a legitimate multi-turn workflow.\n"
+            "   - e.g. ['payment_id', 'transaction_id', 'refund_id'] for fintech.\n\n"
+            "IMPORTANT:\n"
+            "- Patterns must be valid Python regex (re module, case-insensitive).\n"
+            "- Each rule needs: id, label, description, category, severity, enabled (bool), "
+            "patterns (list of regex strings).\n"
+            "- Generate 4-8 rules total. Focus on domain-specific hallucination and "
+            "transaction patterns.\n"
+            "- Tone and internal rules can be generic.\n\n"
+            "Return STRICT JSON:\n"
+            "{\n"
+            '  "guardrail_rules": [\n'
+            "    {"
+            '"id": "...", "label": "...", "description": "...", '
+            '"category": "...", "severity": "...", "enabled": true, '
+            '"patterns": ["regex..."]'
+            "}\n"
+            "  ],\n"
+            '  "transaction_slot_keys": ["slot_key_1", "slot_key_2"]\n'
+            "}\n"
+        )
+
+        user = {
+            "vertical": vertical,
+            "documents": doc_summary,
+        }
+
+        try:
+            result = chat_json(
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
+                ],
+                model=self.model,
+                temperature=1.0,
+                timeout=120,
+            )
+
+            # Validate structure
+            rules = result.get("guardrail_rules", [])
+            if not isinstance(rules, list):
+                rules = []
+
+            validated_rules = []
+            for r in rules:
+                if not isinstance(r, dict):
+                    continue
+                if not r.get("id") or not r.get("patterns"):
+                    continue
+                validated_rules.append(
+                    {
+                        "id": str(r.get("id", "")),
+                        "label": str(r.get("label", r.get("id", ""))),
+                        "description": str(r.get("description", "")),
+                        "category": str(r.get("category", "general")),
+                        "severity": str(r.get("severity", "medium")),
+                        "enabled": bool(r.get("enabled", True)),
+                        "patterns": [
+                            str(p) for p in r["patterns"] if isinstance(p, str)
+                        ],
+                    }
+                )
+
+            tx_keys = result.get("transaction_slot_keys", [])
+            if not isinstance(tx_keys, list):
+                tx_keys = []
+
+            return {
+                "guardrail_rules": validated_rules,
+                "transaction_slot_keys": [
+                    str(k) for k in tx_keys if isinstance(k, str)
+                ],
+            }
+
+        except Exception as e:
+            print(f"[INFER] Guardrail generation failed, using defaults: {e}")
+            return {"guardrail_rules": [], "transaction_slot_keys": []}
 
     def _assess_vertical_fit_llm(
         self, *, vertical: str, filename: str, snippet: str

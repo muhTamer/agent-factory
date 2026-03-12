@@ -32,7 +32,9 @@ def test_writes_requirements_and_validates(tmp_path, monkeypatch, capsys):
     dua = importlib.import_module("app.dua_v0")
 
     # Avoid network: stub LLM helper
-    monkeypatch.setattr(dua, "detect_signals_llm", lambda filenames: {"primary": "fintech"})
+    monkeypatch.setattr(
+        dua, "detect_signals_llm", lambda filenames: {"primary": "fintech"}
+    )
 
     # Run CLI
     monkeypatch.setattr(

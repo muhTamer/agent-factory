@@ -12,6 +12,7 @@ Outputs (to thesis/output/figures/):
     fig_learning_curve.pdf/.png
     fig_pipeline_stages.pdf/.png
 """
+
 from __future__ import annotations
 
 import json
@@ -44,7 +45,9 @@ COLORS = ["#4C72B0", "#55A868", "#C44E52", "#8172B2"]
 
 
 def _load_results() -> list:
-    return json.loads((RESULTS_DIR / "evaluation_results.json").read_text(encoding="utf-8"))
+    return json.loads(
+        (RESULTS_DIR / "evaluation_results.json").read_text(encoding="utf-8")
+    )
 
 
 def _load_performance() -> list:
@@ -108,7 +111,9 @@ def fig_latency_by_pattern(results: list):
     names = [CATEGORY_LABELS[c] for c in CATEGORY_ORDER if c in cats]
     means = [statistics.mean(cats[c]) for c in CATEGORY_ORDER if c in cats]
     stds = [
-        statistics.stdev(cats[c]) if len(cats[c]) > 1 else 0 for c in CATEGORY_ORDER if c in cats
+        statistics.stdev(cats[c]) if len(cats[c]) > 1 else 0
+        for c in CATEGORY_ORDER
+        if c in cats
     ]
 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -150,7 +155,9 @@ def fig_agent_calls_by_pattern(results: list):
     means = [statistics.mean(cats[c]) for c in CATEGORY_ORDER if c in cats]
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    bars = ax.bar(names, means, color=COLORS[: len(names)], edgecolor="black", linewidth=0.5)
+    bars = ax.bar(
+        names, means, color=COLORS[: len(names)], edgecolor="black", linewidth=0.5
+    )
     ax.set_ylabel("Agent Calls")
     ax.set_title("Mean Agent Calls by Orchestration Pattern")
     ax.set_ylim(bottom=0, top=max(means) + 0.5)

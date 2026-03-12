@@ -47,7 +47,9 @@ def _sanitize_for_voice(structured: Dict[str, Any]) -> Dict[str, Any]:
     # Scrub internal entries from the context sub-dict
     ctx = clean.get("context")
     if isinstance(ctx, dict):
-        clean["context"] = {k: v for k, v in ctx.items() if k not in _INTERNAL_CONTEXT_KEYS}
+        clean["context"] = {
+            k: v for k, v in ctx.items() if k not in _INTERNAL_CONTEXT_KEYS
+        }
 
     return clean
 
@@ -145,7 +147,11 @@ class VoiceAgent:
         # Strip internal infrastructure data (policy paths, FSM events,
         # state history) so the voice LLM cannot synthesize internal
         # decision trees as customer-facing options.
-        sanitized = _sanitize_for_voice(structured) if isinstance(structured, dict) else structured
+        sanitized = (
+            _sanitize_for_voice(structured)
+            if isinstance(structured, dict)
+            else structured
+        )
 
         payload = {
             "thread_id": thread_id,
@@ -177,7 +183,8 @@ class VoiceAgent:
         except ValidationError:
             # Last-resort: keep it safe + minimal (still not hardcoding flow text, just a generic fallback)
             out = VoiceOut(
-                messages=["I can help — could you share a bit more detail?"], quick_replies=[]
+                messages=["I can help — could you share a bit more detail?"],
+                quick_replies=[],
             )
 
         return out.model_dump()

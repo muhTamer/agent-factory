@@ -114,7 +114,9 @@ def startup_event():
             print(f"[BOOT] Skipping unrecognized type {a_type} ({a_id})")
 
     llm_router = LLMRouter(registry=registry)
-    router = LLMRouterAdapter(llm_router) if registry.all_ids() else DefaultRouter(registry)
+    router = (
+        LLMRouterAdapter(llm_router) if registry.all_ids() else DefaultRouter(registry)
+    )
 
     # Conversation memory (shared across spine + AOP)
     memory = ConversationMemory()
@@ -124,7 +126,11 @@ def startup_event():
     aop = AOPCoordinator(registry=registry, performance_store=perf_store, memory=memory)
 
     spine = RuntimeSpine(
-        registry=registry, router=router, guardrails=guardrails, aop_coordinator=aop, memory=memory
+        registry=registry,
+        router=router,
+        guardrails=guardrails,
+        aop_coordinator=aop,
+        memory=memory,
     )
 
     print(f"[BOOT] All agents loaded: {registry.all_ids()}")
@@ -137,11 +143,25 @@ def startup_event():
     # Load customer tool overrides (stubs used as fallback for any unspecified tool)
     if TOOLS_CONFIG_PATH.exists():
         tools_config = json.loads(TOOLS_CONFIG_PATH.read_text(encoding="utf-8"))
-        tool_registry = build_registry(tools_config.get("tools", []))
+        tool_registry = build_registry(
+            config=tools_config.get("tools", []),
+            mcp_servers=tools_config.get("mcp_servers", []),
+        )
         print(f"[TOOLS] Loaded customer config: {tool_registry.all_names()}")
     else:
         tool_registry = DEFAULT_REGISTRY
-        print(f"[TOOLS] No tools_config.json found — using stubs: {tool_registry.all_names()}")
+        print(
+            f"[TOOLS] No tools_config.json found — using stubs: {tool_registry.all_names()}"
+        )
+
+
+# ---------- Shutdown ----------
+@app.on_event("shutdown")
+def shutdown_event():
+    """Clean up MCP server connections on shutdown."""
+    if hasattr(tool_registry, "shutdown"):
+        tool_registry.shutdown()
+        print("[TOOLS] MCP servers disconnected.")
 
 
 # ---------- Routes ----------
@@ -182,6 +202,60 @@ def test_tool(name: str, req: ToolTestRequest):
         return {"tool": name, "slots_in": req.slots, "result": result}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ---------- Guardrail admin endpoints ----------
+
+
+class GuardrailToggleRequest(BaseModel):
+    enabled: bool
+
+
+@app.get("/guardrails")
+def list_guardrails():
+    """List all guardrail rules with their current enabled state."""
+    return {
+        "rules": pack.rules_summary(),
+        "transaction_slot_keys": pack.transaction_slot_keys,
+        "policy_pack": pack.name,
+        "version": pack.version,
+    }
+
+
+@app.patch("/guardrails/{rule_id}")
+def toggle_guardrail(rule_id: str, req: GuardrailToggleRequest):
+    """Enable or disable a specific guardrail rule at runtime."""
+    success = pack.set_rule_enabled(rule_id, req.enabled)
+    if not success:
+        available = [r.id for r in pack.guardrail_rules]
+        raise HTTPException(
+            status_code=404,
+            detail=f"Rule '{rule_id}' not found. Available: {available}",
+        )
+
+    # Persist change to disk so it survives restarts
+    if policy_path.exists():
+        pack.save(policy_path)
+
+    # Rebuild guardrails so the inner PolicyGuardrails picks up the change
+    _rebuild_guardrails()
+
+    rule = pack.get_rule(rule_id)
+    return {
+        "rule_id": rule_id,
+        "enabled": req.enabled,
+        "rule": rule.to_dict() if rule else None,
+    }
+
+
+def _rebuild_guardrails():
+    """Rebuild the guardrails stack after a rule toggle."""
+    global guardrails
+    from app.runtime.governance_guardrails import GovernanceAwareGuardrails
+
+    guardrails = GovernanceAwareGuardrails(pack, _gov_config)
+    if spine is not None:
+        spine.guardrails = guardrails
 
 
 @app.post("/chat")

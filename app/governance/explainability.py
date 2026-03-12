@@ -12,6 +12,7 @@ runtime traces, WITHOUT any LLM calls:
 Maps directly to IEEE 2894-2024 requirements for explanation completeness,
 accuracy, and audience-appropriateness.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -84,13 +85,20 @@ class ExplainabilityEngine:
         else:
             return self._full_from_trace(trace, response)
 
-    def generate_all_levels(self, trace: Trace, response: Dict[str, Any]) -> Dict[str, Explanation]:
+    def generate_all_levels(
+        self, trace: Trace, response: Dict[str, Any]
+    ) -> Dict[str, Explanation]:
         """Generate explanations at all three levels."""
-        return {level.value: self.generate(trace, response, level) for level in ExplanationLevel}
+        return {
+            level.value: self.generate(trace, response, level)
+            for level in ExplanationLevel
+        }
 
     # ── Level 1: Summary (user-facing) ───────────────────────────────
 
-    def _summary_from_trace(self, trace: Trace, response: Dict[str, Any]) -> Explanation:
+    def _summary_from_trace(
+        self, trace: Trace, response: Dict[str, Any]
+    ) -> Explanation:
         """User-facing explanation: what happened in plain language."""
         pattern = response.get("orchestration_pattern", "direct")
         pattern_label = _PATTERN_LABELS.get(pattern, pattern)
@@ -127,7 +135,9 @@ class ExplainabilityEngine:
 
     # ── Level 2: Detailed (auditor-facing) ───────────────────────────
 
-    def _detailed_from_trace(self, trace: Trace, response: Dict[str, Any]) -> Explanation:
+    def _detailed_from_trace(
+        self, trace: Trace, response: Dict[str, Any]
+    ) -> Explanation:
         """Auditor-facing explanation: decisions, scores, policies."""
         agents = self._extract_agents(trace, response)
         decisions = self._extract_decisions(trace, response)
@@ -148,18 +158,22 @@ class ExplainabilityEngine:
                 parts.append(f"AOP assigned {len(assignments)} subtask(s) to agents.")
             elif d["stage"] == "aop_completeness":
                 complete = d.get("complete", False)
-                parts.append(f"Completeness check: {'passed' if complete else 'gaps detected'}.")
+                parts.append(
+                    f"Completeness check: {'passed' if complete else 'gaps detected'}."
+                )
 
         # Guardrail activity
         guard_events = [
             e
             for e in trace.events
-            if e.stage in ("guard_pre_ok", "guard_post_ok", "guard_pre_block", "guard_post_block")
+            if e.stage
+            in ("guard_pre_ok", "guard_post_ok", "guard_pre_block", "guard_post_block")
         ]
         if guard_events:
             blocks = sum(1 for e in guard_events if "block" in e.stage)
             parts.append(
-                f"Guardrails evaluated: {len(guard_events)} check(s), " f"{blocks} intervention(s)."
+                f"Guardrails evaluated: {len(guard_events)} check(s), "
+                f"{blocks} intervention(s)."
             )
 
         # Scores
@@ -253,7 +267,9 @@ class ExplainabilityEngine:
         return agents
 
     @staticmethod
-    def _extract_decisions(trace: Trace, response: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _extract_decisions(
+        trace: Trace, response: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Extract key decision points from trace events."""
         decision_stages = {
             "orchestration_pattern",
@@ -283,7 +299,9 @@ class ExplainabilityEngine:
         return decisions
 
     @staticmethod
-    def _extract_provenance(trace: Trace, response: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _extract_provenance(
+        trace: Trace, response: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Extract data provenance: sources, citations, policies used."""
         prov: List[Dict[str, Any]] = []
 
@@ -389,9 +407,9 @@ class ExplainabilityEngine:
         subtasks = response.get("subtask_results", [])
         if subtasks:
             metrics["subtask_count"] = len(subtasks)
-            metrics["subtask_success_rate"] = sum(1 for s in subtasks if s.get("success")) / len(
-                subtasks
-            )
+            metrics["subtask_success_rate"] = sum(
+                1 for s in subtasks if s.get("success")
+            ) / len(subtasks)
 
         return metrics
 

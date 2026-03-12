@@ -12,6 +12,7 @@ All adapters (Stub, Http, Sql, ...) implement this interface so the
 ToolRegistry can expose them to the workflow engine as plain callables
 without the engine knowing which backend is behind each tool.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -47,5 +48,7 @@ class ITool(ABC):
     # Convenience: make instances directly callable so they can be passed
     # to GenericWorkflowEngine(tools={"name": tool_instance}) unchanged.
     # ------------------------------------------------------------------
-    def __call__(self, slots: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(
+        self, slots: Dict[str, Any], context: Dict[str, Any]
+    ) -> Dict[str, Any]:
         return self.execute(slots, context)

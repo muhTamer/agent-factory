@@ -1,50 +1,10 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from app.runtime.guardrails import GuardResult, Guardrails
-from app.runtime.policy_pack import PolicyPack
-
-# Patterns indicating a refund/action was executed (not just discussed)
-_REFUND_INITIATED_PATTERN = re.compile(
-    r"(refund\s+(has been|was|is)\s+(initiated|processed|approved|completed)"
-    r"|refund_id\s*[:=]"
-    r"|successfully\s+refunded"
-    r"|refund\s+of\s+(EUR|USD|\$)\s*\d+.*(?:initiated|processed))",
-    re.IGNORECASE,
-)
-
-# Tone guardrail: patterns that should never appear in customer-facing text.
-# Each tuple is (compiled_regex, empty_string_replacement_or_None_to_strip).
-_TONE_STRIP_PATTERNS = [
-    # Never ask the customer "is this urgent?" — urgency is an internal triage flag
-    re.compile(
-        r"[\s,]*\b(?:is\s+this|would\s+you\s+(?:say|consider)\s+(?:this|it))\s+urgent\??\s*",
-        re.IGNORECASE,
-    ),
-    # Never promise async follow-up the system can't deliver
-    re.compile(
-        r"I(?:'ve| have)\s+(?:forwarded|escalated|sent)\s+(?:this|your|the)\b[^.!?]*[.!?]?\s*",
-        re.IGNORECASE,
-    ),
-    re.compile(
-        r"I\s+will\s+(?:get back to you|follow up|notify you|let you know)\b[^.!?]*[.!?]?\s*",
-        re.IGNORECASE,
-    ),
-    # Strip internal jargon that leaks through
-    re.compile(r"\b(?:workflow|FSM|slot[s]?|router|guardrail|pipeline)\b", re.IGNORECASE),
-    # Strip internal file references — customers should never see source filenames
-    # like "BankFAQs.csv" or "refunds_policy.yaml".  Matches "filename.ext" for
-    # common data/config extensions, including surrounding context like
-    # "(source: BankFAQs.csv)" or "from refunds_policy.yaml".
-    re.compile(
-        r"(?:\(?(?:source|from|in|per|see|ref)\s*:\s*)?"
-        r"\b\w+\.(?:csv|yaml|yml|json|txt|md|tsv|xlsx?|pdf)\b"
-        r"\)?",
-        re.IGNORECASE,
-    ),
-]
+from app.runtime.policy_pack import GuardrailRule, PolicyPack
 
 
 class PolicyGuardrails(Guardrails):
@@ -55,6 +15,20 @@ class PolicyGuardrails(Guardrails):
             from app.governance.pii_redactor import PIIRedactor
 
             self._pii_redactor = PIIRedactor()
+
+        # Pre-resolve rule references for fast lookup
+        self._hallucination_rule = pack.get_rule("hallucination_action_claims")
+        self._transaction_ctx_rule = pack.get_rule("transaction_context")
+        self._tx_slot_keys = set(pack.transaction_slot_keys)
+
+        # Collect tone-control rules (categories: tone, internal)
+        self._tone_rules: List[GuardrailRule] = [
+            r for r in pack.guardrail_rules if r.category in ("tone", "internal")
+        ]
+
+    # ------------------------------------------------------------------
+    # Pre-guardrails
+    # ------------------------------------------------------------------
 
     def pre(self, query: str, context: Dict[str, Any]) -> GuardResult:
         # length check
@@ -89,6 +63,10 @@ class PolicyGuardrails(Guardrails):
 
         return GuardResult(allowed=True)
 
+    # ------------------------------------------------------------------
+    # Post-guardrails
+    # ------------------------------------------------------------------
+
     def post(self, response: Dict[str, Any], context: Dict[str, Any]) -> GuardResult:
         # Check for blocked phrases in response text
         text = response.get("text", "") or response.get("answer", "") or ""
@@ -99,67 +77,42 @@ class PolicyGuardrails(Guardrails):
                     reason=f"blocked_phrase:{phrase}",
                 )
 
-        # Check for unauthorized refund initiation (hallucinated actions)
-        # If the orchestration was informational (no concrete transaction in query),
-        # block responses that claim a refund was actually processed.
+        # ── Hallucination detection (config-driven) ──────────────────
         #
-        # IMPORTANT: In multi-turn workflows the current message may be
-        # "Yes, proceed" while all transaction details live in accumulated
-        # slots from earlier turns.  We must check BOTH the current query
-        # AND the accumulated context before blocking.
-        original_query = context.get("original_query", "")
-        has_transaction_context = (
-            bool(
-                re.search(
-                    r"(order\s*(id|#|no\.?|number)?\s*:?\s*\d"
-                    r"|transaction\s*(id|#|no\.?|number)?\s*:?\s*\d"
-                    r"|ORD-\d"
-                    r"|EUR\s*\d|USD\s*\d|\$\d)",
-                    original_query,
-                    re.IGNORECASE,
-                )
-            )
-            if original_query
-            else False
-        )
-
-        # Multi-turn: if a workflow agent is pinned with accumulated slots
-        # containing transaction identifiers, the refund is legitimate.
-        if not has_transaction_context:
-            acc_slots = context.get("_accumulated_slots") or {}
-            if (
-                acc_slots.get("payment_id")
-                or acc_slots.get("transaction_id")
-                or acc_slots.get("refund_id")
-                or acc_slots.get("order_id")
-            ):
-                has_transaction_context = True
-            # A pinned workflow_runner with populated slots is always legitimate
-            if context.get("pinned_agent_type") == "workflow_runner" and acc_slots:
-                has_transaction_context = True
-
-        # Domain agents that only retrieved knowledge are informational —
-        # they're describing policy, not claiming to have executed a refund.
-        # Also skip if the agent is still asking the user for clarification.
-        is_informational = response.get("knowledge_retrieved") is True and not response.get(
-            "tools_used"
-        )
-        is_clarifying = (
-            response.get("needs_input") is True
-            or response.get("domain_agent_clarification") is True
-        )
-
+        # If the hallucination rule is enabled, check whether the response
+        # falsely claims an action was performed without transaction evidence.
         if (
-            original_query
-            and not has_transaction_context
-            and not is_informational
-            and not is_clarifying
+            self._hallucination_rule
+            and self._hallucination_rule.enabled
+            and self._hallucination_rule.compiled_patterns
         ):
-            if _REFUND_INITIATED_PATTERN.search(text):
-                return GuardResult(
-                    allowed=False,
-                    reason="refund_initiated_without_transaction_details",
-                )
+            original_query = context.get("original_query", "")
+            has_transaction_context = self._detect_transaction_context(
+                original_query, context
+            )
+
+            # Domain agents that only retrieved knowledge are informational —
+            # they're describing policy, not claiming to have executed an action.
+            is_informational = response.get(
+                "knowledge_retrieved"
+            ) is True and not response.get("tools_used")
+            is_clarifying = (
+                response.get("needs_input") is True
+                or response.get("domain_agent_clarification") is True
+            )
+
+            if (
+                original_query
+                and not has_transaction_context
+                and not is_informational
+                and not is_clarifying
+            ):
+                for pat in self._hallucination_rule.compiled_patterns:
+                    if pat.search(text):
+                        return GuardResult(
+                            allowed=False,
+                            reason="hallucination_action_claim_without_context",
+                        )
 
         # PII redaction on outgoing response
         if self._pii_redactor:
@@ -176,20 +129,57 @@ class PolicyGuardrails(Guardrails):
         return GuardResult(allowed=True)
 
     # ------------------------------------------------------------------
-    # Tone control helpers
+    # Transaction context detection (config-driven)
     # ------------------------------------------------------------------
-    @staticmethod
-    def _sanitize_text(text: str) -> str:
+
+    def _detect_transaction_context(
+        self, original_query: str, context: Dict[str, Any]
+    ) -> bool:
+        """Check if query or accumulated slots contain transaction evidence."""
+        # Check query against transaction context patterns
+        if (
+            original_query
+            and self._transaction_ctx_rule
+            and self._transaction_ctx_rule.enabled
+        ):
+            for pat in self._transaction_ctx_rule.compiled_patterns:
+                if pat.search(original_query):
+                    return True
+
+        # Multi-turn: check accumulated slots for transaction identifiers
+        acc_slots = context.get("_accumulated_slots") or {}
+        for key in self._tx_slot_keys:
+            if acc_slots.get(key):
+                return True
+
+        # A pinned workflow agent with populated slots is always legitimate
+        if context.get("pinned_agent_type") == "workflow_runner" and acc_slots:
+            return True
+
+        return False
+
+    # ------------------------------------------------------------------
+    # Tone control helpers (config-driven)
+    # ------------------------------------------------------------------
+
+    def _sanitize_text(self, text: str) -> str:
         """Remove tone-violating patterns from a single string."""
         cleaned = text
-        for pat in _TONE_STRIP_PATTERNS:
-            cleaned = pat.sub(" ", cleaned)
+        for rule in self._tone_rules:
+            if not rule.enabled:
+                continue
+            for pat in rule.compiled_patterns:
+                cleaned = pat.sub(" ", cleaned)
         # Collapse whitespace introduced by removals
         cleaned = re.sub(r"  +", " ", cleaned).strip()
         return cleaned
 
     def _apply_tone_control(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """Return a new response dict if any text was sanitized, else return the same object."""
+        # Skip entirely if no tone rules are enabled
+        if not any(r.enabled for r in self._tone_rules):
+            return response
+
         changed = False
 
         # Sanitize top-level text / answer

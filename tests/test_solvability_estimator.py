@@ -16,7 +16,11 @@ def _catalog():
             "id": "refund_agent",
             "type": "workflow_runner",
             "description": "Handles refund requests and processes returns",
-            "capabilities": ["refund_processing", "return_handling", "payment_reversal"],
+            "capabilities": [
+                "refund_processing",
+                "return_handling",
+                "payment_reversal",
+            ],
         },
         "faq_agent": {
             "id": "faq_agent",
@@ -48,7 +52,8 @@ def test_textual_similarity_faq_match(tmp_path):
     store = _make_store(tmp_path)
     est = SolvabilityEstimator(store)
     result = est.estimate(
-        ["Search the knowledge base for frequently asked questions about products"], _catalog()
+        ["Search the knowledge base for frequently asked questions about products"],
+        _catalog(),
     )
 
     assert (
@@ -91,7 +96,9 @@ def test_combined_score_formula(tmp_path):
     result = est.estimate(["Process refund"], _catalog())
 
     for score in result.scores:
-        expected = alpha * score.textual_similarity + beta * score.historical_performance
+        expected = (
+            alpha * score.textual_similarity + beta * score.historical_performance
+        )
         assert (
             abs(score.combined_score - expected) < 1e-6
         ), f"Expected {expected}, got {score.combined_score}"
@@ -140,7 +147,9 @@ def test_history_boosts_assignment(tmp_path):
     assert len(faq_scores) == 1
     assert len(refund_scores) == 1
     # faq_agent history = 1.0, refund_agent history = 0.1
-    assert faq_scores[0].historical_performance > refund_scores[0].historical_performance
+    assert (
+        faq_scores[0].historical_performance > refund_scores[0].historical_performance
+    )
 
 
 def test_empty_subtasks(tmp_path):

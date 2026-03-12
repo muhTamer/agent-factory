@@ -46,6 +46,7 @@ frontend/src/
 │       ├── SourcesPanel.tsx         # Knowledge sources & policy grounding
 │       ├── ReActTracePanel.tsx      # Agent reasoning chain timeline
 │       ├── GovernancePanel.tsx      # IEEE compliance & explainability
+│       ├── GuardrailsAdminPanel.tsx # Runtime guardrail rule toggles
 │       ├── DebugSidebar.tsx         # Alternative debug layout
 │       └── RawJsonViewer.tsx        # Raw JSON inspector
 │
@@ -143,10 +144,11 @@ Right sidebar showing debug information for the selected message. Components ren
 1. **RouterPlanPanel** — Strategy, pattern, selected agent, candidate scores
 2. **SolvabilityPanel** — AOP subtask solvability bars (if AOP)
 3. **PolicyCheckPanel** — Guardrail pass/block status
-4. **SourcesPanel** — Knowledge sources, policy grounding, citations
-5. **ReActTracePanel** — Full reasoning chain timeline
-6. **GovernancePanel** — IEEE compliance, explainability levels
-7. **RawJsonViewer** — Raw API response (debug mode only)
+4. **GuardrailsAdminPanel** — Toggle guardrail rules on/off at runtime
+5. **SourcesPanel** — Knowledge sources, policy grounding, citations
+6. **ReActTracePanel** — Full reasoning chain timeline
+7. **GovernancePanel** — IEEE compliance, explainability levels
+8. **RawJsonViewer** — Raw API response (debug mode only)
 
 ---
 
@@ -191,6 +193,20 @@ For AOP (multi-intent) queries, shows per-subtask solvability:
 Shows guardrail result:
 - **Passed** (green shield) — Response delivered normally
 - **Blocked** (red shield) — Response blocked with reason
+
+### GuardrailsAdminPanel
+
+Runtime admin panel for toggling guardrail rules on/off. Appears in the Safety & Compliance section of the explainability sidebar.
+
+**Features:**
+- Fetches all rules from `GET /guardrails` on mount
+- Toggle switches per rule — calls `PATCH /guardrails/{rule_id}` to persist changes
+- Category badges (safety, tone, internal, privacy) with color coding
+- Severity badges (high, medium, low)
+- Rule descriptions
+- Collapsed summary showing per-category active counts (e.g., `safety: 2/3`)
+- Refresh button to re-fetch from backend
+- Policy pack name and version displayed in header
 
 ### SourcesPanel
 

@@ -16,6 +16,7 @@ Strategy:
 
 All required slots: customer_id, payment_id, amount
 """
+
 import importlib.util
 import sys
 from pathlib import Path
@@ -99,7 +100,9 @@ def test_fresh_engine_starts_in_start():
 
 def test_first_handle_without_event_returns_clarification():
     agent = _load_refunds_agent()
-    with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
+    with patch(
+        "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})
+    ):
         result = agent.handle({"query": "I need a refund", "thread_id": "t-init"})
     assert result["action"] == "request_clarification"
     assert result["current_state"] == "start"
@@ -107,7 +110,9 @@ def test_first_handle_without_event_returns_clarification():
 
 def test_clarification_lists_required_slots():
     agent = _load_refunds_agent()
-    with patch("app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})):
+    with patch(
+        "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json(None, {})
+    ):
         result = agent.handle({"query": "I need a refund", "thread_id": "t-missing"})
     missing = result.get("missing_slots", [])
     for slot in ("customer_id", "payment_id", "amount"):
@@ -182,7 +187,8 @@ def test_partial_slots_stay_in_start():
     agent = _load_refunds_agent()
     partial = {"customer_id": "C1"}  # missing payment_id and amount
     with patch(
-        "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json("validated", partial)
+        "app.runtime.workflow_mapper.chat_json",
+        return_value=_mapper_json("validated", partial),
     ):
         result = agent.handle(
             {
@@ -197,7 +203,8 @@ def test_partial_slots_action_is_request_clarification():
     agent = _load_refunds_agent()
     partial = {"customer_id": "C1"}
     with patch(
-        "app.runtime.workflow_mapper.chat_json", return_value=_mapper_json("validated", partial)
+        "app.runtime.workflow_mapper.chat_json",
+        return_value=_mapper_json("validated", partial),
     ):
         result = agent.handle({"query": "refund", "thread_id": "t-partial-002"})
     assert result["action"] == "request_clarification"

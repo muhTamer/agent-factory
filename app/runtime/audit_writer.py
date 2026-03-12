@@ -7,7 +7,9 @@ from app.runtime.trace import Trace
 
 
 class JsonlAuditWriter:
-    def __init__(self, audit_dir: str = ".factory/audit", filename: str = "runtime_traces.jsonl"):
+    def __init__(
+        self, audit_dir: str = ".factory/audit", filename: str = "runtime_traces.jsonl"
+    ):
         self.audit_dir = Path(audit_dir)
         self.path = self.audit_dir / filename
         self.audit_dir.mkdir(parents=True, exist_ok=True)

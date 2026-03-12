@@ -11,6 +11,7 @@ Outputs (to thesis/output/tables/):
     rq2_governance.md / .tex          — Governance mechanism activity
     rq2_compliance_by_category.md/.tex — Compliance by orchestration pattern
 """
+
 from __future__ import annotations
 
 import json
@@ -106,8 +107,14 @@ def table_explainability(summary: dict, results: list) -> str:
         ("Full-level (developer)", _fmt(summary.get("full_coverage"), ".1%")),
         ("Provenance present", _fmt(summary.get("provenance_rate"), ".1%")),
         ("Agent identity disclosed", _fmt(summary.get("agent_identity_rate"), ".1%")),
-        ("Mean decisions documented", _fmt(summary.get("mean_decisions_documented"), ".1f")),
-        ("Mean explanation levels", _fmt(summary.get("mean_explanation_levels"), ".1f")),
+        (
+            "Mean decisions documented",
+            _fmt(summary.get("mean_decisions_documented"), ".1f"),
+        ),
+        (
+            "Mean explanation levels",
+            _fmt(summary.get("mean_explanation_levels"), ".1f"),
+        ),
     ]
 
     lines = [
@@ -124,9 +131,18 @@ def table_explainability(summary: dict, results: list) -> str:
 def table_governance(summary: dict, results: list) -> str:
     """Table: Governance mechanism activity."""
     rows = [
-        ("Mean guardrail checks per request", _fmt(summary.get("mean_guardrail_checks"), ".1f")),
-        ("Total guardrail interventions", str(summary.get("total_guardrail_interventions", 0))),
-        ("Mean trace events per request", _fmt(summary.get("mean_trace_events"), ".1f")),
+        (
+            "Mean guardrail checks per request",
+            _fmt(summary.get("mean_guardrail_checks"), ".1f"),
+        ),
+        (
+            "Total guardrail interventions",
+            str(summary.get("total_guardrail_interventions", 0)),
+        ),
+        (
+            "Mean trace events per request",
+            _fmt(summary.get("mean_trace_events"), ".1f"),
+        ),
         ("Mean latency (ms)", _fmt(summary.get("mean_latency_ms"), ".1f")),
     ]
 
@@ -151,7 +167,12 @@ def table_compliance_by_category(summary: dict, results: list) -> str:
         "| Pattern | N | Overall | P3394 | 2894 | 3152 |",
         "|---------|--:|--------:|------:|-----:|-----:|",
     ]
-    for key in ["simple_routing", "fsm_workflow", "hierarchical_delegation", "hitl_escalation"]:
+    for key in [
+        "simple_routing",
+        "fsm_workflow",
+        "hierarchical_delegation",
+        "hitl_escalation",
+    ]:
         if key not in by_cat:
             continue
         data = by_cat[key]
@@ -237,7 +258,9 @@ def main():
     for name, fn in tables.items():
         md = fn(summary, results)
         (OUTPUT_DIR / f"{name}.md").write_text(md, encoding="utf-8")
-        (OUTPUT_DIR / f"{name}.tex").write_text(_md_table_to_latex(md), encoding="utf-8")
+        (OUTPUT_DIR / f"{name}.tex").write_text(
+            _md_table_to_latex(md), encoding="utf-8"
+        )
         print(f"  [OK] {name}.md + .tex")
 
     print(f"\n  Output: {OUTPUT_DIR.resolve()}")

@@ -52,7 +52,9 @@ class PerformanceStore:
 
     def _write_all(self, records: List[Dict[str, Any]]) -> None:
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.write_text(
+            json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         tmp.replace(self.path)
 
     def append(self, record: ExecutionRecord) -> None:

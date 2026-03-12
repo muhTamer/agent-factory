@@ -12,6 +12,7 @@ Outputs:
     evaluation_results.csv    — one row per scenario
     evaluation_summary.json   — aggregate metrics
 """
+
 from __future__ import annotations
 
 import argparse
@@ -88,7 +89,11 @@ class ScenarioRouter:
             return RoutePlan(
                 primary="refund_agent",
                 strategy="single",
-                candidates=[Candidate(id="refund_agent", score=0.9, reason="refund keyword match")],
+                candidates=[
+                    Candidate(
+                        id="refund_agent", score=0.9, reason="refund keyword match"
+                    )
+                ],
             )
 
         # Default → FAQ agent
@@ -230,7 +235,9 @@ def run_evaluation(
 
         with _mock.patch("app.llm_client.chat_json", mock_fn), _mock.patch(
             "app.orchestration.aop_coordinator.chat_json", mock_fn
-        ), _mock.patch("app.orchestration.completeness_detector.chat_json", mock_fn), _mock.patch(
+        ), _mock.patch(
+            "app.orchestration.completeness_detector.chat_json", mock_fn
+        ), _mock.patch(
             "app.runtime.voice.chat_json", voice_mock
         ):
             try:
@@ -293,7 +300,9 @@ def run_evaluation(
     harness.export_json(all_results, output_dir / "evaluation_results.json")
 
     summary_path = output_dir / "evaluation_summary.json"
-    summary_path.write_text(json.dumps(metrics, indent=2, default=str), encoding="utf-8")
+    summary_path.write_text(
+        json.dumps(metrics, indent=2, default=str), encoding="utf-8"
+    )
 
     print(f"\n  Results exported to: {output_dir.resolve()}")
 

@@ -15,6 +15,8 @@ Minimal FastAPI application serving as the HTTP entry point.
 | `GET` | `/health` | Agent status, loaded agents, dry_run mode |
 | `GET` | `/version` | API version metadata |
 | `POST` | `/chat` | Process a user query through the full pipeline |
+| `GET` | `/guardrails` | List all guardrail rules with enabled state, policy pack name, version |
+| `PATCH` | `/guardrails/{rule_id}` | Toggle a guardrail rule on/off — persists to disk and hot-swaps immediately |
 
 **Chat Request:**
 ```json
@@ -102,8 +104,11 @@ Intent-aware agent selection using LLM classification.
 ### Routing Logic
 
 1. **Classify Intent** — INFORMATIONAL (seeking knowledge) vs ACTIONABLE (request to perform action) vs MIXED
-2. **Match Agents** — For INFORMATIONAL: prefer FAQ/knowledge-base agents. For ACTIONABLE: prefer agents with action tools
-3. **Score & Rank** — Return primary candidate + ranked alternatives with scores (0.0 – 1.0)
+2. **Score Agents** — Each agent is scored on two independent factors:
+   - **Intent Fit**: How well the agent's role matches the classified intent. For INFORMATIONAL queries, agents with `customer_facing: true` or customer-facing knowledge sources score high. For ACTIONABLE queries, agents with action-oriented capabilities (initiate, process, assess, execute) score high.
+   - **Domain Fit**: How well the agent's domain and capabilities match the topic of the query.
+   - Final score = product of both factors — an agent must match on both intent AND domain to score high.
+3. **Rank & Return** — Return primary candidate + ranked alternatives with scores (0.0 – 1.0). For MIXED queries, strategy is `fanout`.
 
 ### Data Structures
 
@@ -314,6 +319,45 @@ Detects patterns like "refund has been initiated" or "successfully refunded" whe
 | Async promises | "I've forwarded your case" | Stripped |
 | Internal jargon | "workflow", "FSM", "slots" | Stripped |
 | File references | "BankFAQs.csv" | Stripped |
+
+### Configurable Guardrail Rules
+
+See [Governance docs — Configurable Guardrail Rules](governance.md#configurable-guardrail-rules) for the full data model, admin API, and hot-swap mechanism.
+
+---
+
+## Document Visibility & Customer-Facing Agents
+
+### `customer_facing` Flag
+
+Agents with `customer_facing: true` in their `blueprint_meta` are restricted to only access documents classified as customer-facing. This prevents internal policy documents from leaking into customer-facing responses.
+
+### Document Visibility Map (`doc_visibility`)
+
+During onboarding, the setup wizard lets users classify each uploaded document as `"internal"` or `"customer_facing"`. This classification is stored in the factory spec as `doc_visibility`:
+
+```json
+{
+  "doc_visibility": {
+    "BankFAQs.csv": "customer_facing",
+    "refunds_policy.yaml": "internal",
+    "complaints_policy.yaml": "internal"
+  }
+}
+```
+
+### Filtering Logic (`spec_builder.py`)
+
+When building agent inputs, `_is_internal()` checks the user's classification:
+
+```python
+def _is_internal(filename: str, doc_visibility: Optional[Dict[str, str]]) -> bool:
+    if doc_visibility:
+        return doc_visibility.get(filename, "").lower() == "internal"
+    return False  # No visibility map → nothing is internal
+```
+
+For `customer_facing` agents, internal documents are filtered out of `knowledge_sources`, `docs`, `policies`, and `procedures` lists. This is purely user-driven — no extension-based heuristics.
 
 ---
 

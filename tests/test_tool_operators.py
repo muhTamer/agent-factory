@@ -12,6 +12,7 @@ Tests verify:
   - metadata() returns correct id, type, ready
   - handle() returns the stub response with correct fields
 """
+
 import importlib.util
 import sys
 from pathlib import Path
@@ -137,7 +138,7 @@ def test_stub_tools_verify_identity():
 def test_stub_tools_lookup_payment():
     from app.runtime.tools.stub_tools import STUB_TOOLS
 
-    result = STUB_TOOLS["lookup_payment"]({"amount": 500}, {})
+    result = STUB_TOOLS["lookup_payment"]({"amount": 1000}, {})
     assert result["payment_found"] is True
     assert result["settlement_status"] == "settled"
 

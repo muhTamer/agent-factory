@@ -26,11 +26,15 @@ Usage:
     # Pass to engine — no engine changes required
     engine = GenericWorkflowEngine(..., tools=registry.as_callable_dict())
 """
+
 from __future__ import annotations
 
+import logging
 from typing import Any, Callable, Dict, List, Optional
 
 from app.runtime.tools.interface import ITool
+
+_log = logging.getLogger(__name__)
 
 
 class ToolRegistry:
@@ -45,6 +49,7 @@ class ToolRegistry:
 
     def __init__(self) -> None:
         self._tools: Dict[str, ITool] = {}
+        self._mcp_manager: Any = None  # MCPManager instance (if MCP servers loaded)
 
     # ------------------------------------------------------------------
     # Registration
@@ -129,8 +134,61 @@ class ToolRegistry:
 
             else:
                 raise ValueError(
-                    f"Unknown tool type '{kind}' for tool '{name}'. " "Expected: stub | http | sql"
+                    f"Unknown tool type '{kind}' for tool '{name}'. "
+                    "Expected: stub | http | sql"
                 )
+
+    def load_mcp_servers(self, mcp_configs: List[Dict[str, Any]]) -> None:
+        """
+        Connect to MCP servers and register all discovered tools.
+
+        Each MCP server may expose multiple tools. Tools are registered
+        with optional server_id prefix to avoid name collisions.
+
+        Args:
+            mcp_configs: List of MCP server config dicts from tools_config.json.
+        """
+        if not mcp_configs:
+            return
+
+        try:
+            from app.runtime.tools.mcp_manager import MCPManager
+        except ImportError:
+            _log.warning(
+                "MCP package not installed. Skipping MCP server configuration. "
+                "Install with: pip install 'mcp>=1.26.0'"
+            )
+            return
+
+        enabled = [
+            c for c in mcp_configs if c.get("enabled", True) and not c.get("_disabled")
+        ]
+        if not enabled:
+            return
+
+        try:
+            manager = MCPManager.get_instance()
+            if not manager.is_connected():
+                manager.connect_servers(enabled)
+
+            # Register all discovered MCP tools
+            mcp_tools = manager.get_tools()
+            for tool_name, mcp_tool in mcp_tools.items():
+                self._tools[tool_name] = mcp_tool
+
+            self._mcp_manager = manager
+            _log.info("[MCP] Registered %d MCP tools in registry.", len(mcp_tools))
+        except Exception as exc:
+            _log.warning("Failed to load MCP servers: %s", exc)
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+    def shutdown(self) -> None:
+        """Clean up any long-lived connections (MCP servers, etc.)."""
+        if self._mcp_manager is not None:
+            self._mcp_manager.shutdown()
+            self._mcp_manager = None
 
     # ------------------------------------------------------------------
     # Engine bridge
