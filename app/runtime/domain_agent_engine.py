@@ -12,6 +12,7 @@ This replaces both knowledge_rag and workflow_runner with a single
 agent type that has genuine agency — it decides what to do, not a
 state machine.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,6 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from app.shared.rag import Index, query_index
-
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -37,7 +37,9 @@ class DomainAgentConfig:
     policies: List[str] = field(default_factory=list)
     max_steps: int = 8
     model: str = "gpt-5-mini"
-    temperature: float = 1.0  # 1.0 is the only value some models accept (o-series, gpt-5-mini)
+    temperature: float = (
+        1.0  # 1.0 is the only value some models accept (o-series, gpt-5-mini)
+    )
     top_k: int = 5
     retrieval_threshold: float = 0.12
     # Dense retrieval (hybrid fusion with TF-IDF)
@@ -154,7 +156,11 @@ class DomainAgentEngine:
 
             # Cache policy content from retrieval so subsequent turns
             # have the full workflow without re-retrieving.
-            if action == "retrieve_knowledge" and observation and not state.cached_policy_content:
+            if (
+                action == "retrieve_knowledge"
+                and observation
+                and not state.cached_policy_content
+            ):
                 if observation.startswith("Retrieved from source(s):"):
                     state.cached_policy_content = observation
 
@@ -188,7 +194,9 @@ class DomainAgentEngine:
     # Action executors
     # ------------------------------------------------------------------
 
-    def _execute_action(self, action: str, action_input: Dict[str, Any], state: ThreadState) -> str:
+    def _execute_action(
+        self, action: str, action_input: Dict[str, Any], state: ThreadState
+    ) -> str:
         """Execute a ReAct action and return an observation string."""
 
         if action == "retrieve_knowledge":
@@ -288,8 +296,9 @@ class DomainAgentEngine:
         for item in direct_hits:
             passages.append(item.text[:1500])
 
-        return f"Retrieved from source(s): " f"{', '.join(all_sources)}\n\n" + "\n---\n".join(
-            passages
+        return (
+            f"Retrieved from source(s): "
+            f"{', '.join(all_sources)}\n\n" + "\n---\n".join(passages)
         )
 
     def _hybrid_retrieve(
@@ -319,7 +328,8 @@ class DomainAgentEngine:
             dense_score = max(0.0, min(1.0, self._dot(q_vec, dv)))
             sparse_score = sparse_lookup.get(i, 0.0)
             combined = (
-                self.config.sparse_weight * sparse_score + self.config.dense_weight * dense_score
+                self.config.sparse_weight * sparse_score
+                + self.config.dense_weight * dense_score
             )
             fused.append((combined, item))
 
@@ -331,7 +341,9 @@ class DomainAgentEngine:
         """Dot product of two vectors."""
         return sum(x * y for x, y in zip(a, b))
 
-    def _action_call_tool(self, action_input: Dict[str, Any], state: ThreadState) -> str:
+    def _action_call_tool(
+        self, action_input: Dict[str, Any], state: ThreadState
+    ) -> str:
         """Call a tool via the ITool interface."""
         tool_name = action_input.get("tool", "")
         tool_args = action_input.get("args", {})
@@ -387,12 +399,20 @@ class DomainAgentEngine:
                 "action_input": {"reason": f"LLM error: {e}"},
             }
 
-    def _parse_react_response(self, raw: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
+    def _parse_react_response(
+        self, raw: Dict[str, Any]
+    ) -> Tuple[str, str, Dict[str, Any]]:
         """Parse LLM response into (thought, action, action_input)."""
         thought = str(raw.get("thought", "")).strip() or "No reasoning provided."
 
         action = str(raw.get("action", "")).strip().lower()
-        if action not in {"retrieve_knowledge", "call_tool", "respond", "ask_user", "escalate"}:
+        if action not in {
+            "retrieve_knowledge",
+            "call_tool",
+            "respond",
+            "ask_user",
+            "escalate",
+        }:
             # If the LLM returned an unrecognized action, treat as respond
             # with the thought as the answer (graceful degradation)
             answer = raw.get("action_input", {}).get("answer", thought)
@@ -438,7 +458,9 @@ class DomainAgentEngine:
         history_str = ""
         if self._memory:
             try:
-                ctx = self._memory.get_conversation_context(thread_state.thread_id, limit=5)
+                ctx = self._memory.get_conversation_context(
+                    thread_state.thread_id, limit=5
+                )
                 if ctx:
                     turns = []
                     for t in ctx:
@@ -467,7 +489,8 @@ class DomainAgentEngine:
         slots_str = ""
         if thread_state.accumulated_slots:
             slots_str = (
-                f"\nInformation gathered so far: " f"{json.dumps(thread_state.accumulated_slots)}"
+                f"\nInformation gathered so far: "
+                f"{json.dumps(thread_state.accumulated_slots)}"
             )
 
         system_prompt = (
@@ -604,11 +627,15 @@ class DomainAgentEngine:
                         f"{s.action}({json.dumps(s.action_input)}) → "
                         f"{s.observation[:obs_limit]}"
                     )
-                prev_steps_str = "\n\nPrevious reasoning from earlier turns:\n" + "\n".join(parts)
+                prev_steps_str = (
+                    "\n\nPrevious reasoning from earlier turns:\n" + "\n".join(parts)
+                )
 
             original_ctx = ""
             if thread_state.original_query and thread_state.original_query != query:
-                original_ctx = f"Original user question: {thread_state.original_query}\n"
+                original_ctx = (
+                    f"Original user question: {thread_state.original_query}\n"
+                )
 
             user_content = (
                 f"{original_ctx}"
@@ -697,7 +724,11 @@ class DomainAgentEngine:
                     {
                         "step": s.step_number,
                         "tool": s.action_input.get("tool", "unknown"),
-                        "args": {k: v for k, v in s.action_input.items() if k not in ("tool",)},
+                        "args": {
+                            k: v
+                            for k, v in s.action_input.items()
+                            if k not in ("tool",)
+                        },
                         "result": s.observation[:800],
                     }
                 )
@@ -714,7 +745,9 @@ class DomainAgentEngine:
         # Check current turn AND thread history — agent may have retrieved
         # knowledge in a prior turn (e.g. before ask_user) that grounds this answer.
         all_steps = list(state.step_history)
-        response["knowledge_retrieved"] = any(s.action == "retrieve_knowledge" for s in all_steps)
+        response["knowledge_retrieved"] = any(
+            s.action == "retrieve_knowledge" for s in all_steps
+        )
         response["step_count"] = len(steps)
         response["slots"] = dict(state.accumulated_slots)
         response["policies_applied"] = list(self.config.policies)
@@ -733,11 +766,17 @@ class DomainAgentEngine:
                         header, _, body = obs.partition("\n\n")
                         source_names = [
                             n.strip()
-                            for n in header.replace("Retrieved from source(s):", "").split(",")
+                            for n in header.replace(
+                                "Retrieved from source(s):", ""
+                            ).split(",")
                             if n.strip()
                         ]
                         if body:
-                            passages = [p.strip()[:300] for p in body.split("\n---\n") if p.strip()]
+                            passages = [
+                                p.strip()[:300]
+                                for p in body.split("\n---\n")
+                                if p.strip()
+                            ]
                     ks.append(
                         {
                             "query": s.action_input.get("query", ""),
@@ -803,7 +842,11 @@ class DomainAgentEngine:
                                     block,
                                     re.DOTALL,
                                 )
-                                desc = desc_match.group(1).strip() if desc_match else block[:200]
+                                desc = (
+                                    desc_match.group(1).strip()
+                                    if desc_match
+                                    else block[:200]
+                                )
                                 policy_entries.append(f"{step_name}: {desc[:300]}")
                                 break
 

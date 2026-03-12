@@ -8,6 +8,7 @@ Each tool follows the workflow engine contract:
 All stubs return happy-path results so the workflow progresses end-to-end
 during demos without requiring real backend integrations.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict

@@ -29,7 +29,9 @@ def _load_quickstart_fintech_into_workspace(work_dir: Path) -> list[Path]:
     """Copies existing /data files into workspace and returns the created workspace paths."""
     missing = [p for p in FINTECH_DATA_FILES if not p.exists()]
     if missing:
-        raise FileNotFoundError("Missing preset file(s): " + ", ".join(str(p) for p in missing))
+        raise FileNotFoundError(
+            "Missing preset file(s): " + ", ".join(str(p) for p in missing)
+        )
     work_dir.mkdir(exist_ok=True)
     written = []
     for src in FINTECH_DATA_FILES:
@@ -64,10 +66,14 @@ st.set_page_config(page_title="Agent Factory Concierge", layout="wide")
 
 # Sidebar: LLM settings
 st.sidebar.header("LLM Settings")
-consent = st.sidebar.checkbox("Use LLM for sufficiency checks (redacted snippets only)", value=True)
+consent = st.sidebar.checkbox(
+    "Use LLM for sufficiency checks (redacted snippets only)", value=True
+)
 use_llm = consent
 model = st.sidebar.text_input("Model / Deployment", value="gpt-5-mini")
-st.sidebar.caption("Uses Azure/OpenAI via app.llm_client with logging disabled (per your .env).")
+st.sidebar.caption(
+    "Uses Azure/OpenAI via app.llm_client with logging disabled (per your .env)."
+)
 
 st.markdown(
     """
@@ -85,14 +91,18 @@ st.markdown(
 
 
 st.title("🤖 Agent Factory Concierge")
-st.write("Welcome! I’ll help you analyze your documents and design your customer-service system.")
+st.write(
+    "Welcome! I’ll help you analyze your documents and design your customer-service system."
+)
 
 
 # ---------------------------
 # Quickstart (optional) — does NOT replace the normal flow
 # ---------------------------
 with st.expander("⚡ Quickstart (optional)", expanded=False):
-    st.write("Run a ready-made **Fintech** setup (loads preset docs, analyzes, deploys dry-run).")
+    st.write(
+        "Run a ready-made **Fintech** setup (loads preset docs, analyzes, deploys dry-run)."
+    )
     st.caption(
         "Keeps the normal flow intact — you can still upload your own docs and run Analyze/Generate/Approve as before."
     )
@@ -100,7 +110,9 @@ with st.expander("⚡ Quickstart (optional)", expanded=False):
     with qs_col1:
         qs_fintech = st.button("🚀 Quickstart: Fintech", key="qs_fintech_btn")
     with qs_col2:
-        st.caption("Loads `data/bankFAQs.md` + `data/refund_policy.yaml` into `.workspace`.")
+        st.caption(
+            "Loads `data/bankFAQs.md` + `data/refund_policy.yaml` into `.workspace`."
+        )
 
     if qs_fintech:
         st.session_state["quickstart_active"] = True
@@ -169,7 +181,10 @@ for f in uploaded_files:
 # ---------------------------
 # 3. Concierge interaction
 # ---------------------------
-if "agent" not in st.session_state or st.session_state.get("agent_vertical") != vertical:
+if (
+    "agent" not in st.session_state
+    or st.session_state.get("agent_vertical") != vertical
+):
     st.session_state.agent = ConciergeAgent(
         vertical=vertical,
         data_dir=work_dir,
@@ -198,7 +213,9 @@ st.subheader("🧠 Concierge Response")
 st.write("---")
 
 if analyze:
-    res = agent.handle_event({"type": "upload_docs", "use_llm": use_llm, "model": model})
+    res = agent.handle_event(
+        {"type": "upload_docs", "use_llm": use_llm, "model": model}
+    )
     st.markdown(res["text"])
 
     plan = res["plan"]
@@ -243,7 +260,9 @@ if analyze:
             unsafe_allow_html=True,
         )
 
-    st.write("Choose to upload missing docs, generate templates, or approve & deploy below.")
+    st.write(
+        "Choose to upload missing docs, generate templates, or approve & deploy below."
+    )
 
     # Quickstart: after analysis, automatically proceed to Approve & Deploy
     if st.session_state.get("quickstart_stage") == "analyze":
@@ -303,7 +322,9 @@ if st.session_state.get("deployment"):
 
     port = 808
     dep = st.session_state["deployment"] or {}
-    runtime_base = (dep.get("runtime") or {}).get("base_url") if isinstance(dep, dict) else None
+    runtime_base = (
+        (dep.get("runtime") or {}).get("base_url") if isinstance(dep, dict) else None
+    )
     if runtime_base:
         st.session_state["runtime_url"] = runtime_base
 
@@ -369,7 +390,9 @@ if st.session_state.get("deployment"):
 
     runtime_url = st.text_input(
         "Runtime base URL",
-        value=st.session_state.get("runtime_url") or runtime_from_dep or default_runtime,
+        value=st.session_state.get("runtime_url")
+        or runtime_from_dep
+        or default_runtime,
         help="Must match the port you run uvicorn on",
         key="runtime_url",
     )
@@ -419,7 +442,11 @@ if st.session_state.get("deployment"):
 
         # --- Chat rendering (Voice agent output) ---
         chat = payload.get("chat")
-        if isinstance(chat, dict) and isinstance(chat.get("messages"), list) and chat["messages"]:
+        if (
+            isinstance(chat, dict)
+            and isinstance(chat.get("messages"), list)
+            and chat["messages"]
+        ):
             st.markdown("### 💬 Chat")
             for m in chat["messages"]:
                 st.info(m)
@@ -468,7 +495,9 @@ if st.session_state.get("deployment"):
                 except Exception:
                     score = score
 
-            st.caption(f"Agent: {agent_id} · Score: {score if score is not None else '—'}")
+            st.caption(
+                f"Agent: {agent_id} · Score: {score if score is not None else '—'}"
+            )
 
             if payload.get("citations"):
                 with st.expander("📌 Citations"):
@@ -554,7 +583,9 @@ if st.session_state.get("deployment"):
 
                 st.write("### 🔧 Curl (copy/paste)")
                 st.code(
-                    _make_curl(runtime_url, query, st.session_state.get("chat_thread_id")),
+                    _make_curl(
+                        runtime_url, query, st.session_state.get("chat_thread_id")
+                    ),
                     language="bash",
                 )
 
@@ -564,7 +595,9 @@ if st.session_state.get("deployment"):
 
         except Exception as e:
             st.error(f"Failed to call runtime: {e}")
-            st.info("Make sure the runtime is running and the Runtime base URL is correct.")
+            st.info(
+                "Make sure the runtime is running and the Runtime base URL is correct."
+            )
 
 # ---- Always-visible: sanitized audit samples viewer ----
 st.write("---")
@@ -588,7 +621,9 @@ if audit_toggle:
             # Show the last few records for brevity
             st.json(audit[-5:] if len(audit) > 5 else audit)
         else:
-            st.info("No audit samples yet. Click **Analyze Documents** to generate them.")
+            st.info(
+                "No audit samples yet. Click **Analyze Documents** to generate them."
+            )
     except Exception as e:
         st.warning(f"Could not read audit file: {e}")
 

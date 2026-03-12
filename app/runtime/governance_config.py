@@ -13,6 +13,7 @@ Each level represents a different point on the safety-autonomy trade-off curve.
 Running the same scenarios under all three levels produces the comparison data
 needed to answer RQ3.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

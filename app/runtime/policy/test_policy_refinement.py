@@ -5,6 +5,7 @@ Policy Refinement Examples
 Demonstrates how messy customer-provided policies are refined
 before compilation into executable rules.
 """
+
 import sys
 from pathlib import Path
 
@@ -286,7 +287,9 @@ def main():
     print("  python -m app.runtime.policy.policy_refiner_cli refine customer.yaml")
     print()
     print("  # Batch refine multiple policies")
-    print("  python -m app.runtime.policy.policy_refiner_cli batch-refine input/ output/")
+    print(
+        "  python -m app.runtime.policy.policy_refiner_cli batch-refine input/ output/"
+    )
     print()
 
 

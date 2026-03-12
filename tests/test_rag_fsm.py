@@ -1,5 +1,6 @@
 # tests/test_rag_fsm.py
 """Tests for the RAG internal FSM with solvability estimation."""
+
 from __future__ import annotations
 
 import math
@@ -13,7 +14,6 @@ from app.runtime.rag_fsm import (
     RAGState,
     _tok,
 )
-
 
 # ── Test data: small FAQ corpus ──────────────────────────────────────
 
@@ -136,7 +136,9 @@ class TestSolvabilityEstimation:
         """Verify the weighting: 0.5*tfidf + 0.3*coverage + 0.2*top_k_avg."""
         fsm = _make_fsm()
         solv = fsm.estimate_solvability("What is the refund policy?")
-        expected = 0.5 * solv.tfidf_score + 0.3 * solv.coverage_ratio + 0.2 * solv.top_k_avg
+        expected = (
+            0.5 * solv.tfidf_score + 0.3 * solv.coverage_ratio + 0.2 * solv.top_k_avg
+        )
         assert abs(solv.confidence - expected) < 0.01
 
     def test_reasoning_string_populated(self):
@@ -231,7 +233,9 @@ class TestFSMStateTransitions:
         fsm = _make_fsm()
         result = fsm.step("How do I reset my password?")
         assert result.state == RAGState.RESPOND
-        assert "password" in result.answer.lower() or "settings" in result.answer.lower()
+        assert (
+            "password" in result.answer.lower() or "settings" in result.answer.lower()
+        )
         assert len(result.citations) > 0
         assert "score" in result.citations[0]
 

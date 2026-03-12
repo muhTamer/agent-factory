@@ -12,13 +12,13 @@ and checks whether messages, traces, and responses comply:
 Produces a ComplianceReport with per-requirement pass/fail, evidence,
 and an aggregate compliance rate.  No LLM calls — purely structural checks.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from app.runtime.trace import Trace
-
 
 # ── Requirement definitions ──────────────────────────────────────────
 
@@ -75,7 +75,10 @@ class ComplianceReport:
         standards: Dict[str, List[bool]] = {}
         for r in self.results:
             standards.setdefault(r.requirement.standard, []).append(r.compliant)
-        return {std: sum(vals) / len(vals) if vals else 0.0 for std, vals in standards.items()}
+        return {
+            std: sum(vals) / len(vals) if vals else 0.0
+            for std, vals in standards.items()
+        }
 
     @property
     def by_severity(self) -> Dict[str, float]:
@@ -83,7 +86,10 @@ class ComplianceReport:
         severities: Dict[str, List[bool]] = {}
         for r in self.results:
             severities.setdefault(r.requirement.severity, []).append(r.compliant)
-        return {sev: sum(vals) / len(vals) if vals else 0.0 for sev, vals in severities.items()}
+        return {
+            sev: sum(vals) / len(vals) if vals else 0.0
+            for sev, vals in severities.items()
+        }
 
     def non_compliant(self) -> List[ComplianceResult]:
         """Return only non-compliant results."""
@@ -493,7 +499,9 @@ class IEEEComplianceChecker:
                 requirement=IEEE_2894_REQUIREMENTS[2],
                 compliant=has_detailed,
                 evidence="detailed explanation present" if has_detailed else "",
-                gap="" if has_detailed else "No detailed-level explanation for auditors",
+                gap=(
+                    "" if has_detailed else "No detailed-level explanation for auditors"
+                ),
             )
         )
 
@@ -562,8 +570,16 @@ class IEEEComplianceChecker:
             ComplianceResult(
                 requirement=IEEE_2894_REQUIREMENTS[6],
                 compliant=has_trace_link,
-                evidence=f"{len(trace.events)} trace events recorded" if has_trace_link else "",
-                gap="" if has_trace_link else "No trace events linking to processing steps",
+                evidence=(
+                    f"{len(trace.events)} trace events recorded"
+                    if has_trace_link
+                    else ""
+                ),
+                gap=(
+                    ""
+                    if has_trace_link
+                    else "No trace events linking to processing steps"
+                ),
             )
         )
 
@@ -611,13 +627,19 @@ class IEEEComplianceChecker:
 
         # R3: Human/machine boundary clear
         sender = env.get("sender", {})
-        has_boundary = isinstance(sender, dict) and "is_human" in sender and "agent_type" in sender
+        has_boundary = (
+            isinstance(sender, dict) and "is_human" in sender and "agent_type" in sender
+        )
         results.append(
             ComplianceResult(
                 requirement=IEEE_3152_REQUIREMENTS[2],
                 compliant=has_boundary,
-                evidence=f"sender.is_human={sender.get('is_human')}" if has_boundary else "",
-                gap="" if has_boundary else "Human/machine agency boundary not explicit",
+                evidence=(
+                    f"sender.is_human={sender.get('is_human')}" if has_boundary else ""
+                ),
+                gap=(
+                    "" if has_boundary else "Human/machine agency boundary not explicit"
+                ),
             )
         )
 
@@ -668,7 +690,10 @@ class IEEEComplianceChecker:
                 candidates = event.data.get("candidates")
                 if isinstance(candidates, list):
                     for c in candidates:
-                        if isinstance(c, dict) and "handoff" in str(c.get("id", "")).lower():
+                        if (
+                            isinstance(c, dict)
+                            and "handoff" in str(c.get("id", "")).lower()
+                        ):
                             has_escalation = True
                             break
         results.append(

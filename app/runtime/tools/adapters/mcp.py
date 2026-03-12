@@ -18,6 +18,7 @@ Usage:
     )
     result = tool.execute({"customer_id": "C-123"}, {})
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, TYPE_CHECKING
@@ -70,10 +71,13 @@ class MCPTool(ITool):
                 timeout=self.timeout,
             )
         except TimeoutError as exc:
-            raise RuntimeError(f"MCPTool '{self.name}' timed out after {self.timeout}s") from exc
+            raise RuntimeError(
+                f"MCPTool '{self.name}' timed out after {self.timeout}s"
+            ) from exc
         except ConnectionError as exc:
             raise RuntimeError(
-                f"MCPTool '{self.name}' lost connection to server " f"'{self.server_id}': {exc}"
+                f"MCPTool '{self.name}' lost connection to server "
+                f"'{self.server_id}': {exc}"
             ) from exc
 
     def describe(self) -> Dict[str, Any]:

@@ -6,7 +6,7 @@ This module handles the scenario where customers provide "messy" or incomplete
 YAML policies that need refinement before they can be compiled into rules.
 
 Pipeline:
-  Customer YAML (messy) 
+  Customer YAML (messy)
     → LLM Refiner (normalize, validate, enhance)
     → Clean YAML
     → Standard Compiler
@@ -19,6 +19,7 @@ Use cases:
 - Natural language instead of structured format
 - Incomplete slot definitions
 """
+
 from __future__ import annotations
 
 import yaml
@@ -429,7 +430,9 @@ Please refine this policy to fix all issues while preserving the original intent
 
                 # Save refinement report
                 report_file = output_dir / f"{policy_file.stem}_refinement_report.json"
-                report_file.write_text(json.dumps(result.to_dict(), indent=2), encoding="utf-8")
+                report_file.write_text(
+                    json.dumps(result.to_dict(), indent=2), encoding="utf-8"
+                )
 
                 print(f"[REFINE] Saved to {output_file}")
                 print(f"[REFINE] Confidence: {result.confidence:.2f}")

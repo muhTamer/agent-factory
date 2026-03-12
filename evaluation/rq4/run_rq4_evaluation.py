@@ -13,6 +13,7 @@ Outputs:
     rq4_results.json         — full results with justifications
     rq4_metrics.json         — aggregate metrics (by_strategy, by_persona, matrix)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -69,8 +70,12 @@ def run_rq4_evaluation(
             return {}
 
     print(f"  Scenarios: {len(scenarios)}")
-    print(f"  Strategies: {len(ALL_STRATEGIES)} ({', '.join(s.slug for s in ALL_STRATEGIES)})")
-    print(f"  Personas: {len(ALL_PERSONAS)} ({', '.join(p.slug for p in ALL_PERSONAS)})")
+    print(
+        f"  Strategies: {len(ALL_STRATEGIES)} ({', '.join(s.slug for s in ALL_STRATEGIES)})"
+    )
+    print(
+        f"  Personas: {len(ALL_PERSONAS)} ({', '.join(p.slug for p in ALL_PERSONAS)})"
+    )
     print(
         f"  Total evaluations: "
         f"{len(scenarios)} x {len(ALL_STRATEGIES)} x {len(ALL_PERSONAS)} = "
@@ -95,9 +100,13 @@ def run_rq4_evaluation(
         if jr.scenario_id != current_scenario:
             current_scenario = jr.scenario_id
             # Count results for this scenario
-            sc_results = [r for r in result.judge_results if r.scenario_id == current_scenario]
+            sc_results = [
+                r for r in result.judge_results if r.scenario_id == current_scenario
+            ]
             mean_sat = (
-                sum(r.satisfaction for r in sc_results) / len(sc_results) if sc_results else 0
+                sum(r.satisfaction for r in sc_results) / len(sc_results)
+                if sc_results
+                else 0
             )
             print(
                 f"  [{current_scenario:12s}]  "
@@ -156,7 +165,9 @@ def run_rq4_evaluation(
     harness.export_json(result, output_dir / "rq4_results.json")
 
     metrics_path = output_dir / "rq4_metrics.json"
-    metrics_path.write_text(json.dumps(metrics, indent=2, default=str), encoding="utf-8")
+    metrics_path.write_text(
+        json.dumps(metrics, indent=2, default=str), encoding="utf-8"
+    )
 
     print(f"\n  Results exported to: {output_dir.resolve()}")
 
@@ -184,7 +195,9 @@ def test_rq4_mock():
     ), f"Expected 4 strategies, got {len(metrics['by_strategy'])}"
 
     # Verify all personas present
-    assert len(metrics["by_persona"]) == 7, f"Expected 7 personas, got {len(metrics['by_persona'])}"
+    assert (
+        len(metrics["by_persona"]) == 7
+    ), f"Expected 7 personas, got {len(metrics['by_persona'])}"
 
     # Verify score ranges (all scores should be 1-5)
     for strat_stats in metrics["by_strategy"].values():

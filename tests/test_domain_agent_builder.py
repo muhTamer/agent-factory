@@ -1,5 +1,6 @@
 # tests/test_domain_agent_builder.py
 """Tests for the Domain Agent builder (app.shared.domain_agent.build_agent)."""
+
 from __future__ import annotations
 
 import json
@@ -8,7 +9,6 @@ from pathlib import Path
 import pytest
 
 from app.shared.domain_agent import build_agent
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────
 

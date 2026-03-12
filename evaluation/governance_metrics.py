@@ -9,6 +9,7 @@ Computes thesis-aligned metrics for comparing governance levels:
   - False Positive Rate      (over-enforcement ratio)
   - Trade-off Deltas         (LOW → HIGH differences)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -81,7 +82,9 @@ def compute_rq3_metrics(results: List[GovernanceScenarioResult]) -> Dict[str, An
     blocked_results = [r for r in results if r.governance_blocks > 0]
     # Among blocked results, those that still succeeded had false-positive blocks
     false_positives = [r for r in blocked_results if r.success]
-    false_positive_rate = len(false_positives) / len(blocked_results) if blocked_results else 0.0
+    false_positive_rate = (
+        len(false_positives) / len(blocked_results) if blocked_results else 0.0
+    )
 
     return {
         "governance_level": level,
@@ -126,8 +129,12 @@ def compute_comparison_table(
                 low["task_completion_rate"] - high["task_completion_rate"], 4
             ),
             "autonomy_delta": round(low["autonomy_score"] - high["autonomy_score"], 4),
-            "intervention_delta": round(high["intervention_rate"] - low["intervention_rate"], 4),
-            "latency_delta_ms": round(high["avg_latency_ms"] - low["avg_latency_ms"], 2),
+            "intervention_delta": round(
+                high["intervention_rate"] - low["intervention_rate"], 4
+            ),
+            "latency_delta_ms": round(
+                high["avg_latency_ms"] - low["avg_latency_ms"], 2
+            ),
         }
 
     return {

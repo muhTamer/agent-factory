@@ -8,6 +8,7 @@ structured log of what was removed (for the audit trail).
 
 Implements the ``pii_redaction`` flag already declared in PolicyPack.
 """
+
 from __future__ import annotations
 
 import re
@@ -55,7 +56,9 @@ _CREDIT_CARD_RE = re.compile(r"\b(?:\d[ -]*?){13,19}\b")
 _NATIONAL_ID_RE = re.compile(r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b")
 
 # IBAN: 2-letter country code + 2 check digits + up to 30 alphanumeric
-_IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}[\s]?[\dA-Z]{4}[\s]?(?:[\dA-Z]{4}[\s]?){1,7}[\dA-Z]{1,4}\b")
+_IBAN_RE = re.compile(
+    r"\b[A-Z]{2}\d{2}[\s]?[\dA-Z]{4}[\s]?(?:[\dA-Z]{4}[\s]?){1,7}[\dA-Z]{1,4}\b"
+)
 
 _PII_PATTERNS: List[Tuple[str, re.Pattern, str]] = [
     ("email", _EMAIL_RE, "[EMAIL_REDACTED]"),

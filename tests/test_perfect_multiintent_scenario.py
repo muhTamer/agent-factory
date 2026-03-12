@@ -33,6 +33,7 @@ Validates:
 
 No real LLM calls are made.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -296,8 +297,12 @@ def scenario_env():
     from app.orchestration.performance_store import PerformanceStore
 
     memory = ConversationMemory()
-    performance_store = PerformanceStore(path=str(REPO_ROOT / ".factory" / "test_perf_store.json"))
-    aop = AOPCoordinator(registry=registry, memory=memory, performance_store=performance_store)
+    performance_store = PerformanceStore(
+        path=str(REPO_ROOT / ".factory" / "test_perf_store.json")
+    )
+    aop = AOPCoordinator(
+        registry=registry, memory=memory, performance_store=performance_store
+    )
 
     # ── Build spine ──
     # Use NoOpGuardrails to avoid policy-dependent blocks
@@ -313,7 +318,9 @@ def scenario_env():
                     primary="refunds_workflow",
                     strategy="single",
                     candidates=[
-                        Candidate(id="refunds_workflow", score=1.0, reason="keyword:refund")
+                        Candidate(
+                            id="refunds_workflow", score=1.0, reason="keyword:refund"
+                        )
                     ],
                 )
             return RoutePlan(
@@ -338,7 +345,9 @@ def scenario_env():
         qr = []
 
         pattern = (
-            structured.get("orchestration_pattern", "") if isinstance(structured, dict) else ""
+            structured.get("orchestration_pattern", "")
+            if isinstance(structured, dict)
+            else ""
         )
 
         if pattern == "aop_task_menu":
@@ -359,7 +368,11 @@ def scenario_env():
             qr = lines + ["No thanks"]
 
         elif pattern == "aop_task_result":
-            text = structured.get("text") or structured.get("answer") or "Here's what I found."
+            text = (
+                structured.get("text")
+                or structured.get("answer")
+                or "Here's what I found."
+            )
 
         elif pattern == "aop_plan_declined":
             text = "No problem! Let me know if you need anything else."
@@ -367,7 +380,10 @@ def scenario_env():
         elif isinstance(structured, dict) and structured.get("rag_clarification"):
             text = structured.get("answer", "Could you be more specific?")
 
-        elif isinstance(structured, dict) and structured.get("action") == "request_clarification":
+        elif (
+            isinstance(structured, dict)
+            and structured.get("action") == "request_clarification"
+        ):
             missing = structured.get("missing_slots", [])
             text = f"To proceed with your refund, I need: {', '.join(missing)}."
             qr = []
@@ -425,7 +441,9 @@ class TestPerfectMultiIntentScenario:
         patches = [
             patch("app.llm_client.chat_json", side_effect=mock),
             patch("app.orchestration.aop_coordinator.chat_json", side_effect=mock),
-            patch("app.orchestration.completeness_detector.chat_json", side_effect=mock),
+            patch(
+                "app.orchestration.completeness_detector.chat_json", side_effect=mock
+            ),
             patch("app.runtime.workflow_mapper.chat_json", side_effect=mock),
             # voice.render is already mocked on the spine instance
         ]
@@ -437,7 +455,8 @@ class TestPerfectMultiIntentScenario:
             # TURN 1: Multi-intent query → AOP task menu
             # ============================================================
             r1 = spine.handle_chat(
-                "what is the needed documents to open an account? " "and I want to issue a refund",
+                "what is the needed documents to open an account? "
+                "and I want to issue a refund",
                 request_id="req-t1",
                 context={"thread_id": THREAD_ID},
             )
@@ -493,14 +512,22 @@ class TestPerfectMultiIntentScenario:
                 ), f"FAQ agent not pinned after clarification: {ctx2.get('pinned_agent_id')}"
                 assert ctx2.get("pinned_agent_type") == "rag_fsm"
                 assert ctx2.get("pinned_terminal") is False
-                print("[T2] ✓ FAQ task executed → clarification triggered, agent pinned")
+                print(
+                    "[T2] ✓ FAQ task executed → clarification triggered, agent pinned"
+                )
             else:
                 # If no clarification (direct answer), verify we got a response
                 answer = (
-                    _exec_result.get("answer", "") or r2.get("answer", "") or r2.get("text", "")
+                    _exec_result.get("answer", "")
+                    or r2.get("answer", "")
+                    or r2.get("text", "")
                 )
-                assert answer, f"Expected either clarification or answer, got: {r2.keys()}"
-                print("[T2] ✓ FAQ task executed → direct answer (no clarification needed)")
+                assert (
+                    answer
+                ), f"Expected either clarification or answer, got: {r2.keys()}"
+                print(
+                    "[T2] ✓ FAQ task executed → direct answer (no clarification needed)"
+                )
 
             # ============================================================
             # TURN 3: If clarified → select account type, else skip
@@ -542,7 +569,9 @@ class TestPerfectMultiIntentScenario:
                         "1."
                     ), f"Quick reply should start with '1.' not '{numbered_qr[0][:5]}'"
 
-                print("[T3] ✓ Clarification resolved → answer returned → remaining tasks offered")
+                print(
+                    "[T3] ✓ Clarification resolved → answer returned → remaining tasks offered"
+                )
             else:
                 r3 = r2  # No clarification turn needed
 
@@ -562,7 +591,9 @@ class TestPerfectMultiIntentScenario:
             # The workflow should be in receive_request state asking for info
             current_state = _exec_result4.get("current_state", "")
             workflow_id = _exec_result4.get("workflow_id", "")
-            assert workflow_id, f"Expected workflow_id in result, got: {_exec_result4.keys()}"
+            assert (
+                workflow_id
+            ), f"Expected workflow_id in result, got: {_exec_result4.keys()}"
             assert (
                 current_state == "receive_request"
             ), f"Expected receive_request state, got: {current_state}"
@@ -595,7 +626,8 @@ class TestPerfectMultiIntentScenario:
             # TURN 5: Provide refund info → auto-chain → completion
             # ============================================================
             r5 = spine.handle_chat(
-                "My customer ID is CUST-SC-001, the amount is 500 EUR, " "request ID is REQ-SC-001",
+                "My customer ID is CUST-SC-001, the amount is 500 EUR, "
+                "request ID is REQ-SC-001",
                 request_id="req-t5",
                 context={"thread_id": THREAD_ID},
             )
@@ -621,7 +653,9 @@ class TestPerfectMultiIntentScenario:
 
             # Verify agent was unpinned after terminal
             ctx5 = THREAD_CTX.get(THREAD_ID, {})
-            assert "pinned_agent_id" not in ctx5, "Workflow agent should be unpinned after terminal"
+            assert (
+                "pinned_agent_id" not in ctx5
+            ), "Workflow agent should be unpinned after terminal"
 
             # Verify no more pending AOP tasks
             assert "_pending_aop" not in ctx5 or not ctx5.get(
@@ -689,7 +723,9 @@ class TestQuickReplyNumbering:
         patches = [
             patch("app.llm_client.chat_json", side_effect=mock),
             patch("app.orchestration.aop_coordinator.chat_json", side_effect=mock),
-            patch("app.orchestration.completeness_detector.chat_json", side_effect=mock),
+            patch(
+                "app.orchestration.completeness_detector.chat_json", side_effect=mock
+            ),
             patch("app.runtime.workflow_mapper.chat_json", side_effect=mock),
         ]
         for p in patches:
@@ -783,7 +819,9 @@ class TestDeclineRemainingTasks:
         patches = [
             patch("app.llm_client.chat_json", side_effect=mock),
             patch("app.orchestration.aop_coordinator.chat_json", side_effect=mock),
-            patch("app.orchestration.completeness_detector.chat_json", side_effect=mock),
+            patch(
+                "app.orchestration.completeness_detector.chat_json", side_effect=mock
+            ),
             patch("app.runtime.workflow_mapper.chat_json", side_effect=mock),
         ]
         for p in patches:

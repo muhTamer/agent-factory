@@ -202,7 +202,9 @@ def build_server(config_path: Path) -> FastMCP:
         # Build parameter info for the function signature
         annotations = _build_param_annotations(params_def)
         required = {
-            k for k, v in params_def.items() if isinstance(v, dict) and v.get("required", False)
+            k
+            for k, v in params_def.items()
+            if isinstance(v, dict) and v.get("required", False)
         }
         defaults = {}
         for pname, pspec in params_def.items():
@@ -210,10 +212,15 @@ def build_server(config_path: Path) -> FastMCP:
                 defaults[pname] = pspec["default"]
             elif pname not in required:
                 # Provide sensible defaults for optional params
-                ptype = pspec.get("type", "string") if isinstance(pspec, dict) else "string"
-                defaults[pname] = {"string": "", "integer": 0, "number": 0.0, "boolean": False}.get(
-                    ptype, ""
+                ptype = (
+                    pspec.get("type", "string") if isinstance(pspec, dict) else "string"
                 )
+                defaults[pname] = {
+                    "string": "",
+                    "integer": 0,
+                    "number": 0.0,
+                    "boolean": False,
+                }.get(ptype, "")
 
         # Create a proper function with the right signature for FastMCP
         param_names = list(params_def.keys())
@@ -236,7 +243,9 @@ def build_server(config_path: Path) -> FastMCP:
         # Create the function dynamically with proper annotations
         func_code = f"def {name}({sig}) -> str:\n"
         func_code += f'    """{description}"""\n'
-        func_code += f"    return _handler({', '.join(f'{p}={p}' for p in param_names)})\n"
+        func_code += (
+            f"    return _handler({', '.join(f'{p}={p}' for p in param_names)})\n"
+        )
 
         local_ns = {"_handler": handler}
         # Add type annotations

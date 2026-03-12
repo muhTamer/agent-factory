@@ -10,6 +10,7 @@ Main orchestrator that:
 5. Stores with hash-based change detection
 6. Provides auto-recompilation on policy changes
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -159,7 +160,9 @@ class PolicyCompiler:
 
         return hasher.hexdigest()
 
-    def _extract_slot_schema(self, rules: List[CompiledRule]) -> Dict[str, Dict[str, Any]]:
+    def _extract_slot_schema(
+        self, rules: List[CompiledRule]
+    ) -> Dict[str, Dict[str, Any]]:
         """
         Extract slot schema from compiled rules.
 
@@ -175,7 +178,9 @@ class PolicyCompiler:
 
         return schema
 
-    def _extract_slots_from_conditions(self, conditions, schema: Dict[str, Dict[str, Any]]):
+    def _extract_slots_from_conditions(
+        self, conditions, schema: Dict[str, Dict[str, Any]]
+    ):
         """Recursively extract slot names from conditions."""
         from app.runtime.policy.policy_ast import Condition, ConditionGroup
 
@@ -237,10 +242,16 @@ class PolicyCompiler:
 
         # Convert sets to lists for JSON serialization
         for slot_name, slot_info in data.get("slot_schema", {}).items():
-            if "possible_values" in slot_info and isinstance(slot_info["possible_values"], set):
-                slot_info["possible_values"] = sorted(list(slot_info["possible_values"]), key=str)
+            if "possible_values" in slot_info and isinstance(
+                slot_info["possible_values"], set
+            ):
+                slot_info["possible_values"] = sorted(
+                    list(slot_info["possible_values"]), key=str
+                )
 
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
         print(f"[POLICY-COMPILE] Saved policy pack to {path}")
 

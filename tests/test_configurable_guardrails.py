@@ -1,5 +1,6 @@
 # tests/test_configurable_guardrails.py
 """Tests for configurable guardrail rules: PolicyPack, PolicyGuardrails, and toggles."""
+
 from __future__ import annotations
 
 import json
@@ -8,7 +9,6 @@ import tempfile
 
 from app.runtime.policy_pack import GuardrailRule, PolicyPack, _DEFAULT_RULES
 from app.runtime.policy_guardrails import PolicyGuardrails
-
 
 # ── GuardrailRule ────────────────────────────────────────────────────
 
@@ -318,7 +318,9 @@ class TestCustomVerticalRules:
                     label="Block hallucinated prescriptions",
                     category="safety",
                     enabled=True,
-                    patterns=[r"prescription\s+(has been|was)\s+(issued|filled|approved)"],
+                    patterns=[
+                        r"prescription\s+(has been|was)\s+(issued|filled|approved)"
+                    ],
                 ),
                 GuardrailRule(
                     id="transaction_context",

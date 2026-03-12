@@ -16,7 +16,9 @@ class GuardResult:
 
 class Guardrails(Protocol):
     def pre(self, query: str, context: Dict[str, Any]) -> GuardResult: ...
-    def post(self, response: Dict[str, Any], context: Dict[str, Any]) -> GuardResult: ...
+    def post(
+        self, response: Dict[str, Any], context: Dict[str, Any]
+    ) -> GuardResult: ...
 
 
 class NoOpGuardrails:

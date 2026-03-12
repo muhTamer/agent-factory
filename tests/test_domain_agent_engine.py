@@ -1,5 +1,6 @@
 # tests/test_domain_agent_engine.py
 """Tests for the Domain Agent ReAct engine."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -11,7 +12,6 @@ from app.runtime.domain_agent_engine import (
     DomainAgentEngine,
 )
 from app.shared.rag import CorpusItem, build_index
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -143,12 +143,17 @@ class TestReActLoop:
                 {
                     "thought": "Need to look up the payment for order 123.",
                     "action": "call_tool",
-                    "action_input": {"tool": "lookup_payment", "args": {"order_id": "123"}},
+                    "action_input": {
+                        "tool": "lookup_payment",
+                        "args": {"order_id": "123"},
+                    },
                 },
                 {
                     "thought": "Payment found. Amount was $49.99.",
                     "action": "respond",
-                    "action_input": {"answer": "Your order #123 was $49.99 and has been paid."},
+                    "action_input": {
+                        "answer": "Your order #123 was $49.99 and has been paid."
+                    },
                 },
             ],
             tools={"lookup_payment": lookup_tool},
@@ -183,7 +188,9 @@ class TestReActLoop:
                 {
                     "thought": "This requires manual review.",
                     "action": "escalate",
-                    "action_input": {"reason": "Request exceeds automated processing limits"},
+                    "action_input": {
+                        "reason": "Request exceeds automated processing limits"
+                    },
                 },
             ]
         )
@@ -274,7 +281,9 @@ class TestMultiTurn:
             return {
                 "thought": "User provided email. Can now respond.",
                 "action": "respond",
-                "action_input": {"answer": "Identity verified. Processing your refund."},
+                "action_input": {
+                    "answer": "Identity verified. Processing your refund."
+                },
             }
 
         corpus = _build_corpus()
@@ -285,7 +294,9 @@ class TestMultiTurn:
             goal="Help with refunds",
             max_steps=5,
         )
-        engine = DomainAgentEngine(config=config, index=index, tools={}, llm_fn=mock_llm)
+        engine = DomainAgentEngine(
+            config=config, index=index, tools={}, llm_fn=mock_llm
+        )
 
         # Turn 1: ask_user
         r1 = engine.handle("I want a refund", thread_id="t1")
@@ -308,7 +319,10 @@ class TestSlotAccumulation:
                 {
                     "thought": "Look up payment.",
                     "action": "call_tool",
-                    "action_input": {"tool": "lookup_payment", "args": {"order_id": "123"}},
+                    "action_input": {
+                        "tool": "lookup_payment",
+                        "args": {"order_id": "123"},
+                    },
                 },
                 {
                     "thought": "Got payment info.",

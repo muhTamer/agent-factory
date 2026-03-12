@@ -30,7 +30,9 @@ class Trace:
 
     @staticmethod
     def start(
-        query: str, request_id: Optional[str] = None, context: Optional[Dict[str, Any]] = None
+        query: str,
+        request_id: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> "Trace":
         rid = request_id or str(uuid.uuid4())
         return Trace(
@@ -50,7 +52,10 @@ class Trace:
             "started_ts_ms": self.started_ts_ms,
             "query": self.query,
             "context": self.context,
-            "events": [{"ts_ms": e.ts_ms, "stage": e.stage, "data": e.data} for e in self.events],
+            "events": [
+                {"ts_ms": e.ts_ms, "stage": e.stage, "data": e.data}
+                for e in self.events
+            ],
         }
         if self.governance:
             d["governance"] = self.governance

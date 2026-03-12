@@ -14,7 +14,9 @@ import json
 
 
 class ConciergeAgent:
-    def __init__(self, vertical: str, data_dir: str, llm_client=None, model: str | None = None):
+    def __init__(
+        self, vertical: str, data_dir: str, llm_client=None, model: str | None = None
+    ):
         self.vertical = vertical
         self.data_dir = Path(data_dir)
         self.llm_client = llm_client
@@ -43,15 +45,22 @@ class ConciergeAgent:
         if event_type == "user_action" and action == "generate_placeholders":
             return self._generate_placeholders()
 
-        if event_type == "user_action" and action in {"approve_deploy_dry", "approve_deploy_live"}:
-            return self._approve_deploy(action, doc_visibility=event.get("doc_visibility"))
+        if event_type == "user_action" and action in {
+            "approve_deploy_dry",
+            "approve_deploy_live",
+        }:
+            return self._approve_deploy(
+                action, doc_visibility=event.get("doc_visibility")
+            )
 
         return self._help_message()
 
     # -----------------------------
     # Analyze current state
     # -----------------------------
-    def _run_infer(self, use_llm: bool = True, model: str | None = None) -> Dict[str, Any]:
+    def _run_infer(
+        self, use_llm: bool = True, model: str | None = None
+    ) -> Dict[str, Any]:
         # Reset plan state to avoid stale docs being displayed
         self.plan = None
         self.last_plan = None  # if you have it
@@ -86,7 +95,9 @@ class ConciergeAgent:
         created = []
         faq_path = self.data_dir / "sample_faqs.csv"
         if not faq_path.exists():
-            faq_path.write_text("question,answer\nHow do I return an item?,Within 30 days.")
+            faq_path.write_text(
+                "question,answer\nHow do I return an item?,Within 30 days."
+            )
             created.append(faq_path.name)
 
         refund_path = self.data_dir / "refunds_policy.yaml"
@@ -166,7 +177,9 @@ class ConciergeAgent:
                 errors.append({"id": a_id, "error": str(e)})
 
         print(f"[DEPLOY] Spec: {spec_path}")
-        print(f"[DEPLOY] Pre-generated {len(generated)} agents: {[g['id'] for g in generated]}")
+        print(
+            f"[DEPLOY] Pre-generated {len(generated)} agents: {[g['id'] for g in generated]}"
+        )
         if errors:
             print(f"[DEPLOY][WARN] Generation errors: {errors}")
 
@@ -181,7 +194,9 @@ class ConciergeAgent:
             "vertical": self.vertical,
             "mode": mode,
             "agents": [
-                a.get("id") for a in plan.get("agents", []) if isinstance(a, dict) and a.get("id")
+                a.get("id")
+                for a in plan.get("agents", [])
+                if isinstance(a, dict) and a.get("id")
             ],
             "spec_path": str(spec_path),
             "generated_agents": generated,
@@ -218,7 +233,9 @@ class ConciergeAgent:
                 f"{a['icon']} {a['display_name']} — {a['status'].capitalize()} "
                 f"(confidence {int(a['confidence']*100)}%)"
             )
-        lines.append("Choose to upload missing docs, generate templates, or approve & deploy.")
+        lines.append(
+            "Choose to upload missing docs, generate templates, or approve & deploy."
+        )
         return "\n".join(lines)
 
     def _build_deploy_spec(self, mode: str) -> Dict[str, Any]:
@@ -355,12 +372,15 @@ class ConciergeAgent:
                     if typed.get("tool_spec"):
                         parts.append("uses tool specs")
 
-                    tail = ", ".join(parts) if parts else "no supporting docs attached yet"
+                    tail = (
+                        ", ".join(parts) if parts else "no supporting docs attached yet"
+                    )
                     desc = a.get("description", "")
                     if not isinstance(desc, str):
                         desc = ""
                     a["why"] = (
-                        desc.strip() or f"Proposed as part of the customer-service system; {tail}."
+                        desc.strip()
+                        or f"Proposed as part of the customer-service system; {tail}."
                     )[:240]
 
             # Optional: append off-vertical doc warnings (if available)

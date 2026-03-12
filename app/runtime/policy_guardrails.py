@@ -87,13 +87,15 @@ class PolicyGuardrails(Guardrails):
             and self._hallucination_rule.compiled_patterns
         ):
             original_query = context.get("original_query", "")
-            has_transaction_context = self._detect_transaction_context(original_query, context)
+            has_transaction_context = self._detect_transaction_context(
+                original_query, context
+            )
 
             # Domain agents that only retrieved knowledge are informational —
             # they're describing policy, not claiming to have executed an action.
-            is_informational = response.get("knowledge_retrieved") is True and not response.get(
-                "tools_used"
-            )
+            is_informational = response.get(
+                "knowledge_retrieved"
+            ) is True and not response.get("tools_used")
             is_clarifying = (
                 response.get("needs_input") is True
                 or response.get("domain_agent_clarification") is True
@@ -130,10 +132,16 @@ class PolicyGuardrails(Guardrails):
     # Transaction context detection (config-driven)
     # ------------------------------------------------------------------
 
-    def _detect_transaction_context(self, original_query: str, context: Dict[str, Any]) -> bool:
+    def _detect_transaction_context(
+        self, original_query: str, context: Dict[str, Any]
+    ) -> bool:
         """Check if query or accumulated slots contain transaction evidence."""
         # Check query against transaction context patterns
-        if original_query and self._transaction_ctx_rule and self._transaction_ctx_rule.enabled:
+        if (
+            original_query
+            and self._transaction_ctx_rule
+            and self._transaction_ctx_rule.enabled
+        ):
             for pat in self._transaction_ctx_rule.compiled_patterns:
                 if pat.search(original_query):
                     return True

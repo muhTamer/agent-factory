@@ -27,6 +27,7 @@ Behaviour:
 - slot_map renames result columns to slot keys (optional; pass-through if absent).
 - If the query returns no rows, returns an empty dict (no slot updates).
 """
+
 from __future__ import annotations
 
 import re

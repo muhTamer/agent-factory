@@ -23,7 +23,10 @@ def get_client():
         # Azure mode
         api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
         return AzureOpenAI(
-            azure_endpoint=endpoint, api_key=api_key, api_version=api_version, timeout=timeout
+            azure_endpoint=endpoint,
+            api_key=api_key,
+            api_version=api_version,
+            timeout=timeout,
         )
     elif api_key:
         # Regular OpenAI mode

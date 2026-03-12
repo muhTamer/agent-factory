@@ -15,6 +15,7 @@ Total: 20 x 4 x 7 = 560 evaluations.
 
 Computes aggregate metrics and exports results for thesis tables.
 """
+
 from __future__ import annotations
 
 import csv
@@ -27,7 +28,6 @@ from typing import Any, Dict, List, Optional
 from evaluation.rq4.judge import Judge, JudgeResult
 from evaluation.rq4.personas import ALL_PERSONAS, Persona
 from evaluation.rq4.strategies import ALL_STRATEGIES, Strategy
-
 
 # ── Result dataclasses ────────────────────────────────────────────────
 
@@ -149,14 +149,18 @@ class RQ4Harness:
         for strategy in self.strategies:
             strat_results = [r for r in results if r.strategy_name == strategy.slug]
             if strat_results:
-                metrics["by_strategy"][strategy.slug] = self._compute_tts_stats(strat_results)
+                metrics["by_strategy"][strategy.slug] = self._compute_tts_stats(
+                    strat_results
+                )
 
         # By persona
         metrics["by_persona"] = {}
         for persona in self.personas:
             persona_results = [r for r in results if r.persona_name == persona.name]
             if persona_results:
-                metrics["by_persona"][persona.name] = self._compute_tts_stats(persona_results)
+                metrics["by_persona"][persona.name] = self._compute_tts_stats(
+                    persona_results
+                )
 
         # By scenario category
         metrics["by_category"] = {}
@@ -174,7 +178,8 @@ class RQ4Harness:
                 cell_results = [
                     r
                     for r in results
-                    if r.strategy_name == strategy.slug and r.persona_name == persona.name
+                    if r.strategy_name == strategy.slug
+                    and r.persona_name == persona.name
                 ]
                 if cell_results:
                     metrics["strategy_persona_matrix"][strategy.slug][persona.name] = (
@@ -261,7 +266,10 @@ class RQ4Harness:
             "trust": _stats(tr_scores),
             "satisfaction": _stats(s_scores),
             "composite": _stats(
-                [round((t + tr + s) / 3, 2) for t, tr, s in zip(t_scores, tr_scores, s_scores)]
+                [
+                    round((t + tr + s) / 3, 2)
+                    for t, tr, s in zip(t_scores, tr_scores, s_scores)
+                ]
             ),
         }
 
@@ -286,7 +294,9 @@ class RQ4Harness:
         for dimension in ("transparency", "trust", "satisfaction"):
             groups = []
             for slug in strategy_slugs:
-                scores = [getattr(r, dimension) for r in results if r.strategy_name == slug]
+                scores = [
+                    getattr(r, dimension) for r in results if r.strategy_name == slug
+                ]
                 if scores:
                     groups.append(scores)
 

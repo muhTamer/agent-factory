@@ -58,7 +58,9 @@ _vertical: str = "retail"
 _model: str = "gpt-5-mini"
 
 
-def _get_or_create_agent(vertical: str | None = None, model: str | None = None) -> ConciergeAgent:
+def _get_or_create_agent(
+    vertical: str | None = None, model: str | None = None
+) -> ConciergeAgent:
     global _agent, _vertical, _model
     v = vertical or _vertical
     m = model or _model
@@ -206,7 +208,8 @@ def start_runtime(req: RuntimeRequest):
 def stop_runtime(req: RuntimeRequest):
     port = req.port
     kill_cmd = (
-        f'for /f "tokens=5" %%a in ' f"('netstat -ano ^| findstr :{port}') do taskkill /F /PID %%a"
+        f'for /f "tokens=5" %%a in '
+        f"('netstat -ano ^| findstr :{port}') do taskkill /F /PID %%a"
     )
     subprocess.Popen(kill_cmd, shell=True)
     return {"status": "stopped", "port": port}

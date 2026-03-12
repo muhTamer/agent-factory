@@ -1,5 +1,6 @@
 # tests/test_rag_enhanced.py
 """Tests for enhanced RAG: LLM synthesis, dense retrieval, citation grounding."""
+
 from __future__ import annotations
 
 import math
@@ -12,7 +13,6 @@ from app.runtime.rag_fsm import (
     RAGState,
     _tok,
 )
-
 
 # ── Test data ─────────────────────────────────────────────────────────
 

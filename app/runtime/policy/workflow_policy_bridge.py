@@ -7,6 +7,7 @@ decisions based on compiled policies instead of LLM guesses.
 
 This is the KEY integration point that stops workflows from getting stuck.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -62,7 +63,9 @@ class WorkflowPolicyBridge:
             for result in results:
                 for action in result.actions:
                     if action.action_type == "block":
-                        reason = action.parameters.get("reason", "Eligibility check failed")
+                        reason = action.parameters.get(
+                            "reason", "Eligibility check failed"
+                        )
                         return False, reason, results
 
         if results:
@@ -266,18 +269,26 @@ class WorkflowPolicyBridge:
                 try:
                     float(slot_value)
                 except (ValueError, TypeError):
-                    errors.append(f"{slot_name} must be a number, got {type(slot_value).__name__}")
+                    errors.append(
+                        f"{slot_name} must be a number, got {type(slot_value).__name__}"
+                    )
 
             elif expected_type == "boolean" and not isinstance(slot_value, bool):
-                errors.append(f"{slot_name} must be a boolean, got {type(slot_value).__name__}")
+                errors.append(
+                    f"{slot_name} must be a boolean, got {type(slot_value).__name__}"
+                )
 
             elif expected_type == "string" and not isinstance(slot_value, str):
-                errors.append(f"{slot_name} must be a string, got {type(slot_value).__name__}")
+                errors.append(
+                    f"{slot_name} must be a string, got {type(slot_value).__name__}"
+                )
 
             # Value validation (if enum-like)
             possible_values = schema.get("possible_values")
             if possible_values and slot_value not in possible_values:
-                errors.append(f"{slot_name}={slot_value} not in allowed values: {possible_values}")
+                errors.append(
+                    f"{slot_name}={slot_value} not in allowed values: {possible_values}"
+                )
 
         return len(errors) == 0, errors
 
@@ -335,11 +346,15 @@ class WorkflowPolicyBridge:
 
         elif decision_type == "eligibility":
             eligible, reason, results = self.check_eligibility(slots)
-            explanation_parts.append(f"Result: {'Eligible' if eligible else 'Not eligible'}")
+            explanation_parts.append(
+                f"Result: {'Eligible' if eligible else 'Not eligible'}"
+            )
             explanation_parts.append(f"Reason: {reason}")
 
             for result in results:
                 for citation in result.rule.citations:
-                    explanation_parts.append(f"Policy: {citation.source_file} - {citation.rule_id}")
+                    explanation_parts.append(
+                        f"Policy: {citation.source_file} - {citation.rule_id}"
+                    )
 
         return "\n".join(explanation_parts)

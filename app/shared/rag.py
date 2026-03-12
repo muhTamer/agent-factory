@@ -211,7 +211,9 @@ def query_index(index: Index, query: str, k: int = 5) -> List[Tuple[float, Corpu
 # ---------------------------
 
 
-def exact_faq_answer(items: List[CorpusItem], query: str) -> Tuple[str | None, Dict[str, Any]]:
+def exact_faq_answer(
+    items: List[CorpusItem], query: str
+) -> Tuple[str | None, Dict[str, Any]]:
     q_norm = " ".join(_tok(query))
     best: Tuple[int, str, str] | None = None  # (len_dist, a, src)
     for it in items:
@@ -233,15 +235,21 @@ def exact_faq_answer(items: List[CorpusItem], query: str) -> Tuple[str | None, D
     return None, {}
 
 
-def synthesize_answer(query: str, hits: List[Tuple[float, CorpusItem]]) -> Dict[str, Any]:
+def synthesize_answer(
+    query: str, hits: List[Tuple[float, CorpusItem]]
+) -> Dict[str, Any]:
     if not hits:
         return {"answer": "I don’t have that yet.", "citations": [], "score": 0.0}
     top_score, top = hits[0]
     # extractive-ish: return the top chunk (first ~450 chars)
-    snippet = textwrap.shorten(top.text.replace("\n", " ").strip(), width=450, placeholder=" ...")
+    snippet = textwrap.shorten(
+        top.text.replace("\n", " ").strip(), width=450, placeholder=" ..."
+    )
     return {
         "answer": snippet,
-        "citations": [{"source": h[1].source, "score": round(float(h[0]), 3)} for h in hits[:3]],
+        "citations": [
+            {"source": h[1].source, "score": round(float(h[0]), 3)} for h in hits[:3]
+        ],
         "score": round(float(top_score), 3),
     }
 
@@ -319,7 +327,9 @@ def build_agent(
         class _LLMAdapter:
             def chat_json(self, messages, model=None, temperature=1.0):
                 # IMPORTANT: do NOT set temperature=0.0 (some models reject it)
-                return chat_json(messages=messages, model=model, temperature=temperature)
+                return chat_json(
+                    messages=messages, model=model, temperature=temperature
+                )
 
         llm_adapter = _LLMAdapter()
     except Exception:
@@ -340,7 +350,9 @@ def build_agent(
     faqs: List[Dict[str, Any]] = []
     mapping_debug: List[Dict[str, Any]] = []
 
-    def _read_csv_sample(path: Path, max_rows: int = 20) -> Tuple[List[str], List[Dict[str, str]]]:
+    def _read_csv_sample(
+        path: Path, max_rows: int = 20
+    ) -> Tuple[List[str], List[Dict[str, str]]]:
         try:
             with path.open("r", encoding="utf-8", errors="ignore", newline="") as f:
                 reader = csv.DictReader(f)
@@ -453,8 +465,7 @@ def build_agent(
     # Generate agent.py (multi-turn RAG with FSM, solvability, clarification, delegation)
     # ---------------------------
     header = f"# Auto-generated FAQ RAG agent ({agent_id})\n"
-    body = textwrap.dedent(
-        """\
+    body = textwrap.dedent("""\
 from __future__ import annotations
 from typing import Dict, Any, List, Optional
 from pathlib import Path
@@ -748,8 +759,7 @@ class Agent(IAgent):
             "vertical": "generic_customer_service",
             "docs": len(self.faqs),
         }
-"""
-    )
+""")
 
     agent_src = header + body.replace("__AGENT_ID__", agent_id)
     (gen_dir / "agent.py").write_text(agent_src, encoding="utf-8")

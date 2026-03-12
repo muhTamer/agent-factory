@@ -15,6 +15,7 @@ Scenarios:
   - No internal leakage: rule IDs, thresholds, conditions stay hidden
   - Guardrails: PII / sensitive data not surfaced
 """
+
 from __future__ import annotations
 
 import re
@@ -26,7 +27,6 @@ from app.runtime.domain_agent_engine import (
     DomainAgentEngine,
 )
 from app.shared.rag import CorpusItem, build_index
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -185,7 +185,9 @@ class TestHappyPathWorkflow:
 
         # Structural assertions
         assert result["answer"], "Response must have an answer"
-        assert result["step_count"] >= 3, "Should have at least retrieve + lookup + respond"
+        assert (
+            result["step_count"] >= 3
+        ), "Should have at least retrieve + lookup + respond"
         assert result.get("escalation") is not True, "Happy path should not escalate"
         assert result.get("needs_input") is not True, "Happy path should not ask user"
 
@@ -448,7 +450,9 @@ class TestGradualQuestioning:
             return {
                 "thought": "I need the reference number to proceed.",
                 "action": "ask_user",
-                "action_input": {"question": "Could you please provide your reference number?"},
+                "action_input": {
+                    "question": "Could you please provide your reference number?"
+                },
             }
         if call_idx == 1:
             return {
@@ -488,7 +492,9 @@ class TestGradualQuestioning:
         answer = r1["answer"]
         assert answer.count("?") <= 2, f"Should ask at most one question, got: {answer}"
         # Should NOT contain numbered list patterns
-        assert not re.search(r"\d\.\s", answer), f"Should not dump a numbered list: {answer}"
+        assert not re.search(
+            r"\d\.\s", answer
+        ), f"Should not dump a numbered list: {answer}"
 
     def test_multi_turn_collects_gradually(self):
         """Multi-turn: ask ref → user answers → lookup → ask reason → answer → respond."""
@@ -524,7 +530,9 @@ class TestGradualQuestioning:
                 {
                     "thought": "Multiple refund policies exist. Need to clarify.",
                     "action": "ask_user",
-                    "action_input": {"question": "Which policy — travel or home insurance?"},
+                    "action_input": {
+                        "question": "Which policy — travel or home insurance?"
+                    },
                 }
                 if idx == 0
                 else (
@@ -606,8 +614,12 @@ class TestGradualQuestioning:
         # The prompt for Turn 2 must include previous reasoning
         turn2_user_msg = llm.calls[2][1]["content"]
         assert (
-            "previous reasoning" in turn2_user_msg.lower() or "retrieve_knowledge" in turn2_user_msg
-        ), (f"Resume prompt must include previous reasoning steps, " f"got: {turn2_user_msg[:400]}")
+            "previous reasoning" in turn2_user_msg.lower()
+            or "retrieve_knowledge" in turn2_user_msg
+        ), (
+            f"Resume prompt must include previous reasoning steps, "
+            f"got: {turn2_user_msg[:400]}"
+        )
 
     def test_prompt_forbids_process_preview(self):
         """Prompt must instruct agent NOT to preview future steps or list the full process."""
@@ -769,7 +781,9 @@ class TestNoInternalLeakage:
         lower = system_prompt.lower()
         # These are the specific codes the LLM was leaking in production
         for code in ["psd2", "amld5", "gdpr"]:
-            assert code in lower, f"Prompt must explicitly mention '{code}' as forbidden to share"
+            assert (
+                code in lower
+            ), f"Prompt must explicitly mention '{code}' as forbidden to share"
 
     def test_prompt_provides_good_bad_examples(self):
         """Prompt must show good/bad examples of how to rephrase policy language."""
@@ -856,7 +870,9 @@ class TestGuardrails:
                 else {
                     "thought": "Customer found and verified.",
                     "action": "respond",
-                    "action_input": {"answer": "Your identity has been verified. How can I help?"},
+                    "action_input": {
+                        "answer": "Your identity has been verified. How can I help?"
+                    },
                 }
             )
         )
@@ -957,7 +973,9 @@ class TestEngineStructuralGuarantees:
                 else {
                     "thought": "No info found. Respond accordingly.",
                     "action": "respond",
-                    "action_input": {"answer": "I don't have information on that topic."},
+                    "action_input": {
+                        "answer": "I don't have information on that topic."
+                    },
                 }
             )
         )
@@ -1085,7 +1103,11 @@ class TestPromptQuality:
         """Prompt must instruct against hallucination and inventing rules."""
         prompt = self._capture_prompt(corpus_texts=["Doc."])
         lower = prompt.lower()
-        assert "do not invent" in lower or "do not make up" in lower or "do not fabricate" in lower
+        assert (
+            "do not invent" in lower
+            or "do not make up" in lower
+            or "do not fabricate" in lower
+        )
         # Must also instruct about retrieval quality evaluation
         assert (
             "critically evaluate" in lower or "directly answer" in lower
@@ -1099,7 +1121,9 @@ class TestPromptQuality:
             "don't have" in lower or "do not have" in lower
         ), "Prompt must instruct agent to admit when info is missing"
         assert (
-            "connect" in lower or "specialist" in lower or "someone who can help" in lower
+            "connect" in lower
+            or "specialist" in lower
+            or "someone who can help" in lower
         ), "Prompt must instruct agent to offer human help when info is missing"
 
     def test_prompt_warns_against_unrelated_passages(self):
@@ -1148,13 +1172,17 @@ class TestAnswerSanitization:
                 else {
                     "thought": "Respond with info.",
                     "action": "respond",
-                    "action_input": {"answer": "Your request is eligible for processing."},
+                    "action_input": {
+                        "answer": "Your request is eligible for processing."
+                    },
                 }
             )
         )
         engine = _build_engine(
             corpus_texts=["Process requests."],
-            tools={"lookup": _mock_tool("lookup", {"internal_id": "X-99", "status": "ok"})},
+            tools={
+                "lookup": _mock_tool("lookup", {"internal_id": "X-99", "status": "ok"})
+            },
             llm_fn=llm,
         )
         result = engine.handle("Process my request")
@@ -1269,7 +1297,10 @@ class TestSourceExpansionRetrieval:
                 meta={},
             ),
             CorpusItem(
-                text="Unrelated FAQ about account opening.", source="faq.csv", kind="faq", meta={}
+                text="Unrelated FAQ about account opening.",
+                source="faq.csv",
+                kind="faq",
+                meta={},
             ),
         ]
         index = build_index(items)
@@ -1287,7 +1318,9 @@ class TestSourceExpansionRetrieval:
         result = engine.handle("What are the eligibility rules?")
         obs = result["react_trace"][0]["observation"]
         assert "policy.yaml" in obs
-        assert "account opening" not in obs, "Chunks from unrelated sources must NOT be expanded"
+        assert (
+            "account opening" not in obs
+        ), "Chunks from unrelated sources must NOT be expanded"
 
     def test_large_source_returns_matched_chunks_only(self):
         """For sources with > 50 chunks (e.g. FAQ CSVs), only return
@@ -1394,7 +1427,9 @@ class TestLLMTemperature:
         assert captured_temps, "LLM must be called"
         for temp in captured_temps:
             assert temp is not None, "Temperature must be explicitly set"
-            assert 0 <= temp <= 2.0, f"Temperature {temp} is outside valid API range [0, 2]."
+            assert (
+                0 <= temp <= 2.0
+            ), f"Temperature {temp} is outside valid API range [0, 2]."
 
 
 # ── Scenario 13: Duplicate action prevention ─────────────────────
@@ -1568,7 +1603,9 @@ class TestFullMultiTurnLifecycle:
                 return {
                     "thought": "Record found. Need the purpose.",
                     "action": "ask_user",
-                    "action_input": {"question": "What is the purpose of your request?"},
+                    "action_input": {
+                        "question": "What is the purpose of your request?"
+                    },
                 }
             if n == 4:  # Turn 3 step 1: execute action
                 return {
@@ -1580,7 +1617,9 @@ class TestFullMultiTurnLifecycle:
             return {
                 "thought": "Done. Confirming.",
                 "action": "respond",
-                "action_input": {"answer": "Your request has been completed successfully."},
+                "action_input": {
+                    "answer": "Your request has been completed successfully."
+                },
             }
 
         lookup = _mock_tool("lookup", {"record_found": True, "amount": 150.00})
@@ -1684,7 +1723,11 @@ class TestLLMCallParameters:
         def spy_llm(messages, model=None, temperature=None):
             captured["temperature"] = temperature
             captured["model"] = model
-            return {"thought": "OK", "action": "respond", "action_input": {"answer": "Hi"}}
+            return {
+                "thought": "OK",
+                "action": "respond",
+                "action_input": {"answer": "Hi"},
+            }
 
         engine = _build_engine(corpus_texts=["Doc."], llm_fn=spy_llm)
         engine.handle("Hello")
@@ -1696,7 +1739,11 @@ class TestLLMCallParameters:
 
         def spy_llm(messages, model=None, temperature=None):
             captured["temperature"] = temperature
-            return {"thought": "OK", "action": "respond", "action_input": {"answer": "Hi"}}
+            return {
+                "thought": "OK",
+                "action": "respond",
+                "action_input": {"answer": "Hi"},
+            }
 
         items = _corpus_items(["Doc."])
         index = build_index(items)
@@ -1716,7 +1763,11 @@ class TestLLMCallParameters:
 
         def spy_llm(messages, model=None, temperature=None):
             captured["model"] = model
-            return {"thought": "OK", "action": "respond", "action_input": {"answer": "Hi"}}
+            return {
+                "thought": "OK",
+                "action": "respond",
+                "action_input": {"answer": "Hi"},
+            }
 
         items = _corpus_items(["Doc."])
         index = build_index(items)
@@ -1760,7 +1811,9 @@ class TestLLMCallParameters:
             goal="g",
             temperature=0.3,
         )
-        engine = DomainAgentEngine(config=config, index=index, tools={}, llm_fn=temp_rejecting_llm)
+        engine = DomainAgentEngine(
+            config=config, index=index, tools={}, llm_fn=temp_rejecting_llm
+        )
         resp = engine.handle("Hello")
         assert resp.get("escalation") is True
         assert "temperature" in resp.get("escalation_reason", "").lower()
@@ -1771,14 +1824,22 @@ class TestLLMCallParameters:
 
         def spy_llm(messages, model=None, temperature=None):
             captured["messages"] = messages
-            return {"thought": "OK", "action": "respond", "action_input": {"answer": "Hi"}}
+            return {
+                "thought": "OK",
+                "action": "respond",
+                "action_input": {"answer": "Hi"},
+            }
 
         engine = _build_engine(corpus_texts=["Some policy doc."], llm_fn=spy_llm)
         engine.handle("What's the refund policy?")
         for msg in captured["messages"]:
             assert "role" in msg, f"Message missing 'role': {msg}"
             assert "content" in msg, f"Message missing 'content': {msg}"
-            assert msg["role"] in ("system", "user", "assistant"), f"Invalid role '{msg['role']}'"
+            assert msg["role"] in (
+                "system",
+                "user",
+                "assistant",
+            ), f"Invalid role '{msg['role']}'"
             assert (
                 isinstance(msg["content"], str) and msg["content"].strip()
             ), f"Empty content in {msg['role']} message"
@@ -1837,7 +1898,8 @@ class TestIntegrationSmoke:
         # Must produce a response (not escalate or crash)
         assert resp.get("answer"), f"Expected an answer, got: {resp}"
         assert resp.get("escalation") is not True, (
-            f"Should not escalate on a simple query. " f"Reason: {resp.get('escalation_reason')}"
+            f"Should not escalate on a simple query. "
+            f"Reason: {resp.get('escalation_reason')}"
         )
         # ReAct trace must exist
         assert resp.get("react_trace"), "Missing react_trace"

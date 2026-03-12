@@ -1,5 +1,6 @@
 # tests/test_governance_config.py
 """Unit tests for GovernanceConfig and GovernanceAwareGuardrails."""
+
 from __future__ import annotations
 
 import pytest

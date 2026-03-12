@@ -20,6 +20,7 @@ Outputs (to thesis/output/case_studies/):
     case_study_guardrail.md       — Guardrail intervention example
     case_studies_combined.md      — All cases in one file
 """
+
 from __future__ import annotations
 
 import json
@@ -57,7 +58,9 @@ def _load_scenarios() -> dict:
 
 def _select_exemplar(results: list, category: str) -> dict | None:
     """Select the best exemplar for a category (highest compliance, no error)."""
-    candidates = [r for r in results if r["category"] == category and r.get("error") is None]
+    candidates = [
+        r for r in results if r["category"] == category and r.get("error") is None
+    ]
     if not candidates:
         return None
     return max(candidates, key=lambda r: r.get("overall_compliance", 0))
@@ -76,8 +79,12 @@ def generate_case_study(result: dict, scenario: dict, title: str) -> str:
     lines = [f"## {title}", ""]
 
     # Scenario context
-    lines.append(f"**Scenario:** `{result['scenario_id']}` — {result.get('description', '')}")
-    lines.append(f"**Category:** {CATEGORY_LABELS.get(result['category'], result['category'])}")
+    lines.append(
+        f"**Scenario:** `{result['scenario_id']}` — {result.get('description', '')}"
+    )
+    lines.append(
+        f"**Category:** {CATEGORY_LABELS.get(result['category'], result['category'])}"
+    )
 
     # Query
     turns = scenario.get("turns", [])
@@ -90,11 +97,15 @@ def generate_case_study(result: dict, scenario: dict, title: str) -> str:
     lines.append("")
     lines.append("| Standard | Compliance |")
     lines.append("|----------|-----------|")
-    lines.append(f"| IEEE P3394 (Message Format) | {result.get('p3394_compliance', 0):.0%} |")
+    lines.append(
+        f"| IEEE P3394 (Message Format) | {result.get('p3394_compliance', 0):.0%} |"
+    )
     lines.append(
         f"| IEEE 2894-2024 (Explainability) | {result.get('ieee_2894_compliance', 0):.0%} |"
     )
-    lines.append(f"| IEEE 3152-2024 (Transparency) | {result.get('ieee_3152_compliance', 0):.0%} |")
+    lines.append(
+        f"| IEEE 3152-2024 (Transparency) | {result.get('ieee_3152_compliance', 0):.0%} |"
+    )
     lines.append(f"| **Overall** | **{result.get('overall_compliance', 0):.0%}** |")
     lines.append("")
 
@@ -103,10 +114,16 @@ def generate_case_study(result: dict, scenario: dict, title: str) -> str:
     lines.append("")
     levels = result.get("explanation_levels_available", 0)
     lines.append(f"- **Explanation levels available:** {levels}/3")
-    lines.append(f"  - Summary (user-facing): {'Yes' if result.get('has_summary') else 'No'}")
-    lines.append(f"  - Detailed (auditor): {'Yes' if result.get('has_detailed') else 'No'}")
+    lines.append(
+        f"  - Summary (user-facing): {'Yes' if result.get('has_summary') else 'No'}"
+    )
+    lines.append(
+        f"  - Detailed (auditor): {'Yes' if result.get('has_detailed') else 'No'}"
+    )
     lines.append(f"  - Full (developer): {'Yes' if result.get('has_full') else 'No'}")
-    lines.append(f"- **Provenance present:** {'Yes' if result.get('provenance_present') else 'No'}")
+    lines.append(
+        f"- **Provenance present:** {'Yes' if result.get('provenance_present') else 'No'}"
+    )
     lines.append(
         f"- **Agent identity disclosed:** {'Yes' if result.get('agent_identity_disclosed') else 'No'}"
     )
@@ -117,7 +134,9 @@ def generate_case_study(result: dict, scenario: dict, title: str) -> str:
     lines.append("### Governance Activity")
     lines.append("")
     lines.append(f"- **Guardrail checks:** {result.get('guardrail_checks', 0)}")
-    lines.append(f"- **Guardrail interventions:** {result.get('guardrail_interventions', 0)}")
+    lines.append(
+        f"- **Guardrail interventions:** {result.get('guardrail_interventions', 0)}"
+    )
     lines.append(f"- **Trace events recorded:** {result.get('trace_event_count', 0)}")
     lines.append(f"- **Processing latency:** {result.get('latency_ms', 0):.1f} ms")
     lines.append("")
@@ -182,8 +201,16 @@ def main():
     case_configs = [
         ("simple_routing", "case_study_direct.md", "Case Study 1: Simple Routing"),
         ("fsm_workflow", "case_study_workflow.md", "Case Study 2: FSM Workflow"),
-        ("hierarchical_delegation", "case_study_aop.md", "Case Study 3: AOP Delegation"),
-        ("hitl_escalation", "case_study_escalation.md", "Case Study 4: HITL Escalation"),
+        (
+            "hierarchical_delegation",
+            "case_study_aop.md",
+            "Case Study 3: AOP Delegation",
+        ),
+        (
+            "hitl_escalation",
+            "case_study_escalation.md",
+            "Case Study 4: HITL Escalation",
+        ),
     ]
 
     for category, filename, title in case_configs:
@@ -201,13 +228,17 @@ def main():
     guard_case = _select_guardrail_case(results)
     if guard_case:
         scenario = scenarios.get(guard_case["scenario_id"], {})
-        md = generate_case_study(guard_case, scenario, "Case Study 5: Guardrail Intervention")
+        md = generate_case_study(
+            guard_case, scenario, "Case Study 5: Guardrail Intervention"
+        )
         (OUTPUT_DIR / "case_study_guardrail.md").write_text(md, encoding="utf-8")
         all_parts.append(md + "\n---\n")
         print("  [OK] case_study_guardrail.md")
 
     # Combined file
-    (OUTPUT_DIR / "case_studies_combined.md").write_text("\n".join(all_parts), encoding="utf-8")
+    (OUTPUT_DIR / "case_studies_combined.md").write_text(
+        "\n".join(all_parts), encoding="utf-8"
+    )
     print("  [OK] case_studies_combined.md")
 
     print(f"\n  Output: {OUTPUT_DIR.resolve()}")

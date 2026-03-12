@@ -10,6 +10,7 @@ is communicated, not WHAT information the system produced.
 Strategies align with HCI literature on transparency (IEEE 3152),
 empathy (Han et al.), and proactive assistance in customer service AI.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

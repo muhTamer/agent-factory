@@ -138,7 +138,9 @@ class RuntimeSpine:
     # Sequential AOP task helpers
     # -------------------------
     @staticmethod
-    def _match_aop_task_selection(query: str, pending_aop: Dict[str, Any]) -> Optional[int]:
+    def _match_aop_task_selection(
+        query: str, pending_aop: Dict[str, Any]
+    ) -> Optional[int]:
         """
         Check if the user is selecting a pending AOP task.
         Returns the subtask index (into the plan's subtask list) or None.
@@ -264,12 +266,17 @@ class RuntimeSpine:
             "completeness": {
                 "complete": plan.completeness.complete if plan.completeness else True,
                 "missing": plan.completeness.missing if plan.completeness else [],
-                "coverage_ratio": (plan.completeness.coverage_ratio if plan.completeness else 1.0),
+                "coverage_ratio": (
+                    plan.completeness.coverage_ratio if plan.completeness else 1.0
+                ),
             },
             "solvability": {
                 "assignments": plan.solvability.assignments if plan.solvability else {},
                 "assignment_scores": (
-                    {k: round(v, 4) for k, v in plan.solvability.assignment_scores.items()}
+                    {
+                        k: round(v, 4)
+                        for k, v in plan.solvability.assignment_scores.items()
+                    }
                     if plan.solvability
                     else {}
                 ),
@@ -382,7 +389,9 @@ class RuntimeSpine:
                 try:
                     if isinstance(res, dict) and "score" in res:
                         agent_score = float(res["score"])
-                        score = agent_score if agent_score > 0 else float(cand.score) * 0.8
+                        score = (
+                            agent_score if agent_score > 0 else float(cand.score) * 0.8
+                        )
                     else:
                         score = float(cand.score)
                 except Exception:
@@ -411,7 +420,8 @@ class RuntimeSpine:
             "primary": plan.primary,
             "strategy": plan.strategy,
             "candidates": [
-                {"id": c.id, "score": c.score, "reason": c.reason} for c in plan.candidates
+                {"id": c.id, "score": c.score, "reason": c.reason}
+                for c in plan.candidates
             ],
         }
         return resp
@@ -523,7 +533,9 @@ class RuntimeSpine:
                 if _pinned_for_aop and _pinned_terminal is False:
                     pass  # Fall through to sticky routing (step 1️⃣)
 
-                elif (selected_idx := self._match_aop_task_selection(q, pending_aop)) is not None:
+                elif (
+                    selected_idx := self._match_aop_task_selection(q, pending_aop)
+                ) is not None:
                     # User selected a task → execute only that one
                     aop_plan = AOPPlan.from_serializable(pending_aop)
                     trace.add("aop_task_selected", index=selected_idx)
@@ -546,8 +558,12 @@ class RuntimeSpine:
                     # Pin agent if subtask needs follow-up turns.
                     # Some agents pin themselves via context mutation; only add
                     # fallback pinning if they didn't.
-                    _exec_result = aop_resp.get("executed_subtask", {}).get("result") or {}
-                    if not ctx.get("pinned_agent_id") and isinstance(_exec_result, dict):
+                    _exec_result = (
+                        aop_resp.get("executed_subtask", {}).get("result") or {}
+                    )
+                    if not ctx.get("pinned_agent_id") and isinstance(
+                        _exec_result, dict
+                    ):
                         _agent = aop_resp.get("executed_subtask", {}).get("agent_id")
 
                         # Domain agent clarification → pin for multi-turn
@@ -591,6 +607,33 @@ class RuntimeSpine:
                     except Exception as e:
                         trace.add("voice_chat_failed", error=str(e))
 
+                    # Fallback: build quick_replies from remaining subtasks
+                    # when voice rendering fails or doesn't produce them.
+                    if isinstance(aop_resp, dict):
+                        _aop_remaining = aop_resp.get("remaining_subtasks", [])
+                        if _aop_remaining:
+                            _qr_aop = []
+                            for _mp, _rs in enumerate(_aop_remaining):
+                                _d = _rs.get("subtask", "")
+                                for _pfx in ("INFORMATIONAL: ", "ACTION: "):
+                                    if _d.startswith(_pfx):
+                                        _d = _d[len(_pfx) :]
+                                        break
+                                _qr_aop.append(f"{_mp + 1}. {_d[:60]}")
+                            _qr_aop.append("No thanks")
+                            if not aop_resp.get("chat"):
+                                aop_resp["chat"] = {
+                                    "messages": [],
+                                    "quick_replies": _qr_aop,
+                                }
+                            else:
+                                _existing = aop_resp.get("chat", {}).get(
+                                    "quick_replies", []
+                                )
+                                aop_resp.setdefault("chat", {})["quick_replies"] = (
+                                    _existing + _qr_aop
+                                )
+
                     ok, post = self._guard_post(aop_resp, ctx)
                     if not ok:
                         trace.add("guard_post_block", reason=post.get("reason", ""))
@@ -620,7 +663,9 @@ class RuntimeSpine:
                         if isinstance(chat, dict) and chat.get("messages"):
                             decline_resp["text"] = chat["messages"][0]
                     except Exception:
-                        decline_resp["text"] = "No problem! Let me know if you need anything else."
+                        decline_resp["text"] = (
+                            "No problem! Let me know if you need anything else."
+                        )
                     return decline_resp
 
                 else:
@@ -636,7 +681,8 @@ class RuntimeSpine:
 
             if (
                 pinned
-                and pinned_type in ("workflow_runner", "rag_fsm", "faq_rag", "domain_agent")
+                and pinned_type
+                in ("workflow_runner", "rag_fsm", "faq_rag", "domain_agent")
                 and pinned_terminal is False
             ):
                 plan = type("Plan", (), {})()
@@ -672,7 +718,8 @@ class RuntimeSpine:
                         if (
                             _last_turn
                             and isinstance(_last_turn.response, dict)
-                            and _last_turn.response.get("orchestration_pattern") in _aop_patterns
+                            and _last_turn.response.get("orchestration_pattern")
+                            in _aop_patterns
                             and len(q.split()) <= 4
                         ):
                             _prev = (
@@ -696,7 +743,9 @@ class RuntimeSpine:
                     # Pre-guardrails apply to AOP path too
                     ok_pre, pre_result = self._guard_pre(_effective_q, ctx)
                     if not ok_pre:
-                        trace.add("guard_pre_block", reason=pre_result.get("reason", ""))
+                        trace.add(
+                            "guard_pre_block", reason=pre_result.get("reason", "")
+                        )
                         pre_result["request_id"] = rid
                         return pre_result
                     trace.add("guard_pre_ok", intent="hierarchical_delegation")
@@ -715,7 +764,9 @@ class RuntimeSpine:
 
                     if len(aop_plan.subtasks) <= 1:
                         # Single subtask → execute immediately (unchanged behavior)
-                        aop_resp = self.aop_coordinator.orchestrate(_effective_q, ctx, trace)
+                        aop_resp = self.aop_coordinator.orchestrate(
+                            _effective_q, ctx, trace
+                        )
                         aop_resp["request_id"] = rid
                         self._accumulate_aop_slots(aop_resp, ctx)
                     else:
@@ -749,7 +800,9 @@ class RuntimeSpine:
                     if not ok:
                         trace.add("guard_post_block", reason=post.get("reason", ""))
                         post["request_id"] = rid
-                        post.setdefault("text", f"Blocked by policy: {post.get('reason','')}")
+                        post.setdefault(
+                            "text", f"Blocked by policy: {post.get('reason','')}"
+                        )
                         return post
                     trace.add("guard_post_ok")
                     return post
@@ -764,7 +817,8 @@ class RuntimeSpine:
                 primary=plan.primary,
                 strategy=plan.strategy,
                 candidates=[
-                    {"id": c.id, "score": c.score, "reason": c.reason} for c in plan.candidates
+                    {"id": c.id, "score": c.score, "reason": c.reason}
+                    for c in plan.candidates
                 ],
             )
 
@@ -804,7 +858,9 @@ class RuntimeSpine:
             results = self._execute_candidates(plan, _effective_q, ctx)
             trace.add(
                 "execute",
-                results=[{"agent_id": r["agent_id"], "score": r["score"]} for r in results],
+                results=[
+                    {"agent_id": r["agent_id"], "score": r["score"]} for r in results
+                ],
             )
 
             if not results:
@@ -870,7 +926,10 @@ class RuntimeSpine:
                     delegate_agent_id = suggested_id
                 elif suggested_type and suggested_type != "unknown":
                     for aid, meta in self.registry.all_meta().items():
-                        if meta.get("type") == suggested_type and aid != selected["agent_id"]:
+                        if (
+                            meta.get("type") == suggested_type
+                            and aid != selected["agent_id"]
+                        ):
                             delegate_agent_id = aid
                             break
 
@@ -882,7 +941,9 @@ class RuntimeSpine:
                                 {"query": q, "text": q, "context": ctx}
                             )
                             try:
-                                delegate_score = float(delegate_result.get("score", 0.5))
+                                delegate_score = float(
+                                    delegate_result.get("score", 0.5)
+                                )
                             except (TypeError, ValueError):
                                 delegate_score = 0.5
                             trace.add(
@@ -896,10 +957,14 @@ class RuntimeSpine:
                                 "score": delegate_score,
                                 "response": delegate_result,
                             }
-                            selected["response"]["delegated_from"] = _res.get("agent_id", "")
+                            selected["response"]["delegated_from"] = _res.get(
+                                "agent_id", ""
+                            )
                         except Exception as e:
                             trace.add("rag_delegation_failed", error=str(e))
-                            print(f"[ERR] RAG delegation to {delegate_agent_id} failed: {e}")
+                            print(
+                                f"[ERR] RAG delegation to {delegate_agent_id} failed: {e}"
+                            )
 
             # 5.5 FSM state snapshot (workflow_runner agents only)
             _res = selected.get("response") or {}
@@ -913,7 +978,9 @@ class RuntimeSpine:
                 }
                 _slots = _res.get("slots")
                 if isinstance(_slots, dict):
-                    _fsm_event["slots"] = {k: v for k, v in _slots.items() if v is not None}
+                    _fsm_event["slots"] = {
+                        k: v for k, v in _slots.items() if v is not None
+                    }
                     # Accumulate slots across agents for cross-turn handoff.
                     # When agent A (e.g. router-intent) extracts customer_id and
                     # agent B (e.g. workflow-refund-orch) needs it later, the
@@ -948,7 +1015,10 @@ class RuntimeSpine:
             # Supports both signal formats: rag_clarification (FSM) and rag_state+thread_active (RAG_main)
             if isinstance(resp, dict) and (
                 resp.get("rag_clarification")
-                or (resp.get("rag_state") == "CLARIFY" and resp.get("thread_active") is True)
+                or (
+                    resp.get("rag_state") == "CLARIFY"
+                    and resp.get("thread_active") is True
+                )
             ):
                 ctx["pinned_agent_id"] = resp.get("agent_id", plan.primary)
                 ctx["pinned_agent_type"] = "rag_fsm"
@@ -1026,7 +1096,9 @@ class RuntimeSpine:
                         # Preserve the agent's answer-specific quick replies,
                         # then append remaining-task options.
                         _existing_qr = resp.get("chat", {}).get("quick_replies", [])
-                        resp.setdefault("chat", {})["quick_replies"] = _existing_qr + _qr
+                        resp.setdefault("chat", {})["quick_replies"] = (
+                            _existing_qr + _qr
+                        )
                     trace.add(
                         "aop_remaining_offered",
                         count=len(_remaining_subtasks),
@@ -1064,13 +1136,17 @@ class RuntimeSpine:
                         resp["chat"] = {"messages": [], "quick_replies": _qr2}
                     else:
                         _existing_qr2 = resp.get("chat", {}).get("quick_replies", [])
-                        resp.setdefault("chat", {})["quick_replies"] = _existing_qr2 + _qr2
+                        resp.setdefault("chat", {})["quick_replies"] = (
+                            _existing_qr2 + _qr2
+                        )
                     trace.add(
                         "aop_remaining_offered",
                         count=len(_remaining_subtasks2),
                     )
 
-            trace.add("response_ready", agent_id=resp.get("agent_id"), score=resp.get("score"))
+            trace.add(
+                "response_ready", agent_id=resp.get("agent_id"), score=resp.get("score")
+            )
 
             # 6.5️⃣ VOICE (chat rendering) — for workflow-style structured outputs
             try:
@@ -1081,7 +1157,8 @@ class RuntimeSpine:
                 is_workflow = isinstance(candidate, dict) and (
                     "workflow_id" in candidate
                     or "current_state" in candidate
-                    or candidate.get("status") in ("awaiting_info", "missing_info", "in_progress")
+                    or candidate.get("status")
+                    in ("awaiting_info", "missing_info", "in_progress")
                     or "missing_slots" in candidate
                     or "action" in candidate
                     or "terminal" in candidate
@@ -1102,7 +1179,9 @@ class RuntimeSpine:
 
                 if is_workflow or is_rag_special or is_domain_agent:
                     thread_id = str(
-                        (ctx or {}).get("thread_id") or resp.get("thread_id") or "default"
+                        (ctx or {}).get("thread_id")
+                        or resp.get("thread_id")
+                        or "default"
                     )
                     vertical = (ctx or {}).get("domain") or (ctx or {}).get("vertical")
 
@@ -1128,7 +1207,9 @@ class RuntimeSpine:
             if not ok:
                 trace.add("guard_post_block", reason=post.get("reason", ""))
                 post["request_id"] = rid
-                post.setdefault("text", f"🚫 Blocked by policy: {post.get('reason','')}")
+                post.setdefault(
+                    "text", f"🚫 Blocked by policy: {post.get('reason','')}"
+                )
                 post.setdefault("response", {"text": post["text"]})
                 # Preserve provenance fields from original response for governance
                 if isinstance(resp, dict):
@@ -1171,7 +1252,9 @@ class RuntimeSpine:
                         thread_id=thread_id,
                         query=q,
                         response=_resp,
-                        agent_id=_resp.get("agent_id") if isinstance(_resp, dict) else None,
+                        agent_id=(
+                            _resp.get("agent_id") if isinstance(_resp, dict) else None
+                        ),
                         fsm_state=(
                             _resp.get("current_state") or _resp.get("rag_state")
                             if isinstance(_resp, dict)

@@ -45,7 +45,9 @@ class LLMRouter:
                     if ks:
                         import os
 
-                        extra["knowledge_source_files"] = [os.path.basename(s) for s in ks]
+                        extra["knowledge_source_files"] = [
+                            os.path.basename(s) for s in ks
+                        ]
                 except Exception:
                     pass
             catalog.append(
@@ -137,7 +139,9 @@ class LLMRouter:
             return RoutePlan(
                 primary=primary,
                 candidates=(
-                    [RouteCandidate(id=primary, score=1.0, reason="only agent")] if primary else []
+                    [RouteCandidate(id=primary, score=1.0, reason="only agent")]
+                    if primary
+                    else []
                 ),
                 strategy="single",
             )

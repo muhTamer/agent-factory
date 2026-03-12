@@ -7,7 +7,6 @@ from app.orchestration.aop_coordinator import AOPCoordinator
 from app.orchestration.performance_store import PerformanceStore
 from app.runtime.registry import AgentRegistry
 
-
 # ── Stub Agent ──────────────────────────────────────────────────────
 
 
@@ -36,7 +35,9 @@ def _build_registry() -> AgentRegistry:
     """Create a registry with two stub agents."""
     registry = AgentRegistry()
 
-    refund = StubAgent("refund_agent", {"answer": "Refund processed for your order.", "score": 0.9})
+    refund = StubAgent(
+        "refund_agent", {"answer": "Refund processed for your order.", "score": 0.9}
+    )
     refund._meta = {
         "type": "workflow_runner",
         "description": "Handles refund requests and processes returns",
@@ -45,7 +46,9 @@ def _build_registry() -> AgentRegistry:
     }
     registry.register("refund_agent", refund, refund.metadata())
 
-    faq = StubAgent("faq_agent", {"answer": "Our return window is 30 days.", "score": 0.85})
+    faq = StubAgent(
+        "faq_agent", {"answer": "Our return window is 30 days.", "score": 0.85}
+    )
     faq._meta = {
         "type": "faq_rag",
         "description": "Answers customer FAQs about policies and products",
@@ -59,7 +62,9 @@ def _build_registry() -> AgentRegistry:
 
 def _mock_decompose_response(**_kw):
     """Mock LLM: returns two subtasks."""
-    return {"subtasks": ["Process refund for order #123", "Answer FAQ about return window"]}
+    return {
+        "subtasks": ["Process refund for order #123", "Answer FAQ about return window"]
+    }
 
 
 def _mock_completeness_complete(**_kw):
@@ -132,7 +137,9 @@ def test_full_aop_cycle(monkeypatch, tmp_path):
     monkeypatch.setattr("app.orchestration.completeness_detector.chat_json", mock)
 
     aop = AOPCoordinator(registry=registry, performance_store=store)
-    result = aop.orchestrate("I need a refund for order #123 and what is the return window?", {})
+    result = aop.orchestrate(
+        "I need a refund for order #123 and what is the return window?", {}
+    )
 
     assert "text" in result
     assert result["orchestration_pattern"] == "hierarchical_delegation"

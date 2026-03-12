@@ -10,7 +10,9 @@ class PlannerInterface:
     Produces structured plan previews for the Concierge to present to the user.
     """
 
-    def __init__(self, vertical: str, data_dir: str, llm_client=None, model: str | None = None):
+    def __init__(
+        self, vertical: str, data_dir: str, llm_client=None, model: str | None = None
+    ):
         self.vertical = vertical
         self.data_dir = Path(data_dir)
         self.llm_client = llm_client
@@ -18,7 +20,9 @@ class PlannerInterface:
 
     from app.infer_capabilities import InferCapabilities
 
-    def generate_plan_preview(self, use_llm: bool = True, model: str = "gpt-5-mini") -> dict:
+    def generate_plan_preview(
+        self, use_llm: bool = True, model: str = "gpt-5-mini"
+    ) -> dict:
         if use_llm:
             infer = InferCapabilities(model=model or "gpt-5-mini")
             raw = infer.infer(
@@ -52,7 +56,12 @@ class PlannerInterface:
                 "status": "ready",
                 "description": "Policy guardrails",
             },
-            {"id": "qa", "agent_kind": "qa", "status": "ready", "description": "Quality evaluator"},
+            {
+                "id": "qa",
+                "agent_kind": "qa",
+                "status": "ready",
+                "description": "Quality evaluator",
+            },
         ]
 
         kb_files = [f.name for f in files if f.suffix.lower() in {".csv", ".tsv"}]
@@ -143,6 +152,9 @@ class PlannerInterface:
         else:
             return [
                 {"label": "Upload Missing Documents", "action": "upload_docs"},
-                {"label": "Generate Sample Templates", "action": "generate_placeholders"},
+                {
+                    "label": "Generate Sample Templates",
+                    "action": "generate_placeholders",
+                },
                 {"label": "Re-run Analysis", "action": "rerun_infer"},
             ]

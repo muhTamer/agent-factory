@@ -78,7 +78,11 @@ class SchemaMapper:
         heur = self._heuristic_proposal(headers, sample_rows)
 
         llm_res: Optional[ColumnMapResult] = None
-        if self.allow_llm and self.llm_client and getattr(self.llm_client, "chat_json", None):
+        if (
+            self.allow_llm
+            and self.llm_client
+            and getattr(self.llm_client, "chat_json", None)
+        ):
             llm_res = self._llm_map(headers, sample_rows)
 
         # If LLM isn't available, return heuristics
@@ -129,7 +133,9 @@ class SchemaMapper:
 
         return None
 
-    def _rank_by_header(self, headers: Sequence[str], kind: str) -> List[Tuple[str, float]]:
+    def _rank_by_header(
+        self, headers: Sequence[str], kind: str
+    ) -> List[Tuple[str, float]]:
         kind = kind.lower()
         scores: Dict[str, float] = {h: 0.0 for h in headers}
 
@@ -193,7 +199,9 @@ class SchemaMapper:
 
             qmark_rate = sum(1 for v in vals if "?" in v) / max(1, len(vals))
             avg_len = sum(len(v) for v in vals) / max(1, len(vals))
-            qw_rate = sum(1 for v in vals if self._looks_like_question(v)) / max(1, len(vals))
+            qw_rate = sum(1 for v in vals if self._looks_like_question(v)) / max(
+                1, len(vals)
+            )
 
             stats[h] = {
                 "qmark_rate": float(qmark_rate),

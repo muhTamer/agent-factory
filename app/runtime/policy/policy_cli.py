@@ -10,6 +10,7 @@ Commands:
     diff - Compare two policy packs
     recompile - Recompile if sources changed
 """
+
 import argparse
 import json
 import sys
@@ -129,7 +130,9 @@ def cmd_inspect(args):
                 if rule.citations:
                     print("       Citations:")
                     for cite in rule.citations:
-                        print(f"         - {cite.source_file}:{cite.section}:{cite.rule_id}")
+                        print(
+                            f"         - {cite.source_file}:{cite.section}:{cite.rule_id}"
+                        )
 
     print(f"\n{'='*80}")
     print(f"Slot Schema ({len(pack.slot_schema)} slots)")
@@ -171,7 +174,9 @@ def cmd_diff(args):
     print(f"Version:     {old_pack.version} -> {new_pack.version}")
     print(f"Domain:      {old_pack.domain} -> {new_pack.domain}")
     print(f"Rules:       {len(old_pack.rules)} -> {len(new_pack.rules)}")
-    print(f"Source hash: {old_pack.source_hash[:16]}... -> {new_pack.source_hash[:16]}...")
+    print(
+        f"Source hash: {old_pack.source_hash[:16]}... -> {new_pack.source_hash[:16]}..."
+    )
 
     # Compare rules
     old_ids = {r.rule_id for r in old_pack.rules}
@@ -302,17 +307,23 @@ def cmd_test(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Policy compilation and management CLI")
+    parser = argparse.ArgumentParser(
+        description="Policy compilation and management CLI"
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
     # Compile command
-    compile_parser = subparsers.add_parser("compile", help="Compile policies from sources")
+    compile_parser = subparsers.add_parser(
+        "compile", help="Compile policies from sources"
+    )
     compile_parser.add_argument("sources", nargs="+", help="Policy source files")
     compile_parser.add_argument(
         "-o", "--output", required=True, help="Output path for compiled pack"
     )
-    compile_parser.add_argument("-d", "--domain", default="general", help="Business domain")
+    compile_parser.add_argument(
+        "-d", "--domain", default="general", help="Business domain"
+    )
     compile_parser.add_argument("-p", "--policy-id", help="Policy pack ID")
     compile_parser.add_argument("-v", "--version", default="1.0", help="Version")
     compile_parser.add_argument(
@@ -320,13 +331,17 @@ def main():
     )
 
     # Validate command
-    validate_parser = subparsers.add_parser("validate", help="Validate compiled policy pack")
+    validate_parser = subparsers.add_parser(
+        "validate", help="Validate compiled policy pack"
+    )
     validate_parser.add_argument("pack", help="Path to policy pack JSON")
 
     # Inspect command
     inspect_parser = subparsers.add_parser("inspect", help="Inspect policy pack")
     inspect_parser.add_argument("pack", help="Path to policy pack JSON")
-    inspect_parser.add_argument("--verbose", "-v", action="store_true", help="Show detailed info")
+    inspect_parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Show detailed info"
+    )
 
     # Diff command
     diff_parser = subparsers.add_parser("diff", help="Compare two policy packs")
@@ -334,9 +349,13 @@ def main():
     diff_parser.add_argument("new", help="New policy pack")
 
     # Recompile command
-    recompile_parser = subparsers.add_parser("recompile", help="Recompile if sources changed")
+    recompile_parser = subparsers.add_parser(
+        "recompile", help="Recompile if sources changed"
+    )
     recompile_parser.add_argument("pack", help="Path to policy pack JSON")
-    recompile_parser.add_argument("-m", "--model", default="gpt-4o-mini", help="LLM model")
+    recompile_parser.add_argument(
+        "-m", "--model", default="gpt-4o-mini", help="LLM model"
+    )
 
     # Test command
     test_parser = subparsers.add_parser("test", help="Test rule evaluation")

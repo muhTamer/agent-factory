@@ -11,6 +11,7 @@ quantitative metrics committed to in the thesis Methods chapter:
   4. Solvability Correlation   — Spearman ρ(predicted confidence, actual success)
   5. Completeness Rate         — mean completeness score for delegation scenarios
 """
+
 from __future__ import annotations
 
 import csv
@@ -21,7 +22,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.runtime.spine import RuntimeSpine
-
 
 # ── Result dataclasses ──────────────────────────────────────────────
 
@@ -113,7 +113,9 @@ class EvaluationHarness:
             except Exception as e:
                 result.error = f"Turn {i} raised: {e}"
                 result.turns.append(
-                    TurnResult(turn_index=i, query=query, raw_response={"error": str(e)})
+                    TurnResult(
+                        turn_index=i, query=query, raw_response={"error": str(e)}
+                    )
                 )
                 break
 
@@ -131,7 +133,9 @@ class EvaluationHarness:
             # Check pattern
             actual_pattern = self._detect_pattern(last_response)
             expected_pattern = expected.get("pattern")
-            pattern_ok = (expected_pattern is None) or (actual_pattern == expected_pattern)
+            pattern_ok = (expected_pattern is None) or (
+                actual_pattern == expected_pattern
+            )
 
             # Check agent
             actual_agent = last_response.get("agent_id", "")
@@ -205,7 +209,10 @@ class EvaluationHarness:
             result.success = actual_state == expected_state and result.error is None
         else:  # "all_turns_pass"
             result.success = (
-                all_pattern_ok and all_agent_ok and all_keywords_ok and result.error is None
+                all_pattern_ok
+                and all_agent_ok
+                and all_keywords_ok
+                and result.error is None
             )
 
         return result
@@ -228,8 +235,12 @@ class EvaluationHarness:
         steps_by_cat = {}
         for cat in categories:
             cat_results = [r for r in results if r.category == cat]
-            latency_by_cat[cat] = sum(r.latency_ms for r in cat_results) / len(cat_results)
-            steps_by_cat[cat] = sum(r.agent_calls for r in cat_results) / len(cat_results)
+            latency_by_cat[cat] = sum(r.latency_ms for r in cat_results) / len(
+                cat_results
+            )
+            steps_by_cat[cat] = sum(r.agent_calls for r in cat_results) / len(
+                cat_results
+            )
 
         # 3. Reasoning Accuracy
         reasoning_accuracy = sum(1 for r in results if r.success) / n
@@ -243,7 +254,9 @@ class EvaluationHarness:
         solvability_rho = self._spearman_rho(solvability_pairs)
 
         # 5. Completeness Rate (delegation scenarios only)
-        comp_scores = [r.completeness_score for r in results if r.completeness_score is not None]
+        comp_scores = [
+            r.completeness_score for r in results if r.completeness_score is not None
+        ]
         completeness_rate = sum(comp_scores) / len(comp_scores) if comp_scores else None
 
         # 6. Agent accuracy
@@ -306,7 +319,9 @@ class EvaluationHarness:
                         "agent_calls": r.agent_calls,
                         "completeness_score": r.completeness_score,
                         "solvability_score": (
-                            round(r.solvability_score, 4) if r.solvability_score else None
+                            round(r.solvability_score, 4)
+                            if r.solvability_score
+                            else None
                         ),
                         "error": r.error,
                     }
