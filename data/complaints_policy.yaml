@@ -1,0 +1,215 @@
+# ============================================================
+# Customer Complaints & Resolution Policy
+# Organization: NovaPay Digital Banking
+# Version: 1.0
+# Last Updated: 2025-02-15
+# Owner: Head of Customer Experience
+# Domain: fintech
+# ============================================================
+
+metadata:
+  policy_id: novapay_complaints_policy
+  jurisdiction: EU
+  regulatory_framework:
+    - PSD2
+    - GDPR
+    - EBA Guidelines on Complaints Handling
+  internal_references:
+    - Customer Experience Charter v1.3
+    - Escalation Matrix 2024
+
+overview: >
+  This policy defines the eligibility criteria, resolution workflow,
+  compensation rules, escalation triggers, and compliance safeguards
+  for handling customer complaints across all NovaPay consumer and SME
+  accounts. Covers service quality issues, billing disputes, delivery
+  problems, and unauthorized transaction reports.
+
+scope:
+  products:
+    - digital_wallet
+    - debit_card
+    - bank_transfer
+    - instant_payment
+  customer_segments:
+    - retail
+    - SME
+  exclusions:
+    - complaints about third-party merchants
+    - closed or frozen accounts
+    - complaints already resolved via chargeback
+
+# ============================================================
+# SECTION 1 — ELIGIBILITY RULES
+# ============================================================
+
+eligibility:
+
+  - id: active_account_required
+    description: >
+      Complaints may only be processed for customers whose account
+      status is active and not under suspension or freeze.
+    conditions:
+      - account_status == "active"
+    outcome: eligible
+
+  - id: complaint_time_limit
+    description: >
+      Complaints must be submitted within 180 calendar days from the
+      date of the incident or service failure.
+    conditions:
+      - complaint_age_days <= 180
+    outcome: eligible
+
+  - id: inactive_account_block
+    description: >
+      Customers with suspended, frozen, or closed accounts cannot
+      file new complaints until the account is reinstated.
+    conditions:
+      - account_status in ["suspended", "frozen", "closed"]
+    outcome: ineligible
+    rationale: Account must be active to process complaint.
+
+  - id: duplicate_complaint_block
+    description: >
+      If an identical complaint for the same incident is already open,
+      the new complaint is rejected to prevent duplicates.
+    conditions:
+      - duplicate_complaint_open == true
+    outcome: ineligible
+    rationale: Duplicate complaint already exists for this incident.
+
+  - id: expired_complaint_block
+    description: >
+      Complaints submitted more than 180 days after the incident
+      are not eligible for processing.
+    conditions:
+      - complaint_age_days > 180
+    outcome: ineligible
+    rationale: Complaint exceeds the 180-day filing window.
+
+
+# ============================================================
+# SECTION 2 — COMPENSATION AMOUNT RULES
+# ============================================================
+
+amount_rules:
+
+  - id: max_auto_compensation_limit
+    description: >
+      Compensation up to and including EUR 500 may be auto-approved
+      by the system if eligibility conditions are met.
+    threshold: 500
+    currency: EUR
+    approval: auto
+    slot_name: compensation_amount
+
+  - id: manager_approval_required
+    description: >
+      Compensation exceeding EUR 500 requires manager approval
+      before it can be issued to the customer.
+    threshold: 500
+    currency: EUR
+    approval: manager_required
+    slot_name: compensation_amount
+
+  - id: partial_compensation_allowed
+    description: >
+      Partial compensation is allowed if the requested amount does
+      not exceed the estimated impact value.
+    conditions:
+      - compensation_amount <= estimated_impact_value
+    outcome: allowed
+
+
+# ============================================================
+# SECTION 3 — RISK CONTROLS
+# ============================================================
+
+risk_controls:
+
+  - id: complaint_velocity_check
+    description: >
+      Customers submitting more than 5 complaints within a rolling
+      30-day window must be flagged for potential abuse review.
+    condition:
+      - complaints_last_30_days > 5
+    action: escalate_abuse_review
+
+  - id: regulatory_complaint_flag
+    description: >
+      Complaints mentioning regulatory bodies, legal action, or
+      ombudsman must be immediately escalated to compliance.
+    condition:
+      - complaint_category == "regulatory"
+    action: compliance_hold
+
+
+# ============================================================
+# SECTION 4 — EXECUTION RULES
+# ============================================================
+
+execution:
+
+  - id: compensation_method
+    description: >
+      Compensation must be credited to the customer's active account
+      balance. If account is restricted, escalate to manual processing.
+    rules:
+      - if account_status == "active":
+          action: credit_account_balance
+      - else:
+          action: escalate_manual_processing
+
+  - id: resolution_sla
+    description: >
+      Standard complaint resolution target is 5 business days.
+      Complex complaints may take up to 15 business days.
+    sla:
+      standard: "5 business days"
+      complex: "15 business days"
+
+
+# ============================================================
+# SECTION 5 — PRIVACY & DATA PROTECTION
+# ============================================================
+
+privacy:
+
+  - id: redact_pii
+    description: >
+      Personally identifiable information must not be exposed in
+      customer-facing logs or internal escalation notes.
+    action: redact_before_output
+
+  - id: gdpr_logging
+    description: >
+      All complaint decisions must be logged with decision rationale
+      and policy reference for audit and GDPR compliance purposes.
+
+
+# ============================================================
+# SECTION 6 — ESCALATION CONDITIONS
+# ============================================================
+
+escalation:
+
+  - id: regulatory_escalation
+    description: >
+      Any complaint referencing a regulatory body (e.g., FCA, BaFin,
+      ECB) must be escalated immediately to the compliance team.
+
+  - id: repeated_complaint
+    description: >
+      If the customer has filed 3 or more complaints about the same
+      issue, escalate to Tier 2 support for root cause analysis.
+
+  - id: resolution_failure
+    description: >
+      If automated resolution fails more than once, create a
+      support ticket and notify the operations team.
+
+
+# ============================================================
+# END OF POLICY
+# ============================================================
