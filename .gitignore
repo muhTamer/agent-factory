@@ -13,11 +13,13 @@ build/
 # VSCode
 .vscode/
 
-# data (track policy YAML files, ignore large data files)
+# data (track policy YAML files and BankFAQs, ignore other large data files)
 data/*
 !data/*.yaml
 !data/*.yml
+!data/BankFAQs.csv
 *.csv
+!data/BankFAQs.csv
 *.parquet
 
 # Node
