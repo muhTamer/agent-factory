@@ -177,9 +177,8 @@ class YAMLPolicyParser(PolicyParser):
                     else:
                         op = OperatorType.LE
 
-                    conditions_list.append(
-                        Condition("refund_amount_requested", op, threshold)
-                    )
+                    slot_name = item.get("slot_name", "refund_amount_requested")
+                    conditions_list.append(Condition(slot_name, op, threshold))
 
             if item.get("conditions"):
                 conditions_list.append(self._parse_conditions(item["conditions"]))
