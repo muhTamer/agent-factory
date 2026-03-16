@@ -47,6 +47,7 @@ frontend/src/
 │       ├── ReActTracePanel.tsx      # Agent reasoning chain timeline
 │       ├── GovernancePanel.tsx      # IEEE compliance & explainability
 │       ├── GuardrailsAdminPanel.tsx # Runtime guardrail rule toggles
+│       ├── EstimatorTogglePanel.tsx # Neural/TF-IDF estimator toggle
 │       ├── DebugSidebar.tsx         # Alternative debug layout
 │       └── RawJsonViewer.tsx        # Raw JSON inspector
 │
@@ -139,8 +140,12 @@ Thread history management:
 
 ### ExplainabilityPanel
 
-Right sidebar showing debug information for the selected message. Components rendered (in order):
+Right sidebar showing debug information for the selected message. The **Configuration** section is always visible; per-message panels appear when a message is selected.
 
+**Always visible:**
+0. **EstimatorTogglePanel** — Switch between Neural (MLP) and TF-IDF solvability estimators
+
+**Per-message panels (in order):**
 1. **RouterPlanPanel** — Strategy, pattern, selected agent, candidate scores
 2. **SolvabilityPanel** — AOP subtask solvability bars (if AOP)
 3. **PolicyCheckPanel** — Guardrail pass/block status
@@ -207,6 +212,18 @@ Runtime admin panel for toggling guardrail rules on/off. Appears in the Safety &
 - Collapsed summary showing per-category active counts (e.g., `safety: 2/3`)
 - Refresh button to re-fetch from backend
 - Policy pack name and version displayed in header
+
+### EstimatorTogglePanel
+
+Runtime toggle for switching between Neural (MLP + embeddings) and TF-IDF solvability estimators. Appears in the Configuration section at the top of the explainability sidebar — always visible regardless of message selection.
+
+**Features:**
+- Fetches active estimator from `GET /solvability-estimator` on mount
+- Toggle buttons per option — calls `PATCH /solvability-estimator` to switch
+- Active estimator badge (purple for Neural, slate for TF-IDF)
+- Amber warning when backend is unreachable
+- Refresh button to re-fetch from backend
+- Descriptions of each estimator mode
 
 ### SourcesPanel
 

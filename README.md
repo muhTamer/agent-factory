@@ -195,7 +195,11 @@ agent-factory-orchestration/
 │   │       └── adapters/            # HTTP, SQL, Stub, MCP adapters
 │   │
 │   ├── orchestration/               # Multi-agent orchestration
-│   │   └── aop_coordinator.py       # Action-Oriented Planning (5-step)
+│   │   ├── aop_coordinator.py       # Action-Oriented Planning (5-step)
+│   │   ├── neural_solvability_estimator.py  # Neural MLP estimator
+│   │   ├── scorer.py               # LLM-based response scorer
+│   │   ├── training_data_generator.py  # Training data pipeline
+│   │   └── reward_model_trainer.py  # MLP training with validation
 │   │
 │   ├── governance/                  # IEEE standards compliance
 │   │   ├── ieee_compliance.py       # P3394, 2894-2024, 3152-2024 checker
@@ -220,11 +224,24 @@ agent-factory-orchestration/
 │       ├── components/
 │       │   ├── chat/                # Chat UI components
 │       │   ├── setup/               # Onboarding wizard & tool config panel
-│       │   └── debug/               # Explainability panels
+│       │   └── debug/               # Explainability panels + estimator toggle
 │       ├── hooks/                   # useChat, useHealth, useAutoScroll
 │       ├── store/                   # Zustand state management
 │       ├── lib/                     # API client, constants, classify
 │       └── types/                   # TypeScript type definitions
+│
+├── evaluation/                       # Estimator comparison framework
+│   └── solvability_comparison.py    # TF-IDF vs Neural evaluation
+│
+├── scripts/                          # Utility scripts
+│   ├── _bootstrap.py                # Shared agent registry loading
+│   ├── generate_training_data.py    # Generate reward model training data
+│   ├── train_reward_model.py        # Train the MLP reward model
+│   └── run_comparison.py            # Run TF-IDF vs Neural comparison
+│
+├── models/                           # Trained model artifacts
+│   ├── reward_mlp.pt               # MLP weights
+│   └── training_metadata.json      # Training metadata
 │
 ├── data/                             # Knowledge & policy documents
 │   ├── BankFAQs.csv                 # FAQ question/answer pairs
@@ -260,7 +277,8 @@ agent-factory-orchestration/
 │   ├── frontend.md                  # Frontend components reference
 │   ├── agents.md                    # Agent types & generation
 │   ├── tools-and-rag.md             # Tools, RAG, embeddings
-│   └── governance.md                # IEEE standards & guardrails
+│   ├── governance.md                # IEEE standards & guardrails
+│   └── neural-solvability.md       # Neural solvability estimator
 │
 ├── ARCHITECTURE.md                   # System architecture & data flow
 ├── .env.example                      # Environment variable template
@@ -397,3 +415,4 @@ Detailed documentation is available in the [docs/](docs/) directory:
 - **[docs/agents.md](docs/agents.md)** — Agent types, generation pipeline, ReAct reasoning
 - **[docs/tools-and-rag.md](docs/tools-and-rag.md)** — Tool system, RAG indexing, embeddings
 - **[docs/governance.md](docs/governance.md)** — IEEE standards, explainability levels, guardrails
+- **[docs/neural-solvability.md](docs/neural-solvability.md)** — Neural solvability estimator: architecture, training, evaluation

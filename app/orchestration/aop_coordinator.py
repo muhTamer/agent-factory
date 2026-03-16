@@ -35,6 +35,9 @@ from app.orchestration.solvability_estimator import (
 from app.runtime.registry import AgentRegistry
 from app.runtime.trace import Trace
 
+# Type alias: either estimator exposes the same .estimate() interface.
+_Estimator = Any  # SolvabilityEstimator | NeuralSolvabilityEstimator
+
 
 @dataclass
 class Subtask:
@@ -158,7 +161,7 @@ class AOPCoordinator:
         self,
         registry: AgentRegistry,
         performance_store: PerformanceStore,
-        estimator: Optional[SolvabilityEstimator] = None,
+        estimator: Optional[_Estimator] = None,
         completeness: Optional[CompletenessDetector] = None,
         model: str = "gpt-5-mini",
         max_retries: int = 1,
@@ -167,7 +170,7 @@ class AOPCoordinator:
     ):
         self.registry = registry
         self.store = performance_store
-        self.estimator = estimator or SolvabilityEstimator(performance_store)
+        self.estimator = estimator or self._default_estimator(performance_store)
         self.completeness = completeness or CompletenessDetector(model=model)
         self.model = model
         self.max_retries = max_retries
@@ -482,6 +485,50 @@ class AOPCoordinator:
             "remaining_subtasks": remaining,
             "plan_query": plan.query,
         }
+
+    # ── Estimator hot-swap ────────────────────────────────────────
+
+    @staticmethod
+    def _default_estimator(store: PerformanceStore) -> _Estimator:
+        """Return the default estimator — neural if available, TF-IDF fallback."""
+        try:
+            from app.orchestration.neural_solvability_estimator import (
+                NeuralSolvabilityEstimator,
+            )
+
+            return NeuralSolvabilityEstimator(store)
+        except Exception as exc:
+            print(
+                f"[AOP] WARNING: Failed to load neural solvability estimator: {exc}\n"
+                f"[AOP] Falling back to TF-IDF estimator. "
+                f"Install 'sentence-transformers' and 'torch' to enable neural mode."
+            )
+            return SolvabilityEstimator(store)
+
+    def swap_estimator(self, kind: str) -> str:
+        """Hot-swap the solvability estimator at runtime.
+
+        Args:
+            kind: ``"neural"`` or ``"tfidf"``.
+
+        Returns:
+            The estimator kind now active.
+        """
+        if kind == "neural":
+            from app.orchestration.neural_solvability_estimator import (
+                NeuralSolvabilityEstimator,
+            )
+
+            self.estimator = NeuralSolvabilityEstimator(self.store)
+        else:
+            self.estimator = SolvabilityEstimator(self.store)
+        return self.active_estimator_kind
+
+    @property
+    def active_estimator_kind(self) -> str:
+        """Return ``'neural'`` or ``'tfidf'`` depending on which estimator is loaded."""
+        cls_name = type(self.estimator).__name__
+        return "neural" if "Neural" in cls_name else "tfidf"
 
     # ── Step 1: Task Decomposition ──────────────────────────────────
 

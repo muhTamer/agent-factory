@@ -15,7 +15,8 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
     }
     (gen_dir / "config.json").write_text(json.dumps(cfg, indent=2))
 
-    agent_src = textwrap.dedent(f"""
+    agent_src = textwrap.dedent(
+        f"""
     # Auto-generated Tool Operator agent ({agent_id})
     import json
     from pathlib import Path
@@ -53,6 +54,7 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                 "tool": self.tool_name,
                 "capabilities": ["tool_execution"]
             }}
-    """)
+    """
+    )
     (gen_dir / "agent.py").write_text(agent_src, encoding="utf-8", newline="\n")
     return gen_dir

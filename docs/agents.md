@@ -379,6 +379,17 @@ Agent blueprints are validated against `app/shared/schemas/agent_blueprint.schem
 
 ## Solvability Estimation (PMPA Pattern)
 
+### AOP Solvability (Neural + TF-IDF)
+
+The AOP coordinator supports two pluggable estimator backends for scoring (subtask, agent) pairs:
+
+- **Neural (default)** — `NeuralSolvabilityEstimator` uses all-MiniLM-L6-v2 sentence embeddings + a trained 3-layer MLP (`768→256→64→1`). Scoring: `α × neural_sim + β × historical_perf` (α=0.6, β=0.4). Better at handling lexical gaps and semantic paraphrases.
+- **TF-IDF (fallback)** — `SolvabilityEstimator` uses TF-IDF cosine similarity. Faster, fully deterministic, no GPU required.
+
+The neural estimator is used by default when `torch` and `sentence-transformers` are installed; otherwise the system falls back to TF-IDF automatically. Estimators can be switched at runtime via the API or the frontend EstimatorTogglePanel. See [Neural Solvability docs](neural-solvability.md) for the training pipeline, evaluation, and architecture details.
+
+### RAG-Level Solvability (PMPA)
+
 The RAG FSM implements solvability estimation using multiple signals:
 
 ```python

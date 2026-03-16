@@ -109,7 +109,8 @@ def _generate_agent_source(agent_id: str) -> str:
     """Generate the agent.py wrapper source code."""
     # NOTE: This is a code template, not runtime code.
     # The generated agent.py will import DomainAgentEngine at runtime.
-    return textwrap.dedent(f"""\
+    return textwrap.dedent(
+        f"""\
         # Auto-generated Domain Agent ({agent_id})
         from __future__ import annotations
 
@@ -313,4 +314,5 @@ def _generate_agent_source(agent_id: str) -> str:
                     "available_tools": self.cfg.get("available_tools", []),
                     "vertical": "generic_customer_service",
                 }}
-    """)
+    """
+    )
