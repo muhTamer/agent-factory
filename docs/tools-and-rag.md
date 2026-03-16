@@ -330,7 +330,7 @@ def get_embed_fn(
 
 Returns a callable that:
 1. Batches input texts (100 per batch) to respect Azure token limits
-2. Calls the embeddings API
+2. Calls the embeddings API (retries on HTTP 429 rate-limit errors with exponential backoff — up to 5 attempts with delays of 1s, 2s, 4s, 8s, 16s)
 3. L2-normalizes output vectors
 4. Returns `List[List[float]]` (one vector per input text)
 
