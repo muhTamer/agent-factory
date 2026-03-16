@@ -48,6 +48,12 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository))
     env:
       HAS_LLM_KEY: ${{ secrets.OPENAI_API_KEY != '' || secrets.AZURE_OPENAI_API_KEY != '' }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+      AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+      AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -60,16 +66,22 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      # Stage 1: Factory deploy — generates all artifacts needed by skipped tests
+      - name: Factory deploy (generate agents + compile policies)
+        if: env.HAS_LLM_KEY == 'true'
+        run: python scripts/ci_deploy.py
+
+      # Stage 2: Run ALL tests (unit + deploy-dependent, no skips)
+      - name: Full test suite (with generated artifacts)
+        if: env.HAS_LLM_KEY == 'true'
+        run: python -m pytest -q --tb=short
+
+      # Stage 3: Integration tests (LLM-dependent)
       - name: Integration tests (requires LLM credentials)
         if: env.HAS_LLM_KEY == 'true'
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
-          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: python -m pytest -m integration -o "addopts=" -q
+
       - name: Skip notice
         if: env.HAS_LLM_KEY != 'true'
         run: echo "⚠️ Integration tests skipped — no LLM credentials configured. Add OPENAI_API_KEY (or Azure equivalents) to repository secrets."
