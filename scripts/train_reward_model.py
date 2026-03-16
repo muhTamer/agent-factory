@@ -31,7 +31,9 @@ def main():
     parser.add_argument("--epochs", type=int, default=50, help="Training epochs")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
-    parser.add_argument("--val-split", type=float, default=0.1, help="Validation split fraction")
+    parser.add_argument(
+        "--val-split", type=float, default=0.1, help="Validation split fraction"
+    )
     args = parser.parse_args()
 
     if not args.data.exists():

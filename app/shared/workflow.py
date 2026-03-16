@@ -127,7 +127,9 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
 
     # Generate the wrapper agent.py
     # NOTE: use Template ($agent_id) to avoid f-string brace collisions inside generated code
-    agent_src = Template(textwrap.dedent("""\
+    agent_src = Template(
+        textwrap.dedent(
+            """\
         # Auto-generated Workflow Runner agent ($agent_id)
         from __future__ import annotations
 
@@ -702,7 +704,9 @@ def build_agent(agent_id: str, inputs: dict, gen_dir: Path) -> Path:
                     ),
                     "capabilities": ["multi_turn", "followups", "workflow", "policy_auto_events"],
                 }
-        """)).substitute(agent_id=agent_id)
+        """
+        )
+    ).substitute(agent_id=agent_id)
 
     (gen_dir / "agent.py").write_text(agent_src, encoding="utf-8")
     return gen_dir

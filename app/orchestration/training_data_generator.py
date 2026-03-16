@@ -136,7 +136,10 @@ class TrainingDataGenerator:
                         "agent_id": agent_id,
                     }
                     training_data.append(example)
-                    print(f"  ✓ {agent_id} → score={score:.3f} " f"(subtask: {subtask[:50]}...)")
+                    print(
+                        f"  ✓ {agent_id} → score={score:.3f} "
+                        f"(subtask: {subtask[:50]}...)"
+                    )
 
         # Save to disk
         output_path.parent.mkdir(parents=True, exist_ok=True)

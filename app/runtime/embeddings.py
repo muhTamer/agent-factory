@@ -109,7 +109,8 @@ def get_embed_fn(
                     if "429" in str(exc) and attempt < 4:
                         wait = 2**attempt
                         log.warning(
-                            "Embedding rate-limited (attempt %d/5), " "retrying in %ds...",
+                            "Embedding rate-limited (attempt %d/5), "
+                            "retrying in %ds...",
                             attempt + 1,
                             wait,
                         )

@@ -66,7 +66,9 @@ class LLMScorer:
             {"role": "system", "content": SCORER_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": (f"SUBTASK: {subtask}\n\n" f"AGENT RESPONSE:\n{response_text}"),
+                "content": (
+                    f"SUBTASK: {subtask}\n\n" f"AGENT RESPONSE:\n{response_text}"
+                ),
             },
         ]
 

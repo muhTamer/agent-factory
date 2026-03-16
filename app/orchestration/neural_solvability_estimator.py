@@ -120,14 +120,18 @@ class NeuralSolvabilityEstimator:
         self.mlp = RewardMLP(input_dim=768)
 
         # Load trained weights if available
-        resolved_path = model_path if model_path is not None else self.DEFAULT_MODEL_PATH
+        resolved_path = (
+            model_path if model_path is not None else self.DEFAULT_MODEL_PATH
+        )
         if resolved_path and resolved_path.exists():
             self.mlp.load_state_dict(
                 torch.load(resolved_path, map_location=self.device, weights_only=True)
             )
             self._trained = True
         else:
-            warnings.warn(f"No trained model found at {resolved_path}, using random MLP weights")
+            warnings.warn(
+                f"No trained model found at {resolved_path}, using random MLP weights"
+            )
             self._trained = False
 
         self.mlp.to(self.device)
@@ -151,7 +155,9 @@ class NeuralSolvabilityEstimator:
             NeuralSolvabilityResult with optimal assignments and all scores.
         """
         if not subtasks or not agent_catalog:
-            return NeuralSolvabilityResult(assignments={}, scores=[], assignment_scores={})
+            return NeuralSolvabilityResult(
+                assignments={}, scores=[], assignment_scores={}
+            )
 
         # Build agent text strings (identical logic to TF-IDF estimator)
         agent_ids = list(agent_catalog.keys())

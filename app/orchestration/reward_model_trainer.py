@@ -42,8 +42,12 @@ class RewardDataset(Dataset):
         self.subtask_embs = embedder.encode(
             subtasks, convert_to_tensor=True, show_progress_bar=False
         )
-        self.agent_embs = embedder.encode(agents, convert_to_tensor=True, show_progress_bar=False)
-        self.scores = torch.tensor([float(d["score"]) for d in data], dtype=torch.float32)
+        self.agent_embs = embedder.encode(
+            agents, convert_to_tensor=True, show_progress_bar=False
+        )
+        self.scores = torch.tensor(
+            [float(d["score"]) for d in data], dtype=torch.float32
+        )
 
     def __len__(self) -> int:
         return len(self.scores)
@@ -166,7 +170,10 @@ class RewardModelTrainer:
 
             if epoch % 10 == 0 or epoch == 1:
                 val_str = f", val_loss={avg_val_loss:.4f}" if avg_val_loss else ""
-                print(f"  Epoch {epoch:3d}/{epochs}: " f"train_loss={avg_train_loss:.4f}{val_str}")
+                print(
+                    f"  Epoch {epoch:3d}/{epochs}: "
+                    f"train_loss={avg_train_loss:.4f}{val_str}"
+                )
 
         elapsed = time.time() - t0
         print(f"[Trainer] Training complete in {elapsed:.1f}s")
