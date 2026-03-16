@@ -27,7 +27,6 @@ from torch.utils.data import DataLoader, Dataset
 
 from app.orchestration.neural_solvability_estimator import RewardMLP, _get_embedder
 
-
 # ── Dataset ─────────────────────────────────────────────────────────
 
 

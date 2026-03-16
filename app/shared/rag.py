@@ -465,8 +465,7 @@ def build_agent(
     # Generate agent.py (multi-turn RAG with FSM, solvability, clarification, delegation)
     # ---------------------------
     header = f"# Auto-generated FAQ RAG agent ({agent_id})\n"
-    body = textwrap.dedent(
-        """\
+    body = textwrap.dedent("""\
 from __future__ import annotations
 from typing import Dict, Any, List, Optional
 from pathlib import Path
@@ -760,8 +759,7 @@ class Agent(IAgent):
             "vertical": "generic_customer_service",
             "docs": len(self.faqs),
         }
-"""
-    )
+""")
 
     agent_src = header + body.replace("__AGENT_ID__", agent_id)
     (gen_dir / "agent.py").write_text(agent_src, encoding="utf-8")
