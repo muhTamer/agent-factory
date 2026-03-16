@@ -8,6 +8,7 @@ import { SourcesPanel } from "@/components/debug/SourcesPanel";
 import { ReActTracePanel } from "@/components/debug/ReActTracePanel";
 import { GovernancePanel } from "@/components/debug/GovernancePanel";
 import { GuardrailsAdminPanel } from "@/components/debug/GuardrailsAdminPanel";
+import { EstimatorTogglePanel } from "@/components/debug/EstimatorTogglePanel";
 import { RawJsonViewer } from "@/components/debug/RawJsonViewer";
 import { StatusSummaryStrip } from "@/components/debug/StatusSummaryStrip";
 import { X, Eye, Bug } from "lucide-react";
@@ -59,6 +60,11 @@ export function ExplainabilityPanel({ onClose }: Props) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        {/* Global config panels — always visible */}
+        <SectionGroup label="Configuration">
+          <EstimatorTogglePanel />
+        </SectionGroup>
+
         {!selected || selected.role !== "agent" ? (
           <div className="py-8 text-center">
             <Eye size={32} className="mx-auto mb-2 text-slate-200" />
