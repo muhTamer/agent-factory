@@ -279,7 +279,8 @@ def switch_estimator(req: EstimatorSwitchRequest):
         raise HTTPException(status_code=503, detail="AOP coordinator not initialized.")
     if req.kind not in ("neural", "tfidf"):
         raise HTTPException(
-            status_code=400, detail=f"Invalid kind '{req.kind}'. Use 'neural' or 'tfidf'."
+            status_code=400,
+            detail=f"Invalid kind '{req.kind}'. Use 'neural' or 'tfidf'.",
         )
     try:
         active = spine.aop_coordinator.swap_estimator(req.kind)
