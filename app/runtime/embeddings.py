@@ -93,12 +93,29 @@ def get_embed_fn(
     def _embed(texts: List[str]) -> List[List[float]]:
         if not texts:
             return []
+        import time
+
         client = _get_embedding_client()
         all_vecs: List[List[float]] = []
 
         for start in range(0, len(texts), batch_size):
             batch = texts[start : start + batch_size]
-            response = client.embeddings.create(input=batch, model=deployment)
+            # Retry with exponential backoff on 429 rate-limit errors
+            for attempt in range(5):
+                try:
+                    response = client.embeddings.create(input=batch, model=deployment)
+                    break
+                except Exception as exc:
+                    if "429" in str(exc) and attempt < 4:
+                        wait = 2**attempt
+                        log.warning(
+                            "Embedding rate-limited (attempt %d/5), " "retrying in %ds...",
+                            attempt + 1,
+                            wait,
+                        )
+                        time.sleep(wait)
+                    else:
+                        raise
             vecs = [item.embedding for item in response.data]
             all_vecs.extend(_normalize(v) for v in vecs)
 

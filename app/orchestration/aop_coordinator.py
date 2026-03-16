@@ -35,6 +35,9 @@ from app.orchestration.solvability_estimator import (
 from app.runtime.registry import AgentRegistry
 from app.runtime.trace import Trace
 
+# Type alias: either estimator exposes the same .estimate() interface.
+_Estimator = Any  # SolvabilityEstimator | NeuralSolvabilityEstimator
+
 
 @dataclass
 class Subtask:
@@ -93,18 +96,13 @@ class AOPPlan:
             "completeness": {
                 "complete": self.completeness.complete if self.completeness else True,
                 "missing": self.completeness.missing if self.completeness else [],
-                "coverage_ratio": (
-                    self.completeness.coverage_ratio if self.completeness else 1.0
-                ),
+                "coverage_ratio": (self.completeness.coverage_ratio if self.completeness else 1.0),
                 "reasoning": self.completeness.reasoning if self.completeness else "",
             },
             "solvability": {
                 "assignments": self.solvability.assignments if self.solvability else {},
                 "assignment_scores": (
-                    {
-                        k: round(v, 4)
-                        for k, v in self.solvability.assignment_scores.items()
-                    }
+                    {k: round(v, 4) for k, v in self.solvability.assignment_scores.items()}
                     if self.solvability
                     else {}
                 ),
@@ -158,7 +156,7 @@ class AOPCoordinator:
         self,
         registry: AgentRegistry,
         performance_store: PerformanceStore,
-        estimator: Optional[SolvabilityEstimator] = None,
+        estimator: Optional[_Estimator] = None,
         completeness: Optional[CompletenessDetector] = None,
         model: str = "gpt-5-mini",
         max_retries: int = 1,
@@ -167,7 +165,7 @@ class AOPCoordinator:
     ):
         self.registry = registry
         self.store = performance_store
-        self.estimator = estimator or SolvabilityEstimator(performance_store)
+        self.estimator = estimator or self._default_estimator(performance_store)
         self.completeness = completeness or CompletenessDetector(model=model)
         self.model = model
         self.max_retries = max_retries
@@ -204,9 +202,7 @@ class AOPCoordinator:
         if self.memory:
             try:
                 thread_id = context.get("thread_id", "default")
-                conversation_history = self.memory.get_conversation_context(
-                    thread_id, limit=5
-                )
+                conversation_history = self.memory.get_conversation_context(thread_id, limit=5)
             except Exception:
                 pass
 
@@ -256,9 +252,7 @@ class AOPCoordinator:
                     info="informational_bypass",
                 )
         else:
-            comp_result = self._check_completeness(
-                query, subtask_strs, solv_result.assignments
-            )
+            comp_result = self._check_completeness(query, subtask_strs, solv_result.assignments)
             if trace:
                 trace.add(
                     "aop_completeness",
@@ -279,9 +273,7 @@ class AOPCoordinator:
                     )
                     for st in subtask_strs
                 ]
-                comp_result = self._check_completeness(
-                    query, subtask_strs, solv_result.assignments
-                )
+                comp_result = self._check_completeness(query, subtask_strs, solv_result.assignments)
                 if trace:
                     trace.add(
                         "aop_redecompose",
@@ -334,9 +326,7 @@ class AOPCoordinator:
         if self.memory:
             try:
                 thread_id = context.get("thread_id", "default")
-                conversation_history = self.memory.get_conversation_context(
-                    thread_id, limit=5
-                )
+                conversation_history = self.memory.get_conversation_context(thread_id, limit=5)
             except Exception:
                 pass
 
@@ -378,9 +368,7 @@ class AOPCoordinator:
                     info="informational_bypass",
                 )
         else:
-            comp_result = self._check_completeness(
-                query, subtask_strs, solv_result.assignments
-            )
+            comp_result = self._check_completeness(query, subtask_strs, solv_result.assignments)
             if trace:
                 trace.add(
                     "aop_completeness",
@@ -401,9 +389,7 @@ class AOPCoordinator:
                     )
                     for st in subtask_strs
                 ]
-                comp_result = self._check_completeness(
-                    query, subtask_strs, solv_result.assignments
-                )
+                comp_result = self._check_completeness(query, subtask_strs, solv_result.assignments)
                 if trace:
                     trace.add(
                         "aop_redecompose",
@@ -483,6 +469,50 @@ class AOPCoordinator:
             "plan_query": plan.query,
         }
 
+    # ── Estimator hot-swap ────────────────────────────────────────
+
+    @staticmethod
+    def _default_estimator(store: PerformanceStore) -> _Estimator:
+        """Return the default estimator — neural if available, TF-IDF fallback."""
+        try:
+            from app.orchestration.neural_solvability_estimator import (
+                NeuralSolvabilityEstimator,
+            )
+
+            return NeuralSolvabilityEstimator(store)
+        except Exception as exc:
+            print(
+                f"[AOP] WARNING: Failed to load neural solvability estimator: {exc}\n"
+                f"[AOP] Falling back to TF-IDF estimator. "
+                f"Install 'sentence-transformers' and 'torch' to enable neural mode."
+            )
+            return SolvabilityEstimator(store)
+
+    def swap_estimator(self, kind: str) -> str:
+        """Hot-swap the solvability estimator at runtime.
+
+        Args:
+            kind: ``"neural"`` or ``"tfidf"``.
+
+        Returns:
+            The estimator kind now active.
+        """
+        if kind == "neural":
+            from app.orchestration.neural_solvability_estimator import (
+                NeuralSolvabilityEstimator,
+            )
+
+            self.estimator = NeuralSolvabilityEstimator(self.store)
+        else:
+            self.estimator = SolvabilityEstimator(self.store)
+        return self.active_estimator_kind
+
+    @property
+    def active_estimator_kind(self) -> str:
+        """Return ``'neural'`` or ``'tfidf'`` depending on which estimator is loaded."""
+        cls_name = type(self.estimator).__name__
+        return "neural" if "Neural" in cls_name else "tfidf"
+
     # ── Step 1: Task Decomposition ──────────────────────────────────
 
     @staticmethod
@@ -516,9 +546,7 @@ class AOPCoordinator:
         for aid, meta in agent_catalog.items():
             caps = meta.get("capabilities", [])
             desc = meta.get("description", "")
-            catalog_summary.append(
-                f"  - {aid}: {desc} (capabilities: {', '.join(caps)})"
-            )
+            catalog_summary.append(f"  - {aid}: {desc} (capabilities: {', '.join(caps)})")
         catalog_str = "\n".join(catalog_summary)
 
         # Build conversation context string for multi-turn awareness
@@ -601,9 +629,7 @@ class AOPCoordinator:
         for aid, meta in agent_catalog.items():
             caps = meta.get("capabilities", [])
             desc = meta.get("description", "")
-            catalog_summary.append(
-                f"  - {aid}: {desc} (capabilities: {', '.join(caps)})"
-            )
+            catalog_summary.append(f"  - {aid}: {desc} (capabilities: {', '.join(caps)})")
         catalog_str = "\n".join(catalog_summary)
 
         messages = [
@@ -816,9 +842,7 @@ class AOPCoordinator:
             agent = self.registry.get(st.assigned_agent_id)
             if not agent:
                 st.success = False
-                st.result = {
-                    "error": f"Agent {st.assigned_agent_id} not found in registry"
-                }
+                st.result = {"error": f"Agent {st.assigned_agent_id} not found in registry"}
                 continue
 
             # Per-subtask guardrail: block action agents when the user hasn't provided
@@ -858,9 +882,7 @@ class AOPCoordinator:
                         original_query if original_query else st.description
                     )
                     if not has_transaction:
-                        agent_meta = self.registry.all_meta().get(
-                            st.assigned_agent_id, {}
-                        )
+                        agent_meta = self.registry.all_meta().get(st.assigned_agent_id, {})
                         msg = agent_meta.get("missing_context_message") or (
                             "To help with this I'll need a few more details — "
                             "could you share your order or transaction reference?"
@@ -906,9 +928,7 @@ class AOPCoordinator:
                 st.success = not result.get("error")
                 # Use agent-reported score if available
                 try:
-                    st.solvability_score = float(
-                        result.get("score", st.solvability_score)
-                    )
+                    st.solvability_score = float(result.get("score", st.solvability_score))
                 except (TypeError, ValueError):
                     pass
             except Exception as e:
@@ -971,9 +991,7 @@ class AOPCoordinator:
             if result.get("missing_slots"):
                 missing = result["missing_slots"]
                 if isinstance(missing, list):
-                    parts.append(
-                        f"Need more info: {', '.join(str(s) for s in missing)}"
-                    )
+                    parts.append(f"Need more info: {', '.join(str(s) for s in missing)}")
             if result.get("current_state"):
                 parts.append(f"(State: {result['current_state']})")
             if parts:
@@ -1003,9 +1021,7 @@ class AOPCoordinator:
             s = str(v)
             if len(s) < 200:
                 summary_parts.append(f"{k}: {s}")
-        return (
-            " | ".join(summary_parts[:5]) if summary_parts else "(no readable content)"
-        )
+        return " | ".join(summary_parts[:5]) if summary_parts else "(no readable content)"
 
     def _assemble_composite_response(
         self,
@@ -1027,11 +1043,7 @@ class AOPCoordinator:
                 msg = st.result.get("message", "This action requires more details.")
                 answers.append(f"[{st.assigned_agent_id}] {msg}")
             else:
-                err = (
-                    st.result.get("error", "unknown error")
-                    if st.result
-                    else "no result"
-                )
+                err = st.result.get("error", "unknown error") if st.result else "no result"
                 answers.append(f"[{st.assigned_agent_id}] Unable to complete: {err}")
 
         combined_text = "\n\n".join(answers)
@@ -1039,9 +1051,7 @@ class AOPCoordinator:
         # Average score across successful subtasks
         successful = [st for st in subtasks if st.success]
         avg_score = (
-            sum(st.solvability_score for st in successful) / len(successful)
-            if successful
-            else 0.0
+            sum(st.solvability_score for st in successful) / len(successful) if successful else 0.0
         )
 
         return {
