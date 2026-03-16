@@ -263,7 +263,17 @@ def _inputs_from_blueprint(
             if isinstance(tools, list) and tools:
                 inputs["tool"] = str(tools[0])
 
-    # Best-effort resolve any string placeholders inside inputs (shallow)
+    # Best-effort resolve any string placeholders inside inputs (shallow).
+    # Skip strings that look like natural-language text (contain spaces,
+    # are very long, etc.) — they are policy constraints, not file paths.
+    def _looks_like_path(s: str) -> bool:
+        """Return True if *s* could plausibly be a filesystem path."""
+        return (
+            len(s) <= 255
+            and " " not in s
+            and not s.startswith(("When ", "If ", "Do ", "Ensure ", "Always "))
+        )
+
     for k, v in list(inputs.items()):
         if isinstance(v, str):
             rp = _resolve_placeholder(v)
@@ -276,7 +286,7 @@ def _inputs_from_blueprint(
                     rp = _resolve_placeholder(item)
                     if rp:
                         new_list.append(rp)
-                    else:
+                    elif _looks_like_path(item):
                         # resolve relative to data_dir
                         p = Path(item)
                         if p.is_absolute():
@@ -285,6 +295,8 @@ def _inputs_from_blueprint(
                             new_list.append(_abs(data_dir / p))
                         else:
                             new_list.append(item)
+                    else:
+                        new_list.append(item)
                 else:
                     new_list.append(item)
             inputs[k] = new_list
