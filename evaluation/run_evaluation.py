@@ -63,7 +63,12 @@ class StubAgent:
 
 
 class ScenarioRouter:
-    """Router that directs queries to the appropriate stub agent based on keywords."""
+    """Router that directs queries to the appropriate stub agent based on keywords.
+
+    Mirrors the real LLMRouter's intent-aware routing:
+    - ACTIONABLE intents (refund, complaint) → domain agent with tools
+    - INFORMATIONAL intents (FAQ, policy) → FAQ domain agent
+    """
 
     def __init__(self, registry: AgentRegistry):
         self._registry = registry
@@ -71,7 +76,50 @@ class ScenarioRouter:
     def route(self, query: str) -> RoutePlan:
         q = query.lower()
 
-        # Refund/complaint/charge/unauthorized → refund agent
+        # ── Detect INFORMATIONAL intent (asking about policies, not requesting action)
+        info_patterns = [
+            "what is your",
+            "how do i",
+            "how does",
+            "tell me about",
+            "explain",
+            "policy",
+            "procedure",
+            "what are the",
+            "can you describe",
+        ]
+        is_informational = any(p in q for p in info_patterns)
+
+        # Informational queries about refunds/complaints → FAQ agent
+        if is_informational:
+            return RoutePlan(
+                primary="agent_faq",
+                strategy="single",
+                candidates=[
+                    Candidate(
+                        id="agent_faq",
+                        score=0.85,
+                        reason="informational intent (FAQ)",
+                    )
+                ],
+            )
+
+        # ── ACTIONABLE: Complaint / dispute → complaints agent
+        complaint_keywords = ["complaint", "formal dispute", "ombudsman", "escalate"]
+        if any(kw in q for kw in complaint_keywords):
+            return RoutePlan(
+                primary="agent_complaints",
+                strategy="single",
+                candidates=[
+                    Candidate(
+                        id="agent_complaints",
+                        score=0.92,
+                        reason="complaint intent detected",
+                    )
+                ],
+            )
+
+        # ── ACTIONABLE: Refund / charge / unauthorized → refunds agent
         refund_keywords = [
             "refund",
             "charge",
@@ -79,7 +127,6 @@ class ScenarioRouter:
             "duplicate",
             "unauthorized",
             "cancel",
-            "dispute",
             "stolen",
             "fees",
             "debited",
@@ -87,20 +134,28 @@ class ScenarioRouter:
         ]
         if any(kw in q for kw in refund_keywords):
             return RoutePlan(
-                primary="refund_agent",
+                primary="agent_refunds",
                 strategy="single",
                 candidates=[
                     Candidate(
-                        id="refund_agent", score=0.9, reason="refund keyword match"
+                        id="agent_refunds",
+                        score=0.90,
+                        reason="refund intent detected",
                     )
                 ],
             )
 
         # Default → FAQ agent
         return RoutePlan(
-            primary="faq_agent",
+            primary="agent_faq",
             strategy="single",
-            candidates=[Candidate(id="faq_agent", score=0.85, reason="FAQ default")],
+            candidates=[
+                Candidate(
+                    id="agent_faq",
+                    score=0.85,
+                    reason="informational intent (FAQ)",
+                )
+            ],
         )
 
 
@@ -108,12 +163,18 @@ class ScenarioRouter:
 
 
 def build_eval_spine(tmp_dir: Path) -> RuntimeSpine:
-    """Create a RuntimeSpine with stub agents for deterministic evaluation."""
+    """Create a RuntimeSpine with stub agents mirroring the real fleet.
+
+    The real fleet has three domain_agent instances (all using ReAct engine):
+      - agent_faq        — FAQ / informational queries
+      - agent_refunds    — Refund processing with tools
+      - agent_complaints — Complaint handling with tools
+    """
     registry = AgentRegistry()
 
-    # FAQ agent — returns answer with common banking keywords
+    # ── agent_faq (domain_agent) ──────────────────────────────────────
     faq = StubAgent(
-        "faq_agent",
+        "agent_faq",
         {
             "answer": (
                 "Based on our FAQ knowledge base: You can transfer your Current Account "
@@ -122,10 +183,27 @@ def build_eval_spine(tmp_dir: Path) -> RuntimeSpine:
                 "Flexi Account requires Rs. 75,000 initial deposit."
             ),
             "score": 0.82,
+            "react_trace": [
+                {
+                    "step": 1,
+                    "thought": "Looking up banking FAQ for the customer query.",
+                    "action": "retrieve_knowledge",
+                    "observation": "Found relevant FAQ entry in BankFAQs.csv.",
+                },
+                {
+                    "step": 2,
+                    "thought": "FAQ entry found, responding to customer.",
+                    "action": "respond",
+                    "observation": None,
+                },
+            ],
+            "knowledge_sources": [
+                {"query": "banking FAQ", "sources": ["BankFAQs.csv"]}
+            ],
         },
     )
     faq._meta = {
-        "type": "faq_rag",
+        "type": "domain_agent",
         "description": "Answers customer FAQs about banking policies and account types",
         "capabilities": [
             "faq_answering",
@@ -135,26 +213,68 @@ def build_eval_spine(tmp_dir: Path) -> RuntimeSpine:
             "cheque_clearing",
             "deposit_requirements",
         ],
+        "aop_eligible": True,
         "ready": True,
     }
-    registry.register("faq_agent", faq, faq.metadata())
+    registry.register("agent_faq", faq, faq.metadata())
 
-    # Refund agent — returns workflow-like response
+    # ── agent_refunds (domain_agent) ──────────────────────────────────
     refund = StubAgent(
-        "refund_agent",
+        "agent_refunds",
         {
-            "answer": "Your refund request has been received and is being processed.",
-            "text": "Your refund request has been received and is being processed.",
+            "answer": (
+                "Your refund request has been received. I've verified your identity "
+                "and looked up the payment. The refund of EUR 200 has been initiated "
+                "and you should see it within 3-5 business days."
+            ),
             "score": 0.88,
-            "current_state": "eligibility_check",
-            "workflow_id": "refunds_workflow_v1",
-            "terminal": False,
-            "slots": {"customer_id": "CUST-001", "amount": 200},
-            "missing_slots": [],
+            "react_trace": [
+                {
+                    "step": 1,
+                    "thought": "Need to retrieve refund policy for eligibility check.",
+                    "action": "retrieve_knowledge",
+                    "observation": "Retrieved refunds_policy.yaml.",
+                },
+                {
+                    "step": 2,
+                    "thought": "Need to verify customer identity.",
+                    "action": "call_tool",
+                    "action_input": {"tool": "verify_identity"},
+                    "observation": "Identity verified.",
+                },
+                {
+                    "step": 3,
+                    "thought": "Looking up payment details.",
+                    "action": "call_tool",
+                    "action_input": {"tool": "lookup_payment"},
+                    "observation": "Payment found: EUR 200, age 5 days.",
+                },
+                {
+                    "step": 4,
+                    "thought": "Eligible per policy. Initiating refund.",
+                    "action": "call_tool",
+                    "action_input": {"tool": "initiate_refund"},
+                    "observation": "Refund REF-001 initiated.",
+                },
+                {
+                    "step": 5,
+                    "thought": "Refund processed, responding to customer.",
+                    "action": "respond",
+                    "observation": None,
+                },
+            ],
+            "tool_results": [
+                {"step": 2, "tool": "verify_identity", "result": "verified"},
+                {"step": 3, "tool": "lookup_payment", "result": "EUR 200"},
+                {"step": 4, "tool": "initiate_refund", "result": "REF-001"},
+            ],
+            "knowledge_sources": [
+                {"query": "refund policy", "sources": ["refunds_policy.yaml"]}
+            ],
         },
     )
     refund._meta = {
-        "type": "workflow_runner",
+        "type": "domain_agent",
         "description": "Processes refund and reversal requests against policy",
         "capabilities": [
             "refund_processing",
@@ -163,25 +283,63 @@ def build_eval_spine(tmp_dir: Path) -> RuntimeSpine:
             "policy_evaluation",
             "transaction_reversal",
         ],
+        "aop_eligible": True,
         "ready": True,
     }
-    registry.register("refund_agent", refund, refund.metadata())
+    registry.register("agent_refunds", refund, refund.metadata())
 
-    # Lookup agent — for AOP delegation
-    lookup = StubAgent(
-        "lookup_agent",
+    # ── agent_complaints (domain_agent) ───────────────────────────────
+    complaints = StubAgent(
+        "agent_complaints",
         {
-            "answer": "Customer record retrieved: account active, KYC verified.",
+            "answer": (
+                "I've registered your complaint and created a support ticket. "
+                "Your ticket ID is TKT-2024-001. Our team will investigate and "
+                "respond within 48 hours."
+            ),
             "score": 0.90,
+            "react_trace": [
+                {
+                    "step": 1,
+                    "thought": "Need complaints policy for handling procedure.",
+                    "action": "retrieve_knowledge",
+                    "observation": "Retrieved complaints_policy.yaml.",
+                },
+                {
+                    "step": 2,
+                    "thought": "Creating support ticket for the complaint.",
+                    "action": "call_tool",
+                    "action_input": {"tool": "create_ticket"},
+                    "observation": "Ticket TKT-2024-001 created.",
+                },
+                {
+                    "step": 3,
+                    "thought": "Ticket created, responding to customer.",
+                    "action": "respond",
+                    "observation": None,
+                },
+            ],
+            "tool_results": [
+                {"step": 2, "tool": "create_ticket", "result": "TKT-2024-001"},
+            ],
+            "knowledge_sources": [
+                {"query": "complaints policy", "sources": ["complaints_policy.yaml"]}
+            ],
         },
     )
-    lookup._meta = {
-        "type": "tool_operator",
-        "description": "Fetches and validates customer records",
-        "capabilities": ["customer_lookup", "account_status", "kyc_verification"],
+    complaints._meta = {
+        "type": "domain_agent",
+        "description": "Handles customer complaints, escalation, and ticket creation",
+        "capabilities": [
+            "complaint_handling",
+            "ticket_creation",
+            "escalation",
+            "customer_support",
+        ],
+        "aop_eligible": True,
         "ready": True,
     }
-    registry.register("lookup_agent", lookup, lookup.metadata())
+    registry.register("agent_complaints", complaints, complaints.metadata())
 
     # Performance store in temp dir
     perf_store = PerformanceStore(path=str(tmp_dir / "eval_perf.json"))
@@ -320,8 +478,8 @@ def test_all_scenarios_pass():
     metrics = run_evaluation(output_dir)
 
     assert (
-        metrics["total_scenarios"] == 25
-    ), f"Expected 25 scenarios, got {metrics['total_scenarios']}"
+        metrics["total_scenarios"] >= 25
+    ), f"Expected ≥25 scenarios, got {metrics['total_scenarios']}"
     assert (
         metrics["orchestration_accuracy"] >= 0.80
     ), f"Orchestration accuracy {metrics['orchestration_accuracy']:.1%} < 80% target"

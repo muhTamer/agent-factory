@@ -1,0 +1,25 @@
+{
+  "orchestration_accuracy": 1.0,
+  "reasoning_accuracy": 1.0,
+  "agent_accuracy": 1.0,
+  "solvability_correlation": null,
+  "completeness_rate": 1.0,
+  "avg_latency_ms": 22.08,
+  "latency_by_category": {
+    "actionable_routing": 22.64,
+    "graceful_degradation": 30.8,
+    "hierarchical_delegation": 13.51,
+    "hitl_escalation": 41.03,
+    "informational_routing": 16.99
+  },
+  "steps_by_category": {
+    "actionable_routing": 1.0,
+    "graceful_degradation": 1.0,
+    "hierarchical_delegation": 1.0,
+    "hitl_escalation": 1.0,
+    "informational_routing": 1.0
+  },
+  "total_scenarios": 30,
+  "passed": 30,
+  "failed": 0
+}

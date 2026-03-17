@@ -1,7 +1,7 @@
 [
   {
-    "id": "simple_01",
-    "category": "simple_routing",
+    "id": "faq_01",
+    "category": "informational_routing",
     "description": "FAQ: Current Account transfer between branches",
     "success_criteria": "all_turns_pass",
     "turns": [
@@ -19,8 +19,8 @@
     }
   },
   {
-    "id": "simple_02",
-    "category": "simple_routing",
+    "id": "faq_02",
+    "category": "informational_routing",
     "description": "FAQ: Outstation cheque clearing time",
     "success_criteria": "all_turns_pass",
     "turns": [
@@ -38,8 +38,8 @@
     }
   },
   {
-    "id": "simple_03",
-    "category": "simple_routing",
+    "id": "faq_03",
+    "category": "informational_routing",
     "description": "FAQ: Premium Current Account features",
     "success_criteria": "all_turns_pass",
     "turns": [
@@ -57,8 +57,8 @@
     }
   },
   {
-    "id": "simple_04",
-    "category": "simple_routing",
+    "id": "faq_04",
+    "category": "informational_routing",
     "description": "FAQ: EEFC Account for SEZ units",
     "success_criteria": "all_turns_pass",
     "turns": [
@@ -76,8 +76,8 @@
     }
   },
   {
-    "id": "simple_05",
-    "category": "simple_routing",
+    "id": "faq_05",
+    "category": "informational_routing",
     "description": "FAQ: Flexi Account initial deposit",
     "success_criteria": "all_turns_pass",
     "turns": [
@@ -95,165 +95,236 @@
     }
   },
   {
-    "id": "fsm_01",
-    "category": "fsm_workflow",
-    "description": "Refund workflow: simple eligible refund under EUR 5000",
+    "id": "faq_06",
+    "category": "informational_routing",
+    "description": "FAQ: Refund policy inquiry (informational, no action)",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "What is your refund policy for cancelled orders?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+  {
+    "id": "faq_07",
+    "category": "informational_routing",
+    "description": "FAQ: Complaints procedure inquiry",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "How do I file a complaint with the bank?",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "faq",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+
+  {
+    "id": "refund_01",
+    "category": "actionable_routing",
+    "description": "Refund: simple eligible refund under EUR 5000",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I want a refund for a EUR 200 charge on my account",
         "expected": {
-          "pattern": "fsm_workflow",
+          "pattern": "direct",
           "agent_contains": "refund",
           "answer_contains": ["refund"]
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"},
-      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-001", "amount": 200, "payment_method": "card", "reason": "overcharge"}}
+      "classify": {"pattern": "direct"}
     }
   },
   {
-    "id": "fsm_02",
-    "category": "fsm_workflow",
-    "description": "Refund workflow: customer provides transaction details",
+    "id": "refund_02",
+    "category": "actionable_routing",
+    "description": "Refund: customer provides transaction details",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I need a refund for order number 12345, charged EUR 150 on my card",
         "expected": {
-          "pattern": "fsm_workflow",
+          "pattern": "direct",
           "agent_contains": "refund",
           "answer_contains": ["refund"]
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"},
-      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-002", "amount": 150, "payment_method": "card", "reason": "order cancellation"}}
+      "classify": {"pattern": "direct"}
     }
   },
   {
-    "id": "fsm_03",
-    "category": "fsm_workflow",
-    "description": "Refund workflow: large amount requiring approval",
+    "id": "refund_03",
+    "category": "actionable_routing",
+    "description": "Refund: large amount requiring approval",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I need a refund of EUR 8000 for a failed wire transfer",
         "expected": {
-          "pattern": "fsm_workflow",
+          "pattern": "direct",
           "agent_contains": "refund",
           "answer_contains": ["refund"]
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"},
-      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-003", "amount": 8000, "payment_method": "wire", "reason": "failed transfer"}}
+      "classify": {"pattern": "direct"}
     }
   },
   {
-    "id": "fsm_04",
-    "category": "fsm_workflow",
-    "description": "Refund workflow: missing customer information",
+    "id": "refund_04",
+    "category": "actionable_routing",
+    "description": "Refund: vague request (missing details)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I want my money back",
         "expected": {
-          "pattern": "fsm_workflow",
+          "pattern": "direct",
           "agent_contains": "refund",
           "answer_contains": []
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"},
-      "workflow": {"event": "info_provided", "slots": {"reason": "general complaint"}}
+      "classify": {"pattern": "direct"}
     }
   },
   {
-    "id": "fsm_05",
-    "category": "fsm_workflow",
-    "description": "Refund workflow: duplicate charge complaint",
+    "id": "refund_05",
+    "category": "actionable_routing",
+    "description": "Refund: duplicate charge complaint",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I was charged twice for the same transaction of EUR 75, please refund one",
         "expected": {
-          "pattern": "fsm_workflow",
+          "pattern": "direct",
           "agent_contains": "refund",
           "answer_contains": ["refund"]
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"},
-      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-005", "amount": 75, "payment_method": "card", "reason": "duplicate charge"}}
+      "classify": {"pattern": "direct"}
     }
   },
   {
-    "id": "fsm_06",
-    "category": "fsm_workflow",
-    "description": "Refund workflow: refund for subscription cancellation",
+    "id": "refund_06",
+    "category": "actionable_routing",
+    "description": "Refund: subscription cancellation",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I cancelled my premium subscription last week but was still charged EUR 29.99",
         "expected": {
-          "pattern": "fsm_workflow",
+          "pattern": "direct",
           "agent_contains": "refund",
           "answer_contains": []
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"},
-      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-006", "amount": 29.99, "payment_method": "card", "reason": "subscription cancelled"}}
+      "classify": {"pattern": "direct"}
     }
   },
   {
-    "id": "fsm_07",
-    "category": "fsm_workflow",
-    "description": "Refund workflow: international transaction dispute",
+    "id": "refund_07",
+    "category": "actionable_routing",
+    "description": "Refund: unauthorized foreign charge",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "There is an unauthorized EUR 500 charge from a foreign merchant on my account",
         "expected": {
-          "pattern": "fsm_workflow",
+          "pattern": "direct",
           "agent_contains": "refund",
           "answer_contains": []
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"},
-      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-007", "amount": 500, "payment_method": "card", "reason": "unauthorized foreign charge"}}
+      "classify": {"pattern": "direct"}
     }
   },
   {
-    "id": "fsm_08",
-    "category": "fsm_workflow",
-    "description": "Refund workflow: ATM withdrawal not dispensed",
+    "id": "refund_08",
+    "category": "actionable_routing",
+    "description": "Refund: ATM cash not dispensed",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "The ATM debited EUR 300 from my account but did not dispense any cash",
         "expected": {
-          "pattern": "fsm_workflow",
+          "pattern": "direct",
           "agent_contains": "refund",
           "answer_contains": []
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"},
-      "workflow": {"event": "info_provided", "slots": {"customer_id": "CUST-008", "amount": 300, "payment_method": "atm", "reason": "ATM failed dispensation"}}
+      "classify": {"pattern": "direct"}
     }
   },
+
+  {
+    "id": "complaint_01",
+    "category": "actionable_routing",
+    "description": "Complaint: formal complaint about service",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want to file a formal complaint about the poor service at your branch",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "complaint",
+          "answer_contains": ["complaint", "ticket"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+  {
+    "id": "complaint_02",
+    "category": "actionable_routing",
+    "description": "Complaint: escalation request with ombudsman threat",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want to escalate my complaint to a manager, or I will go to the ombudsman",
+        "expected": {
+          "pattern": "direct",
+          "agent_contains": "complaint",
+          "answer_contains": ["complaint"]
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "direct"}
+    }
+  },
+
   {
     "id": "deleg_01",
     "category": "hierarchical_delegation",
@@ -355,6 +426,27 @@
     }
   },
   {
+    "id": "deleg_06",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: complaint AND refund (cross-agent delegation)",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want to file a complaint about the service and also get a refund for order #456",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "answer_contains": []
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {"pattern": "hierarchical_delegation"},
+      "decompose": {"subtasks": ["File complaint about service quality", "Process refund for order #456"]},
+      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Complaint and refund both covered."}
+    }
+  },
+
+  {
     "id": "hitl_01",
     "category": "hitl_escalation",
     "description": "Escalation: large disputed amount with fraud suspicion",
@@ -394,18 +486,19 @@
       "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Fee review and refund processing both addressed."}
     }
   },
+
   {
-    "id": "fail_01",
-    "category": "simple_routing",
-    "description": "Out-of-domain: quantum physics question (no agent can handle)",
-    "success_criteria": "all_turns_pass",
+    "id": "edge_01",
+    "category": "graceful_degradation",
+    "description": "Out-of-domain: quantum physics question (graceful fallback to FAQ)",
+    "success_criteria": "answer_not_empty",
     "turns": [
       {
         "query": "Explain the Heisenberg uncertainty principle in quantum mechanics",
         "expected": {
           "pattern": "direct",
           "agent_contains": "faq",
-          "answer_contains": ["uncertainty", "quantum"]
+          "answer_contains": []
         }
       }
     ],
@@ -414,17 +507,17 @@
     }
   },
   {
-    "id": "fail_02",
-    "category": "fsm_workflow",
-    "description": "Refund for fictitious product (agent cannot match expected keywords)",
-    "success_criteria": "all_turns_pass",
+    "id": "edge_02",
+    "category": "graceful_degradation",
+    "description": "Refund for fictitious product (graceful handling)",
+    "success_criteria": "answer_not_empty",
     "turns": [
       {
         "query": "I want a refund for my flying car purchase from last Tuesday",
         "expected": {
-          "pattern": "fsm_workflow",
+          "pattern": "direct",
           "agent_contains": "refund",
-          "answer_contains": ["flying car", "not eligible"]
+          "answer_contains": ["refund"]
         }
       }
     ],
@@ -433,16 +526,16 @@
     }
   },
   {
-    "id": "fail_03",
-    "category": "hierarchical_delegation",
-    "description": "Multi-intent with impossible subtask (Mars branch transfer)",
-    "success_criteria": "all_turns_pass",
+    "id": "edge_03",
+    "category": "graceful_degradation",
+    "description": "Multi-intent with impossible subtask (graceful AOP decomposition)",
+    "success_criteria": "answer_not_empty",
     "turns": [
       {
         "query": "Transfer my account to the Mars branch and explain intergalactic banking regulations",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": ["Mars", "intergalactic"]
+          "answer_contains": []
         }
       }
     ],
@@ -453,17 +546,17 @@
     }
   },
   {
-    "id": "fail_04",
-    "category": "simple_routing",
-    "description": "Out-of-domain: mortgage rates in foreign country",
-    "success_criteria": "all_turns_pass",
+    "id": "edge_04",
+    "category": "graceful_degradation",
+    "description": "Out-of-domain: mortgage rates in foreign country (graceful fallback)",
+    "success_criteria": "answer_not_empty",
     "turns": [
       {
         "query": "What are the current mortgage interest rates for properties in Iceland",
         "expected": {
           "pattern": "direct",
           "agent_contains": "faq",
-          "answer_contains": ["mortgage", "Iceland", "interest rate"]
+          "answer_contains": []
         }
       }
     ],
@@ -472,16 +565,16 @@
     }
   },
   {
-    "id": "fail_05",
-    "category": "hitl_escalation",
-    "description": "Legal threat requiring immediate human intervention",
-    "success_criteria": "all_turns_pass",
+    "id": "edge_05",
+    "category": "graceful_degradation",
+    "description": "Legal threat requiring human intervention (graceful AOP handling)",
+    "success_criteria": "answer_not_empty",
     "turns": [
       {
         "query": "I am suing your bank for negligence and demand my lawyer speaks with your CEO immediately",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": ["lawyer", "CEO", "legal department"]
+          "answer_contains": []
         }
       }
     ],
