@@ -12,6 +12,8 @@ from app.runtime.routing import Router
 from app.runtime.trace import Trace
 from app.runtime.voice import VoiceAgent
 
+from app.orchestration.aop_coordinator import parse_aop_label
+
 if TYPE_CHECKING:
     from app.orchestration.aop_coordinator import AOPCoordinator
     from app.runtime.memory import ConversationMemory
@@ -158,11 +160,7 @@ class RuntimeSpine:
         for menu_pos, orig_idx in enumerate(pending_indices):
             desc = subtasks[orig_idx]["description"]
             # Strip INFORMATIONAL:/ACTION: prefix for display matching
-            display = desc
-            for prefix in ("INFORMATIONAL: ", "ACTION: "):
-                if display.startswith(prefix):
-                    display = display[len(prefix) :]
-                    break
+            _, display = parse_aop_label(desc)
             label = f"{menu_pos + 1}. {display[:60]}"
             if q == label or q == desc or ql == label.lower() or ql == desc.lower():
                 return orig_idx
@@ -199,12 +197,9 @@ class RuntimeSpine:
 
         # Strategy 4: Check if query contains a significant substring of a pending subtask
         for menu_pos, orig_idx in enumerate(pending_indices):
-            desc = subtasks[orig_idx]["description"].lower()
-            # Remove prefix for matching
-            for prefix in ("informational: ", "action: "):
-                if desc.startswith(prefix):
-                    desc = desc[len(prefix) :]
-                    break
+            # Remove AOP label prefix for matching
+            _, desc = parse_aop_label(subtasks[orig_idx]["description"])
+            desc = desc.lower()
             # If user's query overlaps significantly with subtask description
             q_words = set(ql.split())
             desc_words = set(desc.split())
@@ -614,11 +609,7 @@ class RuntimeSpine:
                         if _aop_remaining:
                             _qr_aop = []
                             for _mp, _rs in enumerate(_aop_remaining):
-                                _d = _rs.get("subtask", "")
-                                for _pfx in ("INFORMATIONAL: ", "ACTION: "):
-                                    if _d.startswith(_pfx):
-                                        _d = _d[len(_pfx) :]
-                                        break
+                                _, _d = parse_aop_label(_rs.get("subtask", ""))
                                 _qr_aop.append(f"{_mp + 1}. {_d[:60]}")
                             _qr_aop.append("No thanks")
                             if not aop_resp.get("chat"):
@@ -1083,11 +1074,7 @@ class RuntimeSpine:
                     # labels match _match_aop_task_selection's expectations.
                     _qr = []
                     for _menu_pos, _rs in enumerate(_remaining_subtasks):
-                        _desc = _rs["subtask"]
-                        for _pfx in ("INFORMATIONAL: ", "ACTION: "):
-                            if _desc.startswith(_pfx):
-                                _desc = _desc[len(_pfx) :]
-                                break
+                        _, _desc = parse_aop_label(_rs["subtask"])
                         _qr.append(f"{_menu_pos + 1}. {_desc[:60]}")
                     _qr.append("No thanks")
                     if not resp.get("chat"):
@@ -1125,11 +1112,7 @@ class RuntimeSpine:
                     resp["remaining_subtasks"] = _remaining_subtasks2
                     _qr2 = []
                     for _menu_pos2, _rs2 in enumerate(_remaining_subtasks2):
-                        _desc2 = _rs2["subtask"]
-                        for _pfx2 in ("INFORMATIONAL: ", "ACTION: "):
-                            if _desc2.startswith(_pfx2):
-                                _desc2 = _desc2[len(_pfx2) :]
-                                break
+                        _, _desc2 = parse_aop_label(_rs2["subtask"])
                         _qr2.append(f"{_menu_pos2 + 1}. {_desc2[:60]}")
                     _qr2.append("No thanks")
                     if not resp.get("chat"):

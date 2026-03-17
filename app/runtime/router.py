@@ -45,9 +45,20 @@ class LLMRouter:
                     if ks:
                         import os
 
-                        extra["knowledge_source_files"] = [
-                            os.path.basename(s) for s in ks
-                        ]
+                        basenames = [os.path.basename(s) for s in ks]
+                        extra["knowledge_source_files"] = basenames
+                        # Tag FAQ vs internal sources so the router can
+                        # distinguish customer-safe knowledge from internal
+                        # policy documents.
+                        extra["has_faq_sources"] = any(
+                            "faq" in b.lower() for b in basenames
+                        )
+                        extra["has_internal_policy_only"] = not extra[
+                            "has_faq_sources"
+                        ] and any(
+                            "policy" in b.lower() or "internal" in b.lower()
+                            for b in basenames
+                        )
                 except Exception:
                     pass
             catalog.append(
@@ -73,9 +84,11 @@ class LLMRouter:
             "STEP 2 — Score each agent (0.0-1.0) based on TWO factors:\n"
             "  a) INTENT FIT: how well the agent's role matches the classified intent.\n"
             "     For INFORMATIONAL queries, agents with 'customer_facing: true' or\n"
-            "     customer-facing knowledge sources are a strong fit. Domain-specialist\n"
-            "     agents are a poor fit — asking ABOUT a topic is not the same as\n"
-            "     requesting an action in that domain.\n"
+            "     FAQ knowledge sources ('has_faq_sources: true') are a strong fit.\n"
+            "     Agents with 'customer_facing: false' and only internal policy\n"
+            "     documents ('has_internal_policy_only: true') are a poor fit —\n"
+            "     asking ABOUT a topic is not the same as requesting an action\n"
+            "     in that domain.\n"
             "     For ACTIONABLE queries, agents with action-oriented capabilities\n"
             "     (initiate, process, assess, execute) are a strong fit.\n"
             "  b) DOMAIN FIT: how well the agent's domain and capabilities match\n"

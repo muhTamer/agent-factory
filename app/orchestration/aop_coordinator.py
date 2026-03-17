@@ -38,6 +38,28 @@ from app.runtime.trace import Trace
 # Type alias: either estimator exposes the same .estimate() interface.
 _Estimator = Any  # SolvabilityEstimator | NeuralSolvabilityEstimator
 
+# ---------------------------------------------------------------------------
+# AOP label parser — single regex handles all LLM format variations:
+#   "INFORMATIONAL: ...", "INFORMATIONAL — ...", "(INFORMATIONAL) ...",
+#   "[INFORMATIONAL] ...", "ACTION - ...", etc.
+# ---------------------------------------------------------------------------
+_AOP_LABEL_RE = re.compile(
+    r"^\s*[\(\[]?\s*(INFORMATIONAL|ACTION)\s*[\)\]]?\s*[:\-—–]?\s*",
+    re.IGNORECASE,
+)
+
+
+def parse_aop_label(description: str) -> tuple[str | None, str]:
+    """Parse an AOP decomposer label from a subtask description.
+
+    Returns (label, clean_text) where label is "INFORMATIONAL" or "ACTION"
+    (upper-cased) if found, else None.  clean_text has the prefix removed.
+    """
+    m = _AOP_LABEL_RE.match(description)
+    if m:
+        return m.group(1).upper(), description[m.end() :]
+    return None, description
+
 
 @dataclass
 class Subtask:
@@ -878,20 +900,9 @@ class AOPCoordinator:
             #
             # Only block when there's NO label AND NO transaction context.
             if self._is_action_agent(st.assigned_agent_id):
-                desc_upper = st.description.upper()
-                # Handle both "INFORMATIONAL:" and "INFORMATIONAL —" (em/en dash)
-                labeled_informational = (
-                    desc_upper.startswith("INFORMATIONAL:")
-                    or desc_upper.startswith("INFORMATIONAL —")
-                    or desc_upper.startswith("INFORMATIONAL -")
-                    or desc_upper.startswith("INFORMATIONAL–")
-                )
-                labeled_action = (
-                    desc_upper.startswith("ACTION:")
-                    or desc_upper.startswith("ACTION —")
-                    or desc_upper.startswith("ACTION -")
-                    or desc_upper.startswith("ACTION–")
-                )
+                _label, _ = parse_aop_label(st.description)
+                labeled_informational = _label == "INFORMATIONAL"
+                labeled_action = _label == "ACTION"
 
                 if labeled_action or labeled_informational:
                     # Decomposer explicitly labeled the subtask — allow through.
@@ -923,26 +934,7 @@ class AOPCoordinator:
             # Strip the decomposer's INFORMATIONAL:/ACTION: prefix before
             # passing to the agent — these are internal AOP labels that add
             # noise to TF-IDF search and confuse downstream agents.
-            agent_query = st.description
-            for _prefix in (
-                "INFORMATIONAL: ",
-                "INFORMATIONAL — ",
-                "INFORMATIONAL - ",
-                "INFORMATIONAL– ",
-                "INFORMATIONAL–",
-                "ACTION: ",
-                "ACTION — ",
-                "ACTION - ",
-                "ACTION– ",
-                "ACTION–",
-            ):
-                if agent_query.startswith(_prefix):
-                    agent_query = agent_query[len(_prefix) :]
-                    break
-                # Also try case-insensitive match
-                if agent_query.upper().startswith(_prefix.upper()):
-                    agent_query = agent_query[len(_prefix) :]
-                    break
+            _, agent_query = parse_aop_label(st.description)
 
             t0 = _now_ms()
             try:
