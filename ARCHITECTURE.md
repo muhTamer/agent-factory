@@ -26,6 +26,7 @@ This document describes the system architecture, core design decisions, and requ
 │                    API Layer (FastAPI)                       │
 │  POST /chat · GET /health · GET /version                    │
 │  GET /guardrails · PATCH /guardrails/{rule_id}              │
+│  GET /solvability-estimator · PATCH /solvability-estimator  │
 ├─────────────────────────────────────────────────────────────┤
 │                   Orchestration Layer                        │
 │  RuntimeSpine · LLMRouter · AOP Coordinator                 │
@@ -368,7 +369,10 @@ RuntimeSpine
   ├── PolicyGuardrails
   │     └── PolicyPack (GuardrailRule[] + runtime toggles)
   ├── AOPCoordinator
-  │     ├── SolvabilityEstimator
+  │     ├── NeuralSolvabilityEstimator (default)
+  │     │     ├── SentenceTransformer (all-MiniLM-L6-v2)
+  │     │     └── RewardMLP (768→256→64→1)
+  │     ├── SolvabilityEstimator (TF-IDF fallback)
   │     ├── CompletenessDetector
   │     └── PerformanceStore
   ├── AgentRegistry

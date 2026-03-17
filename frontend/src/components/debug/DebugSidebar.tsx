@@ -8,6 +8,7 @@ import { SourcesPanel } from "./SourcesPanel";
 import { ReActTracePanel } from "./ReActTracePanel";
 import { GovernancePanel } from "./GovernancePanel";
 import { GuardrailsAdminPanel } from "./GuardrailsAdminPanel";
+import { EstimatorTogglePanel } from "./EstimatorTogglePanel";
 import { RawJsonViewer } from "./RawJsonViewer";
 import { StatusSummaryStrip } from "./StatusSummaryStrip";
 import { X } from "lucide-react";
@@ -31,6 +32,11 @@ export function DebugSidebar() {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+        {/* Global config panels — always visible */}
+        <EstimatorTogglePanel />
+        <GuardrailsAdminPanel />
+
+        {/* Per-message panels — require a selected message */}
         {!selected ? (
           <p className="text-xs text-slate-400">Click an agent message to inspect it.</p>
         ) : (
@@ -39,7 +45,6 @@ export function DebugSidebar() {
             <RouterPlanPanel message={selected} />
             <SolvabilityPanel message={selected} />
             <PolicyCheckPanel message={selected} />
-            <GuardrailsAdminPanel />
             <SourcesPanel message={selected} />
             <ReActTracePanel message={selected} />
             <GovernancePanel message={selected} />

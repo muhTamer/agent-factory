@@ -17,6 +17,8 @@ Minimal FastAPI application serving as the HTTP entry point.
 | `POST` | `/chat` | Process a user query through the full pipeline |
 | `GET` | `/guardrails` | List all guardrail rules with enabled state, policy pack name, version |
 | `PATCH` | `/guardrails/{rule_id}` | Toggle a guardrail rule on/off — persists to disk and hot-swaps immediately |
+| `GET` | `/solvability-estimator` | Active estimator kind (`neural` or `tfidf`) and available options |
+| `PATCH` | `/solvability-estimator` | Hot-swap the solvability estimator at runtime (`{"kind": "tfidf"}`) |
 
 **Chat Request:**
 ```json
@@ -227,11 +229,20 @@ Meta-agent implementing Agent-Oriented Planning for multi-intent queries.
 
 ```
 1. DECOMPOSE     → LLM breaks query into 1-5 atomic subtasks
-2. SCORE AGENTS  → SolvabilityEstimator scores (subtask, agent) pairs
+2. SCORE AGENTS  → Solvability estimator scores (subtask, agent) pairs
 3. COMPLETENESS  → CompletenessDetector audits plan coverage
 4. EXECUTE       → Delegate each subtask to assigned agent
 5. FEEDBACK      → Record results in PerformanceStore
 ```
+
+### Pluggable Solvability Estimator
+
+Step 2 supports two estimator backends, swappable at runtime via `swap_estimator(kind)`:
+
+- **Neural (default)** — `NeuralSolvabilityEstimator` using all-MiniLM-L6-v2 embeddings + a trained 3-layer MLP. Better on semantic paraphrases.
+- **TF-IDF (fallback)** — `SolvabilityEstimator` using TF-IDF cosine similarity. Faster, fully deterministic.
+
+The coordinator loads the neural estimator by default. If `torch` or `sentence-transformers` are not installed, it falls back to TF-IDF with a warning. The active estimator can be queried and switched via `GET/PATCH /solvability-estimator` or the frontend EstimatorTogglePanel. See [Neural Solvability docs](neural-solvability.md) for full details.
 
 ### Subtask Classification
 

@@ -258,6 +258,41 @@ def _rebuild_guardrails():
         spine.guardrails = guardrails
 
 
+# ---------- Solvability estimator admin endpoints ----------
+
+
+class EstimatorSwitchRequest(BaseModel):
+    kind: str  # "neural" or "tfidf"
+
+
+@app.get("/solvability-estimator")
+def get_estimator():
+    """Return the currently active solvability estimator kind."""
+    if spine is None or spine.aop_coordinator is None:
+        raise HTTPException(status_code=503, detail="AOP coordinator not initialized.")
+    return {
+        "kind": spine.aop_coordinator.active_estimator_kind,
+        "options": ["neural", "tfidf"],
+    }
+
+
+@app.patch("/solvability-estimator")
+def switch_estimator(req: EstimatorSwitchRequest):
+    """Hot-swap the solvability estimator at runtime (neural ↔ tfidf)."""
+    if spine is None or spine.aop_coordinator is None:
+        raise HTTPException(status_code=503, detail="AOP coordinator not initialized.")
+    if req.kind not in ("neural", "tfidf"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid kind '{req.kind}'. Use 'neural' or 'tfidf'.",
+        )
+    try:
+        active = spine.aop_coordinator.swap_estimator(req.kind)
+        return {"kind": active, "message": f"Switched to {active} estimator."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @app.post("/chat")
 def chat(req: ChatRequest):
     q = req.query.strip()
