@@ -354,11 +354,20 @@ class EvaluationHarness:
 
     @staticmethod
     def _detect_pattern(response: Dict[str, Any]) -> str:
-        """Infer orchestration pattern from response keys."""
-        if response.get("orchestration_pattern") == "hierarchical_delegation":
+        """Infer orchestration pattern from response keys.
+
+        Patterns:
+          - hierarchical_delegation — AOP multi-intent (task menu, task result, etc.)
+          - direct                  — Single-intent routed to one domain agent
+        """
+        orch = response.get("orchestration_pattern", "")
+        if orch in (
+            "hierarchical_delegation",
+            "aop_task_menu",
+            "aop_task_result",
+            "aop_plan_declined",
+        ):
             return "hierarchical_delegation"
-        if response.get("current_state") and response.get("workflow_id"):
-            return "fsm_workflow"
         return "direct"
 
     @staticmethod
@@ -368,10 +377,22 @@ class EvaluationHarness:
         Prefer 'answer' over 'text' because voice rendering may overwrite
         resp['text'] with a short customer-facing message, while 'answer'
         preserves the full agent response.
+
+        For AOP task-menu responses, include subtask descriptions so that
+        keyword checks can match against the decomposed plan.
         """
         for key in ("answer", "text", "message"):
             val = response.get(key)
             if isinstance(val, str) and val.strip():
+                # For task menus, append subtask descriptions
+                task_menu = response.get("task_menu")
+                if isinstance(task_menu, list):
+                    subtask_texts = " ".join(
+                        item.get("subtask", "")
+                        for item in task_menu
+                        if isinstance(item, dict)
+                    )
+                    return f"{val.strip()} {subtask_texts}".strip()
                 return val.strip()
         return ""
 

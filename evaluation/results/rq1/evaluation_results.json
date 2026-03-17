@@ -1,0 +1,752 @@
+[
+  {
+    "scenario_id": "faq_01",
+    "category": "informational_routing",
+    "description": "FAQ: Current Account transfer between branches",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 54.894300003070384,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.82,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Can I transfer my Current Account from one branch to another?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 54.894300003070384
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "faq_02",
+    "category": "informational_routing",
+    "description": "FAQ: Outstation cheque clearing time",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 3.2876000041142106,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.82,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "What is the time taken to realize outstation cheques?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 3.2876000041142106
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "faq_03",
+    "category": "informational_routing",
+    "description": "FAQ: Premium Current Account features",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 3.368799982126802,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.82,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "How is M&N Bank Premium CA different from a regular CA?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 3.368799982126802
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "faq_04",
+    "category": "informational_routing",
+    "description": "FAQ: EEFC Account for SEZ units",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 3.9197999867610633,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.82,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Can EEFC Account be opened by Special Economic Zone units?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 3.9197999867610633
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "faq_05",
+    "category": "informational_routing",
+    "description": "FAQ: Flexi Account initial deposit",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 3.2731000101193786,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.82,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "What is the initial deposit amount required to open the Flexi Account?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 3.2731000101193786
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "faq_06",
+    "category": "informational_routing",
+    "description": "FAQ: Refund policy inquiry (informational, no action)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 26.90009999787435,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.82,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "What is your refund policy for cancelled orders?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 26.90009999787435
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "faq_07",
+    "category": "informational_routing",
+    "description": "FAQ: Complaints procedure inquiry",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 23.301399953197688,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.82,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "How do I file a complaint with the bank?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 23.301399953197688
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_01",
+    "category": "actionable_routing",
+    "description": "Refund: simple eligible refund under EUR 5000",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 12.199099990539253,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.88,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want a refund for a EUR 200 charge on my account",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 12.199099990539253
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_02",
+    "category": "actionable_routing",
+    "description": "Refund: customer provides transaction details",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 13.096600014250726,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.88,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I need a refund for order number 12345, charged EUR 150 on my card",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 13.096600014250726
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_03",
+    "category": "actionable_routing",
+    "description": "Refund: large amount requiring approval",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 12.219300027936697,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.88,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I need a refund of EUR 8000 for a failed wire transfer",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 12.219300027936697
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_04",
+    "category": "actionable_routing",
+    "description": "Refund: vague request (missing details)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 6.509100028779358,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.88,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want my money back",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 6.509100028779358
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_05",
+    "category": "actionable_routing",
+    "description": "Refund: duplicate charge complaint",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 30.73020000010729,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.88,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I was charged twice for the same transaction of EUR 75, please refund one",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 30.73020000010729
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_06",
+    "category": "actionable_routing",
+    "description": "Refund: subscription cancellation",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 31.79789998102933,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.88,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I cancelled my premium subscription last week but was still charged EUR 29.99",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 31.79789998102933
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_07",
+    "category": "actionable_routing",
+    "description": "Refund: unauthorized foreign charge",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 40.461900003720075,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.88,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "There is an unauthorized EUR 500 charge from a foreign merchant on my account",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 40.461900003720075
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_08",
+    "category": "actionable_routing",
+    "description": "Refund: ATM cash not dispensed",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 34.215399995446205,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.88,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "The ATM debited EUR 300 from my account but did not dispense any cash",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 34.215399995446205
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "complaint_01",
+    "category": "actionable_routing",
+    "description": "Complaint: formal complaint about service",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 24.54710000893101,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.9,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to file a formal complaint about the poor service at your branch",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 24.54710000893101
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "complaint_02",
+    "category": "actionable_routing",
+    "description": "Complaint: escalation request with ombudsman threat",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 20.606799982488155,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.9,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to escalate my complaint to a manager, or I will go to the ombudsman",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 20.606799982488155
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_01",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: refund AND policy question",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 11.508399969898164,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.2914,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I need a refund for order #123 AND what is your return window?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 11.508399969898164
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_02",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: account inquiry AND cheque status",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 5.272300040815026,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.31535,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "What is my account balance and also tell me the cheque clearing time?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 5.272300040815026
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_03",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: refund AND address change",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 7.943300006445497,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.26365,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want a refund for the duplicate charge and also update my mailing address",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 7.943300006445497
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_04",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: cancel subscription AND explain charges",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 5.481700005475432,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.23,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Cancel my premium subscription and explain the charges on my last statement",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 5.481700005475432
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_05",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: open new account AND close existing one",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 25.109499983955175,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.26115,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to open a Premium Current Account and close my Regular Current Account",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 25.109499983955175
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_06",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: complaint AND refund (cross-agent delegation)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 25.725700019393116,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.26,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to file a complaint about the service and also get a refund for order #456",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 25.725700019393116
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "hitl_01",
+    "category": "hitl_escalation",
+    "description": "Escalation: large disputed amount with fraud suspicion",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 33.85440004058182,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.23055,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Someone has stolen EUR 25000 from my account through multiple unauthorized transactions over the past month and I need all of it back immediately",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 33.85440004058182
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 48.20399999152869,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.26265,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Your bank has been charging hidden fees on my account for months and I want a full refund plus I am filing a complaint with the financial ombudsman",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 48.20399999152869
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "edge_01",
+    "category": "graceful_degradation",
+    "description": "Out-of-domain: quantum physics question (graceful fallback to FAQ)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 50.329499994404614,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.82,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Explain the Heisenberg uncertainty principle in quantum mechanics",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 50.329499994404614
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "edge_02",
+    "category": "graceful_degradation",
+    "description": "Refund for fictitious product (graceful handling)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 39.44369999226183,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.88,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want a refund for my flying car purchase from last Tuesday",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 39.44369999226183
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "edge_03",
+    "category": "graceful_degradation",
+    "description": "Multi-intent with impossible subtask (graceful AOP decomposition)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 27.28949999436736,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.2555,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Transfer my account to the Mars branch and explain intergalactic banking regulations",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 27.28949999436736
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "edge_04",
+    "category": "graceful_degradation",
+    "description": "Out-of-domain: mortgage rates in foreign country (graceful fallback)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 21.949000016320497,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.82,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "What are the current mortgage interest rates for properties in Iceland",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 21.949000016320497
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "edge_05",
+    "category": "graceful_degradation",
+    "description": "Legal threat requiring human intervention (graceful AOP handling)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "latency_ms": 14.97910002944991,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.28825,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I am suing your bank for negligence and demand my lawyer speaks with your CEO immediately",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "latency_ms": 14.97910002944991
+      }
+    ],
+    "governance_events": []
+  }
+]
