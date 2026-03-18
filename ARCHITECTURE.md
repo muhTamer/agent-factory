@@ -6,7 +6,7 @@ This document describes the system architecture, core design decisions, and requ
 
 ## Design Principles
 
-1. **Intent-Aware Semantics (B3.5)** — Guardrails and routing operate on semantic intent (INFORMATIONAL vs ACTIONABLE), not raw text pattern matching.
+1. **Intent-Aware Semantics** — Guardrails and routing operate on semantic intent (INFORMATIONAL vs ACTIONABLE), not raw text pattern matching.
 2. **ReAct Reasoning** — Domain agents reason step-by-step with explicit Thought → Action → Observation cycles, producing a fully traceable decision path.
 3. **Multi-Level Orchestration** — Single-intent queries route directly to one agent; multi-intent queries use AOP hierarchical delegation with subtask decomposition.
 4. **Governance-First** — IEEE compliance (P3394, 2894-2024, 3152-2024), multi-level explainability, and audit trails are woven into every response.
@@ -68,7 +68,7 @@ The frontend sends `POST /chat` with:
 
 ### 2. RuntimeSpine Pipeline
 
-The spine (`app/runtime/spine.py`) executes the **B3.5 invariant pipeline**:
+The spine (`app/runtime/spine.py`) executes the **invariant pipeline**:
 
 ```
 1. ROUTE      → LLMRouter classifies intent and ranks agents

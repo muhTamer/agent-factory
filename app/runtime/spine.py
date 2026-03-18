@@ -27,7 +27,7 @@ class RuntimeSpine:
     """
     Invariant orchestration backbone.
 
-    Correct Pipeline (B3.5 intent-aware):
+    Correct Pipeline (intent-aware):
         route
         -> infer_intent
         -> guard_pre (intent-aware)
