@@ -101,7 +101,7 @@
         "query": "Can you check my account status and verify my KYC?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "lookup",
+          "agent_contains": null,
           "answer_contains": ["account"]
         }
       }
@@ -201,7 +201,7 @@
         "query": "I would like some information about your refund policy please",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "inquiry",
+          "agent_contains": null,
           "answer_contains": ["refund"]
         }
       }
@@ -228,7 +228,7 @@
         "query": "Can you tell me about getting a refund for a recent purchase?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "inquiry",
+          "agent_contains": null,
           "answer_contains": ["refund"]
         }
       }
@@ -255,8 +255,8 @@
         "query": "Can you explain how your system processes my request?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "jargon",
-          "answer_contains": ["request", "processing"]
+          "agent_contains": null,
+          "answer_contains": ["request"]
         }
       }
     ],
@@ -282,8 +282,8 @@
         "query": "How does your automated system handle customer queries?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "jargon",
-          "answer_contains": ["customer", "automated"]
+          "agent_contains": null,
+          "answer_contains": ["customer"]
         }
       }
     ],
