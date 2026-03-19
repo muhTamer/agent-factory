@@ -35,6 +35,13 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# ── Force UTF-8 stdout/stderr on Windows (avoids charmap codec errors) ──
+if sys.platform == "win32":
+    for _stream in ("stdout", "stderr"):
+        _s = getattr(sys, _stream, None)
+        if _s and hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
+
 # ── Project root on sys.path ────────────────────────────────────────
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:

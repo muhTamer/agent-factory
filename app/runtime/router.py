@@ -1,7 +1,15 @@
 # app/runtime/router.py
 from __future__ import annotations
+import sys
 from dataclasses import dataclass
 from typing import List, Dict, Any
+
+# ── Force UTF-8 stdout/stderr on Windows (avoids charmap codec errors) ──
+if sys.platform == "win32":
+    for _stream in ("stdout", "stderr"):
+        _s = getattr(sys, _stream, None)
+        if _s and hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
 
 from app.runtime.registry import AgentRegistry
 from app.llm_client import chat_json  # <-- use your existing helper

@@ -2,8 +2,16 @@
 from __future__ import annotations
 
 import os
+import sys
 import uuid
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+
+# ── Force UTF-8 stdout/stderr on Windows (avoids charmap codec errors) ──
+if sys.platform == "win32":
+    for _stream in ("stdout", "stderr"):
+        _s = getattr(sys, _stream, None)
+        if _s and hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
 
 from app.runtime.audit_writer import JsonlAuditWriter
 from app.runtime.guardrails import Guardrails, NoOpGuardrails
