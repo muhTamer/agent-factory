@@ -169,16 +169,13 @@ class TestGovernanceAwareGuardrails:
         assert result.mutated_response is None
 
     def test_high_applies_tone_control(self, pack):
+        """At HIGH, jargon triggers a hard block (not just mutation)."""
         config = GovernanceConfig.for_level(GovernanceLevel.HIGH)
         guard = GovernanceAwareGuardrails(pack, config)
         response = {"text": "The workflow FSM pipeline processed your slot"}
         result = guard.post(response, {})
-        assert result.allowed is True
-        # Should have mutated to strip jargon
-        if result.mutated_response:
-            text = result.mutated_response.get("text", "")
-            assert "workflow" not in text.lower()
-            assert "FSM" not in text
+        assert result.allowed is False
+        assert "tone_violation" in result.reason
 
     def test_governance_events_logged_on_pre(self, pack):
         config = GovernanceConfig.for_level(GovernanceLevel.LOW)
@@ -252,15 +249,16 @@ class TestGovernanceAwareGuardrails:
         )
         assert result.allowed is False
 
-    def test_high_allows_refund_with_tx_context(self, pack):
-        """At HIGH, refund claims with transaction context are legitimate."""
+    def test_high_blocks_refund_phrase_even_with_tx_context(self, pack):
+        """At HIGH, blocked compliance phrases are enforced even with tx context."""
         config = GovernanceConfig.for_level(GovernanceLevel.HIGH)
         guard = GovernanceAwareGuardrails(pack, config)
         result = guard.post(
             {"text": "Your refund has been processed and approved."},
             {"original_query": "Refund for order #1234 EUR 50"},
         )
-        assert result.allowed is True
+        assert result.allowed is False
+        assert "blocked_phrase" in result.reason
 
     def test_event_actions_are_correct(self, pack):
         """Verify governance events record the correct action types."""
