@@ -75,7 +75,7 @@ The spine (`app/runtime/spine.py`) executes the **invariant pipeline**:
 2. INFER      → Determine INFORMATIONAL / ACTIONABLE / MIXED intent
 3. GUARD_PRE  → PII redaction, intent blocking, query length check
 4. EXECUTE    → Dispatch to agent or AOP coordinator
-5. SELECT     → Choose best response (fanout strategy)
+5. SELECT     → Choose best response from execution result
 6. RESPOND    → Voice renderer generates customer-facing text
 7. GUARD_POST → Hallucination detection, tone control, blocked phrases
 8. RETURN     → Governance enrichment, audit logging, response delivery
