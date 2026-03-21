@@ -80,28 +80,18 @@ class GovernanceAwareGuardrails(Guardrails):
 
         # 1. Blocked phrase enforcement
         if self.config.blocked_phrase_enforcement:
-            # If the query contains genuine transaction evidence, skip
-            # blocked-phrase enforcement so legitimate refund confirmations
-            # are not rejected.
-            original_query = context.get("original_query", "")
-            has_tx = original_query and self._inner._detect_transaction_context(
-                original_query, context
-            )
-            if not has_tx:
-                # Check base phrases (shared by MEDIUM + HIGH)
-                all_phrases = list(self.pack.blocked_phrases)
-                # HIGH adds extra compliance phrases via additional_blocked_phrases
-                all_phrases.extend(self.config.additional_blocked_phrases)
-                for phrase in all_phrases:
-                    if phrase.lower() in text_lower:
-                        self._log(
-                            "governance_post_block",
-                            check="blocked_phrase",
-                            phrase=phrase,
-                        )
-                        return GuardResult(
-                            allowed=False, reason=f"blocked_phrase:{phrase}"
-                        )
+            # Check base phrases (shared by MEDIUM + HIGH)
+            all_phrases = list(self.pack.blocked_phrases)
+            # HIGH adds extra compliance phrases via additional_blocked_phrases
+            all_phrases.extend(self.config.additional_blocked_phrases)
+            for phrase in all_phrases:
+                if phrase.lower() in text_lower:
+                    self._log(
+                        "governance_post_block",
+                        check="blocked_phrase",
+                        phrase=phrase,
+                    )
+                    return GuardResult(allowed=False, reason=f"blocked_phrase:{phrase}")
         else:
             self._log("governance_post_skip", check="blocked_phrase")
 
