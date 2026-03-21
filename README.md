@@ -169,7 +169,7 @@ pytest tests/test_e2e_scenarios.py -v
 ## Project Structure
 
 ```
-agent-factory-orchestration/
+agent-factory/
 ├── app/                              # Backend application
 │   ├── main.py                       # FastAPI entry point (/health, /chat)
 │   ├── llm_client.py                 # Unified Azure/OpenAI LLM client
@@ -249,9 +249,9 @@ agent-factory-orchestration/
 │   └── complaints_policy.yaml       # Complaint handling procedures
 │
 ├── generated/                        # Auto-generated agent packages (gitignored)
-│   ├── refunds_agent/               # {agent.py, config.json, corpus.json}
-│   ├── complaints_agent/
-│   └── customer_faqs_agent/
+│   ├── refunds_agent_v1/            # {agent.py, config.json, corpus.json}
+│   ├── complaints_agent_v1/
+│   └── customer_faq_agent_v1/
 │
 ├── .factory/                         # Factory configuration
 │   ├── factory_spec.json            # Agent & tool definitions

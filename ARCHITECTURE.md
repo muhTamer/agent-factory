@@ -483,7 +483,7 @@ The default demo server uses the **configurable MCP server**, which reads tool d
 | Test file | What it covers |
 |-----------|---------------|
 | `tests/test_mcp_integration.py` | 31 tests: MCPTool adapter, MCPManager lifecycle, mock server integration, error handling, argument extraction, result parsing |
-| `tests/fixtures/mock_mcp_server.py` | FastMCP test server with 12 tools covering happy paths, error scenarios, and edge cases |
+| `tests/fixtures/mock_mcp_server.py` | FastMCP test server with 11 tools covering happy paths, error scenarios, and edge cases |
 | `tests/fixtures/configurable_mcp_server.py` | Config-driven MCP server: reads tool definitions, parameters, responses, and scenarios from JSON; supports hot-reload |
 | `tests/fixtures/mcp_tools_config.json` | Default tool config: 11 tools (echo, add, lookup_customer, verify_identity, lookup_payment, initiate_refund, create_ticket, handoff_to_human, create_complaint_record, compute_compensation, apply_triage_rules) |
 
