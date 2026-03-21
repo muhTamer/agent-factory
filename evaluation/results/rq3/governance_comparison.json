@@ -2,54 +2,56 @@
   "per_level": {
     "low": {
       "governance_level": "low",
-      "total_scenarios": 15,
-      "task_completion_rate": 1.0,
+      "total_scenarios": 18,
+      "task_completion_rate": 0.7222,
       "intervention_rate": 0.0,
       "autonomy_score": 1.0,
-      "avg_latency_ms": 19.66,
+      "avg_latency_ms": 43555.39,
       "total_governance_blocks": 0,
       "total_governance_escalations": 0,
       "total_governance_mutations": 0,
-      "total_governance_skips": 60,
+      "total_governance_skips": 72,
       "false_positive_rate": 0.0,
-      "passed": 15,
-      "failed": 0
+      "passed": 13,
+      "failed": 5
     },
     "medium": {
       "governance_level": "medium",
-      "total_scenarios": 15,
-      "task_completion_rate": 0.8,
-      "intervention_rate": 0.2,
-      "autonomy_score": 0.8,
-      "avg_latency_ms": 11.26,
+      "total_scenarios": 18,
+      "task_completion_rate": 0.6111,
+      "intervention_rate": 0.0556,
+      "autonomy_score": 0.9444,
+      "avg_latency_ms": 27848.42,
+      "total_governance_blocks": 1,
+      "total_governance_escalations": 0,
+      "total_governance_mutations": 0,
+      "total_governance_skips": 0,
+      "false_positive_rate": 0.0,
+      "passed": 11,
+      "failed": 7
+    },
+    "high": {
+      "governance_level": "high",
+      "total_scenarios": 18,
+      "task_completion_rate": 0.5,
+      "intervention_rate": 0.1667,
+      "autonomy_score": 0.8333,
+      "avg_latency_ms": 23159.68,
       "total_governance_blocks": 3,
       "total_governance_escalations": 0,
       "total_governance_mutations": 0,
       "total_governance_skips": 0,
       "false_positive_rate": 0.0,
-      "passed": 12,
-      "failed": 3
-    },
-    "high": {
-      "governance_level": "high",
-      "total_scenarios": 15,
-      "task_completion_rate": 0.6667,
-      "intervention_rate": 0.3333,
-      "autonomy_score": 0.6667,
-      "avg_latency_ms": 8.34,
-      "total_governance_blocks": 5,
-      "total_governance_escalations": 0,
-      "total_governance_mutations": 0,
-      "total_governance_skips": 0,
-      "false_positive_rate": 0.0,
-      "passed": 10,
-      "failed": 5
+      "passed": 9,
+      "failed": 9
     }
   },
   "tradeoffs": {
-    "completion_delta": 0.3333,
-    "autonomy_delta": 0.3333,
-    "intervention_delta": 0.3333,
-    "latency_delta_ms": -11.32
-  }
+    "completion_delta": 0.2222,
+    "autonomy_delta": 0.1667,
+    "intervention_delta": 0.1667,
+    "latency_delta_ms": -20395.71
+  },
+  "execution_mode": "real_llm",
+  "total_wall_time_seconds": 1757.43
 }

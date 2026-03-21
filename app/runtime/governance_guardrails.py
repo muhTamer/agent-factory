@@ -76,11 +76,16 @@ class GovernanceAwareGuardrails(Guardrails):
 
     def post(self, response: Dict[str, Any], context: Dict[str, Any]) -> GuardResult:
         text = response.get("text", "") or response.get("answer", "") or ""
+        text_lower = text.lower()
 
         # 1. Blocked phrase enforcement
         if self.config.blocked_phrase_enforcement:
-            for phrase in self.pack.blocked_phrases:
-                if phrase.lower() in text.lower():
+            # Check base phrases (shared by MEDIUM + HIGH)
+            all_phrases = list(self.pack.blocked_phrases)
+            # HIGH adds extra compliance phrases via additional_blocked_phrases
+            all_phrases.extend(self.config.additional_blocked_phrases)
+            for phrase in all_phrases:
+                if phrase.lower() in text_lower:
                     self._log(
                         "governance_post_block",
                         check="blocked_phrase",
@@ -92,17 +97,33 @@ class GovernanceAwareGuardrails(Guardrails):
 
         # 2. Hallucination detection
         if self.config.hallucination_detection:
-            # Delegate to inner post and check if it blocks for hallucination
-            inner_result = self._inner.post(response, context)
-            if not inner_result.allowed and "hallucination" in (
-                inner_result.reason or ""
-            ):
-                self._log(
-                    "governance_post_block",
-                    check="hallucination",
-                    reason=inner_result.reason,
+            if self.config.hallucination_strict:
+                # STRICT mode (HIGH): check patterns directly, ignoring
+                # the informational/clarifying bypasses that let agents
+                # claim actions without transaction evidence.
+                hallucination_blocked = self._check_hallucination_strict(
+                    text, response, context
                 )
-                return inner_result
+                if hallucination_blocked:
+                    self._log(
+                        "governance_post_block",
+                        check="hallucination_strict",
+                        reason=hallucination_blocked,
+                    )
+                    return GuardResult(allowed=False, reason=hallucination_blocked)
+            else:
+                # STANDARD mode (MEDIUM): delegate to PolicyGuardrails
+                # which honours informational/clarifying bypasses.
+                inner_result = self._inner.post(response, context)
+                if not inner_result.allowed and "hallucination" in (
+                    inner_result.reason or ""
+                ):
+                    self._log(
+                        "governance_post_block",
+                        check="hallucination",
+                        reason=inner_result.reason,
+                    )
+                    return inner_result
         else:
             self._log("governance_post_skip", check="hallucination")
 
@@ -110,13 +131,60 @@ class GovernanceAwareGuardrails(Guardrails):
         if self.config.tone_control_enabled:
             mutated = self._inner._apply_tone_control(response)
             if mutated is not response:
-                self._log("governance_post_mutate", check="tone_control")
-                return GuardResult(allowed=True, mutated_response=mutated)
+                if self.config.tone_violation_action == "block":
+                    # HIGH: block responses containing jargon entirely
+                    self._log(
+                        "governance_post_block",
+                        check="tone_violation_block",
+                    )
+                    return GuardResult(
+                        allowed=False,
+                        reason="tone_violation:internal_jargon_detected",
+                    )
+                else:
+                    # MEDIUM: silently strip jargon (mutate)
+                    self._log("governance_post_mutate", check="tone_control")
+                    return GuardResult(allowed=True, mutated_response=mutated)
         else:
             self._log("governance_post_skip", check="tone_control")
 
         self._log("governance_post_allow")
         return GuardResult(allowed=True)
+
+    # ------------------------------------------------------------------
+    # Strict hallucination detection (HIGH governance)
+    # ------------------------------------------------------------------
+
+    def _check_hallucination_strict(
+        self, text: str, response: Dict[str, Any], context: Dict[str, Any]
+    ) -> str | None:
+        """Check for hallucinated action claims WITHOUT the informational bypass.
+
+        In strict mode we only skip if the query genuinely contains
+        transaction evidence (order #, transaction ID, EUR amount, etc.).
+        We do NOT skip just because the agent happened to retrieve knowledge.
+
+        Returns the block reason string if blocked, else None.
+        """
+        rule = self._inner._hallucination_rule
+        if not rule or not rule.enabled or not rule.compiled_patterns:
+            return None
+
+        original_query = context.get("original_query", "")
+        if not original_query:
+            return None
+
+        # Only bypass if real transaction evidence is present in the query
+        has_tx = self._inner._detect_transaction_context(original_query, context)
+        if has_tx:
+            return None
+
+        # Check response text against hallucination patterns
+        for pat in rule.compiled_patterns:
+            if pat.search(text):
+                return "hallucination_action_claim_without_context"
+
+        return None
 
     # ------------------------------------------------------------------
     # Event logging for RQ3 metrics

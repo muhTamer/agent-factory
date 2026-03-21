@@ -42,6 +42,11 @@ class GovernanceConfig:
     hallucination_detection: bool = True
     tone_control_enabled: bool = True
 
+    # Strictness knobs that differentiate MEDIUM from HIGH
+    hallucination_strict: bool = False  # HIGH: skip informational bypass
+    tone_violation_action: str = "mutate"  # "mutate" | "block"
+    additional_blocked_phrases: tuple = ()  # HIGH: extra compliance phrases
+
     # AOP / Autonomy knobs
     allow_replanning: bool = True
     require_user_confirmation: bool = True
@@ -65,6 +70,9 @@ class GovernanceConfig:
                 blocked_phrase_enforcement=False,
                 hallucination_detection=False,
                 tone_control_enabled=False,
+                hallucination_strict=False,
+                tone_violation_action="mutate",
+                additional_blocked_phrases=(),
                 allow_replanning=True,
                 require_user_confirmation=False,
                 escalation_threshold=0.1,
@@ -82,6 +90,17 @@ class GovernanceConfig:
                 blocked_phrase_enforcement=True,
                 hallucination_detection=True,
                 tone_control_enabled=True,
+                hallucination_strict=True,
+                tone_violation_action="block",
+                additional_blocked_phrases=(
+                    "100% guaranteed",
+                    "no risk",
+                    "promise you",
+                    "absolutely certain",
+                    "I can confirm your refund",
+                    "your refund has been",
+                    "approved your",
+                ),
                 allow_replanning=False,
                 require_user_confirmation=True,
                 escalation_threshold=0.7,
@@ -99,6 +118,9 @@ class GovernanceConfig:
                 blocked_phrase_enforcement=True,
                 hallucination_detection=True,
                 tone_control_enabled=True,
+                hallucination_strict=False,
+                tone_violation_action="mutate",
+                additional_blocked_phrases=(),
                 allow_replanning=True,
                 require_user_confirmation=True,
                 escalation_threshold=0.4,
