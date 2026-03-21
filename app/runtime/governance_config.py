@@ -91,7 +91,7 @@ class GovernanceConfig:
                 hallucination_detection=True,
                 tone_control_enabled=True,
                 hallucination_strict=True,
-                tone_violation_action="block",
+                tone_violation_action="mutate",
                 additional_blocked_phrases=(
                     "100% guaranteed",
                     "no risk",
