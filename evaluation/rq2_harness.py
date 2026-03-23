@@ -1,14 +1,16 @@
 # evaluation/rq2_harness.py
 """
-RQ2 Evaluation Harness — Explainability & IEEE Compliance Metrics
+RQ2 Evaluation Harness — Explainability & IEEE Compliance Metrics (REAL LLM MODE)
 
-Extends the existing evaluation framework (harness.py) with RQ2-specific
-metrics: IEEE compliance rates, explainability coverage, PII handling,
-and governance mechanism activity.
+Runs RQ2-specific evaluation using REAL agents with REAL LLM calls.
+Measures IEEE compliance rates (P3394, 2894, 3152), explainability coverage,
+provenance, agent identity disclosure, and governance mechanism activity.
 
 Usage:
     python -m evaluation.rq2_harness
     python -m evaluation.rq2_harness --output evaluation/results/rq2/
+    python -m evaluation.rq2_harness --dry-run
+    python -m evaluation.rq2_harness --scenario deleg_01
 """
 
 from __future__ import annotations
@@ -16,12 +18,20 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import logging
+import os
 import sys
 import time
-import unittest.mock as _mock
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+# ── Force UTF-8 stdout/stderr on Windows (avoids charmap codec errors) ──
+if sys.platform == "win32":
+    for _stream in ("stdout", "stderr"):
+        _s = getattr(sys, _stream, None)
+        if _s and hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -34,6 +44,16 @@ from app.runtime.spine import RuntimeSpine  # noqa: E402
 from app.runtime.trace import Trace  # noqa: E402
 
 SCENARIOS_PATH = Path(__file__).resolve().parent / "scenarios" / "ground_truth.json"
+
+# ── Logging ──────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("evaluation.rq2")
+
+# ── Rate limiting ───────────────────────────────────────────────────
+INTER_SCENARIO_DELAY = float(os.getenv("EVAL_DELAY_SECONDS", "1.0"))
 
 
 # ── Result dataclass ─────────────────────────────────────────────────
@@ -67,9 +87,21 @@ class RQ2ScenarioResult:
     guardrail_interventions: int = 0
     trace_event_count: int = 0
 
+    # LLM judge scores (1-5, 0 = not evaluated)
+    judge_summary_faithfulness: int = 0
+    judge_summary_completeness: int = 0
+    judge_summary_clarity: int = 0
+    judge_detailed_faithfulness: int = 0
+    judge_detailed_completeness: int = 0
+    judge_detailed_clarity: int = 0
+    judge_full_faithfulness: int = 0
+    judge_full_completeness: int = 0
+    judge_full_clarity: int = 0
+
     # Timing
     latency_ms: float = 0.0
     error: Optional[str] = None
+    judge_error: Optional[str] = None
 
 
 # ── Harness ──────────────────────────────────────────────────────────
@@ -82,10 +114,12 @@ class RQ2Harness:
         self,
         spine: RuntimeSpine,
         scenarios_path: str | Path,
+        judge=None,
     ):
         self.spine = spine
         self.checker = IEEEComplianceChecker()
         self.explainer = ExplainabilityEngine()
+        self.judge = judge  # Optional RQ2ExplanationJudge
         self.scenarios = self._load_scenarios(scenarios_path)
 
     def run_all(self) -> List[RQ2ScenarioResult]:
@@ -229,6 +263,32 @@ class RQ2Harness:
         detailed = expl_dicts.get("detailed", {})
         result.decisions_documented = len(detailed.get("decisions", []))
 
+        # LLM judge evaluation
+        if self.judge:
+            try:
+                trace_events = trace.to_dict()["events"]
+                for level_name, expl in explanations.items():
+                    judge_result = self.judge.evaluate(
+                        level=level_name,
+                        query=query,
+                        trace_events=trace_events,
+                        response=resp,
+                        explanation=expl.to_dict(),
+                    )
+                    setattr(
+                        result,
+                        f"judge_{level_name}_faithfulness",
+                        judge_result.faithfulness,
+                    )
+                    setattr(
+                        result,
+                        f"judge_{level_name}_completeness",
+                        judge_result.completeness,
+                    )
+                    setattr(result, f"judge_{level_name}_clarity", judge_result.clarity)
+            except Exception as e:
+                result.judge_error = str(e)
+
         # Governance activity (from trace)
         guard_stages = {
             "guard_pre_ok",
@@ -256,7 +316,7 @@ class RQ2Harness:
         valid = [r for r in results if r.error is None]
         nv = len(valid) or 1  # avoid division by zero
 
-        return {
+        result = {
             "total_scenarios": n,
             "successful": len(valid),
             "errors": n - len(valid),
@@ -301,6 +361,45 @@ class RQ2Harness:
             "compliance_by_category": self._compliance_by_category(valid),
         }
 
+        # LLM judge aggregates (only if judge was enabled)
+        judged = [r for r in valid if r.judge_summary_faithfulness > 0]
+        if judged:
+            judge_metrics = {}
+            for level in ("summary", "detailed", "full"):
+                for dim in ("faithfulness", "completeness", "clarity"):
+                    key = f"judge_{level}_{dim}"
+                    vals = [getattr(r, key) for r in judged if getattr(r, key) > 0]
+                    if vals:
+                        judge_metrics[f"mean_{key}"] = round(sum(vals) / len(vals), 2)
+            # Overall means across all levels
+            all_f = [
+                getattr(r, f"judge_{lv}_faithfulness")
+                for r in judged
+                for lv in ("summary", "detailed", "full")
+                if getattr(r, f"judge_{lv}_faithfulness") > 0
+            ]
+            all_c = [
+                getattr(r, f"judge_{lv}_completeness")
+                for r in judged
+                for lv in ("summary", "detailed", "full")
+                if getattr(r, f"judge_{lv}_completeness") > 0
+            ]
+            all_cl = [
+                getattr(r, f"judge_{lv}_clarity")
+                for r in judged
+                for lv in ("summary", "detailed", "full")
+                if getattr(r, f"judge_{lv}_clarity") > 0
+            ]
+            if all_f:
+                judge_metrics["mean_faithfulness"] = round(sum(all_f) / len(all_f), 2)
+            if all_c:
+                judge_metrics["mean_completeness"] = round(sum(all_c) / len(all_c), 2)
+            if all_cl:
+                judge_metrics["mean_clarity"] = round(sum(all_cl) / len(all_cl), 2)
+            result["judge"] = judge_metrics
+
+        return result
+
     def _compliance_by_category(
         self, results: List[RQ2ScenarioResult]
     ) -> Dict[str, Dict[str, float]]:
@@ -344,8 +443,18 @@ class RQ2Harness:
             "guardrail_checks",
             "guardrail_interventions",
             "trace_event_count",
+            "judge_summary_faithfulness",
+            "judge_summary_completeness",
+            "judge_summary_clarity",
+            "judge_detailed_faithfulness",
+            "judge_detailed_completeness",
+            "judge_detailed_clarity",
+            "judge_full_faithfulness",
+            "judge_full_completeness",
+            "judge_full_clarity",
             "latency_ms",
             "error",
+            "judge_error",
         ]
 
         with open(path, "w", newline="", encoding="utf-8") as f:
@@ -371,8 +480,18 @@ class RQ2Harness:
                         "guardrail_checks": r.guardrail_checks,
                         "guardrail_interventions": r.guardrail_interventions,
                         "trace_event_count": r.trace_event_count,
+                        "judge_summary_faithfulness": r.judge_summary_faithfulness,
+                        "judge_summary_completeness": r.judge_summary_completeness,
+                        "judge_summary_clarity": r.judge_summary_clarity,
+                        "judge_detailed_faithfulness": r.judge_detailed_faithfulness,
+                        "judge_detailed_completeness": r.judge_detailed_completeness,
+                        "judge_detailed_clarity": r.judge_detailed_clarity,
+                        "judge_full_faithfulness": r.judge_full_faithfulness,
+                        "judge_full_completeness": r.judge_full_completeness,
+                        "judge_full_clarity": r.judge_full_clarity,
                         "latency_ms": round(r.latency_ms, 2),
                         "error": r.error,
+                        "judge_error": r.judge_error,
                     }
                 )
 
@@ -397,68 +516,89 @@ class RQ2Harness:
 # ── Runner ───────────────────────────────────────────────────────────
 
 
-def run_rq2_evaluation(output_dir: Path) -> Dict[str, Any]:
-    """Execute RQ2 evaluation using the same mock spine as RQ1."""
+def run_rq2_evaluation(
+    output_dir: Path,
+    scenario_filter: Optional[str] = None,
+    max_scenarios: Optional[int] = None,
+    enable_judge: bool = True,
+) -> Dict[str, Any]:
+    """Execute RQ2 evaluation with REAL LLM calls."""
     import tempfile
 
-    # Reuse the eval spine builder from run_evaluation.py
-    from evaluation.run_evaluation import build_eval_spine
-    from evaluation.mock_factory import build_scenario_mock
+    from evaluation.run_evaluation import build_eval_spine, _verify_api_keys
+
+    _verify_api_keys()
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="rq2_eval_"))
     spine = build_eval_spine(tmp_dir)
 
     scenarios = json.loads(SCENARIOS_PATH.read_text(encoding="utf-8"))
+    if scenario_filter:
+        scenarios = [s for s in scenarios if s["id"] == scenario_filter]
+        if not scenarios:
+            print(f"[ERROR] No scenario with id={scenario_filter}")
+            return {}
+    if max_scenarios:
+        scenarios = scenarios[:max_scenarios]
+        logger.info("Dry-run mode: running %d scenarios only", max_scenarios)
 
+    # Initialize LLM judge for explanation quality evaluation
+    judge = None
+    if enable_judge:
+        from evaluation.rq2_judge import RQ2ExplanationJudge
+
+        judge = RQ2ExplanationJudge(temperature=1.0)
+        print("LLM-as-Judge: ENABLED (faithfulness, completeness, clarity)")
+
+    print(f"\nRunning {len(scenarios)} scenarios with REAL LLM agents...")
+    print(f"Inter-scenario delay: {INTER_SCENARIO_DELAY}s")
+    print()
+
+    harness = RQ2Harness(spine, SCENARIOS_PATH, judge=judge)
     all_results: List[RQ2ScenarioResult] = []
-    for sc in scenarios:
-        mock_responses = sc.get("mock_responses", {})
-        mock_fn = build_scenario_mock(mock_responses)
+    total_start = time.time()
 
-        def voice_mock(**kw):
-            return {"messages": ["OK"], "quick_replies": []}
+    for i, sc in enumerate(scenarios, 1):
+        logger.info("[%d/%d] Running scenario: %s", i, len(scenarios), sc["id"])
 
-        with _mock.patch("app.llm_client.chat_json", mock_fn), _mock.patch(
-            "app.orchestration.aop_coordinator.chat_json", mock_fn
-        ), _mock.patch(
-            "app.orchestration.completeness_detector.chat_json", mock_fn
-        ), _mock.patch(
-            "app.runtime.voice.chat_json", voice_mock
-        ):
-            try:
-                _mock.patch("app.shared.workflow.chat_json", mock_fn).start()
-            except AttributeError:
-                pass
+        result = harness.run_scenario(sc)
+        all_results.append(result)
 
-            harness = RQ2Harness(spine, SCENARIOS_PATH)
-            result = harness.run_scenario(sc)
-            all_results.append(result)
+        status = "PASS" if result.error is None else "FAIL"
+        print(
+            f"  [{status}] {sc['id']:20s}  "
+            f"compliance={result.overall_compliance:.0%}  "
+            f"expl_levels={result.explanation_levels_available}/3  "
+            f"latency={result.latency_ms:.0f}ms"
+        )
 
-            status = "PASS" if result.error is None else "FAIL"
-            print(
-                f"  [{status}] {sc['id']:20s}  "
-                f"compliance={result.overall_compliance:.0%}  "
-                f"expl_levels={result.explanation_levels_available}/3  "
-                f"latency={result.latency_ms:.0f}ms"
-            )
+        # Rate limiting between scenarios
+        if i < len(scenarios):
+            time.sleep(INTER_SCENARIO_DELAY)
 
-    harness = RQ2Harness(spine, SCENARIOS_PATH)
+    total_elapsed = time.time() - total_start
+
     metrics = harness.compute_metrics(all_results)
 
     # Print summary
     print("\n" + "=" * 60)
-    print("RQ2 EVALUATION SUMMARY")
+    print("RQ2 EVALUATION SUMMARY (REAL LLM MODE)")
     print("=" * 60)
     print(f"  Total scenarios:         {metrics.get('total_scenarios', 0)}")
     print(f"  Successful:              {metrics.get('successful', 0)}")
+    print(f"  Errors:                  {metrics.get('errors', 0)}")
     print(f"  Overall Compliance:      {metrics.get('overall_compliance', 0):.1%}")
     print(f"  IEEE P3394:              {metrics.get('p3394_compliance', 0):.1%}")
     print(f"  IEEE 2894-2024:          {metrics.get('ieee_2894_compliance', 0):.1%}")
     print(f"  IEEE 3152-2024:          {metrics.get('ieee_3152_compliance', 0):.1%}")
     print(f"  Summary Coverage:        {metrics.get('summary_coverage', 0):.1%}")
     print(f"  Detailed Coverage:       {metrics.get('detailed_coverage', 0):.1%}")
+    print(f"  Full Coverage:           {metrics.get('full_coverage', 0):.1%}")
     print(f"  Provenance Rate:         {metrics.get('provenance_rate', 0):.1%}")
     print(f"  Agent Identity Rate:     {metrics.get('agent_identity_rate', 0):.1%}")
+    print(
+        f"  Mean Decisions Documented: {metrics.get('mean_decisions_documented', 0):.1f}"
+    )
     print(f"  Mean Latency:            {metrics.get('mean_latency_ms', 0):.1f} ms")
 
     by_cat = metrics.get("compliance_by_category", {})
@@ -467,10 +607,33 @@ def run_rq2_evaluation(output_dir: Path) -> Dict[str, Any]:
         for cat, data in by_cat.items():
             print(f"    {cat:30s}  overall={data['overall']:.0%}  n={data['n']}")
 
+    # LLM Judge scores
+    judge_data = metrics.get("judge")
+    if judge_data:
+        print("\n  LLM Judge Scores (1-5):")
+        print(
+            f"    Mean Faithfulness:     {judge_data.get('mean_faithfulness', 0):.2f}"
+        )
+        print(
+            f"    Mean Completeness:     {judge_data.get('mean_completeness', 0):.2f}"
+        )
+        print(f"    Mean Clarity:          {judge_data.get('mean_clarity', 0):.2f}")
+        print("    Per-level:")
+        for level in ("summary", "detailed", "full"):
+            f = judge_data.get(f"mean_judge_{level}_faithfulness", 0)
+            c = judge_data.get(f"mean_judge_{level}_completeness", 0)
+            cl = judge_data.get(f"mean_judge_{level}_clarity", 0)
+            print(f"      {level:10s}  F={f:.2f}  C={c:.2f}  Cl={cl:.2f}")
+
+    print(f"\n  Total wall time:         {total_elapsed:.1f}s")
+
     # Export
     output_dir.mkdir(parents=True, exist_ok=True)
     harness.export_csv(all_results, output_dir / "rq2_results.csv")
     harness.export_json(all_results, output_dir / "rq2_results.json")
+
+    metrics["execution_mode"] = "real_llm"
+    metrics["total_wall_time_seconds"] = round(total_elapsed, 2)
     (output_dir / "rq2_summary.json").write_text(
         json.dumps(metrics, indent=2, default=str), encoding="utf-8"
     )
@@ -479,20 +642,60 @@ def run_rq2_evaluation(output_dir: Path) -> Dict[str, Any]:
     return metrics
 
 
+# ── pytest integration ──────────────────────────────────────────────
+
+
+def test_rq2_evaluation_runs():
+    """pytest entry point: run all scenarios and assert no crashes."""
+    import tempfile
+
+    output_dir = Path(tempfile.mkdtemp(prefix="rq2_eval_out_"))
+    metrics = run_rq2_evaluation(output_dir, enable_judge=False)
+
+    assert "total_scenarios" in metrics
+    assert metrics["total_scenarios"] >= 25
+    assert metrics["successful"] > 0
+
+
 # ── CLI ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="RQ2 Evaluation Harness")
+    parser = argparse.ArgumentParser(
+        description="RQ2 Evaluation — Explainability & IEEE Compliance (REAL LLM mode)"
+    )
     parser.add_argument(
         "--output",
         type=str,
         default="evaluation/results/rq2",
-        help="Output directory",
+        help="Output directory (default: evaluation/results/rq2)",
+    )
+    parser.add_argument(
+        "--scenario",
+        type=str,
+        default=None,
+        help="Run a single scenario by ID",
+    )
+    parser.add_argument(
+        "--no-judge",
+        action="store_true",
+        help="Disable LLM-as-judge explanation quality evaluation",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run only 3 scenarios for verification",
     )
     args = parser.parse_args()
 
     print("=" * 60)
     print("RQ2 EVALUATION — Explainability & IEEE Compliance")
+    print("REAL LLM MODE")
     print("=" * 60 + "\n")
 
-    run_rq2_evaluation(Path(args.output))
+    max_sc = 3 if args.dry_run else None
+    run_rq2_evaluation(
+        Path(args.output),
+        scenario_filter=args.scenario,
+        max_scenarios=max_sc,
+        enable_judge=not args.no_judge,
+    )

@@ -489,6 +489,50 @@ The default demo server uses the **configurable MCP server**, which reads tool d
 
 ---
 
+## Evaluation Framework
+
+The system includes a research evaluation framework that tests four research questions using real LLM calls against the live runtime.
+
+```
+evaluation/
+├── harness.py                    # RQ1: Routing accuracy & orchestration
+├── rq2_harness.py                # RQ2: Explainability & IEEE compliance
+├── rq2_judge.py                  # RQ2: LLM-as-judge for explanation quality
+├── run_governance_comparison.py  # RQ3: Governance trade-off evaluation
+├── governance_metrics.py         # RQ3: Metrics aggregation
+├── rq4/                          # RQ4: Multi-turn conversation evaluation
+│   ├── harness.py
+│   ├── judge.py
+│   └── scenarios/
+├── scenarios/                    # Ground truth & governance scenarios
+│   ├── ground_truth.json         # 30 scenarios with expected agents/intents
+│   └── governance_scenarios.json # 18 scenarios per governance level
+└── results/                      # Output directory (gitignored)
+    ├── rq1/
+    ├── rq2/
+    └── rq3/
+```
+
+### RQ1 — Intent Routing & Orchestration
+
+Runs 30 scenarios through `RuntimeSpine`, comparing routed agent and intent against ground truth. Measures routing accuracy, orchestration pattern selection, and agent selection rates.
+
+### RQ2 — Explainability & IEEE Compliance
+
+Two-layer evaluation:
+1. **Structural compliance** — Checks IEEE P3394, 2894-2024, and 3152-2024 field presence (deterministic)
+2. **LLM-as-judge** — Evaluates explanation faithfulness, completeness, and clarity (1–5 scale) by comparing generated explanations against execution traces. Uses `gpt-5-mini` to avoid circularity in structural-only checks.
+
+### RQ3 — Governance Trade-Offs
+
+Runs 18 scenarios at LOW/MEDIUM/HIGH governance levels to measure the trade-off between guardrail strictness and task completion autonomy. Results may vary between runs due to LLM non-determinism.
+
+### RQ4 — Multi-Turn Conversations
+
+Evaluates agent performance across multi-turn dialogue using persona-driven strategies (cooperative, adversarial, confused). See `evaluation/rq4/` for details.
+
+---
+
 ## Security Considerations
 
 - **Document Visibility** — Customer-facing agents (`customer_facing: true`) only receive documents classified as `"customer_facing"` in the user's `doc_visibility` map; internal policy docs are filtered out at spec-build time
