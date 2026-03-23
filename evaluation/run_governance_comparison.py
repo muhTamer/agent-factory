@@ -351,10 +351,101 @@ def export_comparison(
 # ── Main comparison runner ───────────────────────────────────────────
 
 
+def _average_comparisons(
+    comparisons: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Average metrics across multiple run comparisons."""
+    if len(comparisons) == 1:
+        return comparisons[0]
+
+    num_runs = len(comparisons)
+    levels = list(comparisons[0]["per_level"].keys())
+
+    # Average per-level numeric metrics
+    averaged_per_level: Dict[str, Any] = {}
+    numeric_keys = [
+        "task_completion_rate",
+        "intervention_rate",
+        "autonomy_score",
+        "avg_latency_ms",
+        "false_positive_rate",
+        "total_governance_blocks",
+        "total_governance_escalations",
+        "total_governance_mutations",
+        "total_governance_skips",
+    ]
+    for level_name in levels:
+        level_avg: Dict[str, Any] = {
+            "governance_level": level_name,
+            "total_scenarios": comparisons[0]["per_level"][level_name][
+                "total_scenarios"
+            ],
+        }
+        for key in numeric_keys:
+            vals = [c["per_level"][level_name][key] for c in comparisons]
+            level_avg[key] = round(sum(vals) / num_runs, 4)
+        level_avg["passed"] = round(
+            sum(c["per_level"][level_name]["passed"] for c in comparisons) / num_runs, 1
+        )
+        level_avg["failed"] = round(
+            sum(c["per_level"][level_name]["failed"] for c in comparisons) / num_runs, 1
+        )
+
+        # Std dev for task_completion_rate across runs
+        tc_vals = [
+            c["per_level"][level_name]["task_completion_rate"] for c in comparisons
+        ]
+        tc_mean = sum(tc_vals) / num_runs
+        tc_variance = sum((v - tc_mean) ** 2 for v in tc_vals) / num_runs
+        level_avg["task_completion_std"] = round(tc_variance**0.5, 4)
+
+        averaged_per_level[level_name] = level_avg
+
+    # Average governance action accuracy
+    averaged_gov_accuracy: Dict[str, Any] = {}
+    if comparisons[0].get("governance_action_accuracy"):
+        for level_name in levels:
+            acc_vals = [
+                c["governance_action_accuracy"][level_name][
+                    "governance_action_accuracy"
+                ]
+                for c in comparisons
+                if c.get("governance_action_accuracy", {}).get(level_name)
+            ]
+            if acc_vals:
+                averaged_gov_accuracy[level_name] = {
+                    "governance_action_accuracy": round(
+                        sum(acc_vals) / len(acc_vals), 4
+                    ),
+                    "num_runs": len(acc_vals),
+                }
+
+    # Average tradeoffs
+    averaged_tradeoffs: Dict[str, Any] = {}
+    if comparisons[0].get("tradeoffs"):
+        for key in comparisons[0]["tradeoffs"]:
+            vals = [c["tradeoffs"][key] for c in comparisons if c.get("tradeoffs")]
+            averaged_tradeoffs[key] = round(sum(vals) / len(vals), 4)
+
+    return {
+        "per_level": averaged_per_level,
+        "governance_action_accuracy": averaged_gov_accuracy,
+        "tradeoffs": averaged_tradeoffs,
+        "num_runs": num_runs,
+        "per_run_completion": {
+            level_name: [
+                c["per_level"][level_name]["task_completion_rate"] for c in comparisons
+            ]
+            for level_name in levels
+        },
+    }
+
+
 def run_governance_comparison(
     output_dir: Path,
     levels: Optional[List[str]] = None,
     max_scenarios: Optional[int] = None,
+    num_runs: int = 1,
 ) -> Dict[str, Any]:
     """Main entry point: run comparison across governance levels with REAL agents."""
     _verify_api_keys()
@@ -375,30 +466,53 @@ def run_governance_comparison(
     if levels:
         level_list = [GovernanceLevel(lv) for lv in levels]
 
-    all_results: Dict[str, List[GovernanceScenarioResult]] = {}
+    all_comparisons: List[Dict[str, Any]] = []
+    all_run_results: List[Dict[str, List[GovernanceScenarioResult]]] = []
     total_start = time.time()
 
-    for level in level_list:
-        print(f"\n{'=' * 60}")
-        print(f"GOVERNANCE LEVEL: {level.value.upper()} (REAL LLM MODE)")
-        print(f"{'=' * 60}")
-        results = run_single_level(level, scenarios, tmp_dir)
-        all_results[level.value] = results
+    for run_idx in range(num_runs):
+        if num_runs > 1:
+            print(f"\n{'#' * 60}")
+            print(f"  RUN {run_idx + 1} of {num_runs}")
+            print(f"{'#' * 60}")
+
+        run_results: Dict[str, List[GovernanceScenarioResult]] = {}
+        for level in level_list:
+            print(f"\n{'=' * 60}")
+            print(f"GOVERNANCE LEVEL: {level.value.upper()} (REAL LLM MODE)")
+            print(f"{'=' * 60}")
+            results = run_single_level(level, scenarios, tmp_dir)
+            run_results[level.value] = results
+
+        comparison = compute_comparison_table(run_results, scenarios)
+        all_comparisons.append(comparison)
+        all_run_results.append(run_results)
 
     total_elapsed = time.time() - total_start
 
-    # Compute comparison
-    comparison = compute_comparison_table(all_results)
-    comparison["execution_mode"] = "real_llm"
-    comparison["total_wall_time_seconds"] = round(total_elapsed, 2)
+    # Average across runs if multiple
+    if num_runs > 1:
+        final = _average_comparisons(all_comparisons)
+    else:
+        final = all_comparisons[0]
+
+    final["execution_mode"] = "real_llm"
+    final["total_wall_time_seconds"] = round(total_elapsed, 2)
+    final["total_scenarios"] = len(scenarios)
 
     # Print summary
     print(f"\n{'=' * 60}")
-    print("RQ3 GOVERNANCE COMPARISON SUMMARY (REAL LLM MODE)")
+    header = "RQ3 GOVERNANCE COMPARISON SUMMARY (REAL LLM MODE)"
+    if num_runs > 1:
+        header += f" — AVERAGED OVER {num_runs} RUNS"
+    print(header)
     print(f"{'=' * 60}")
-    for level_name, metrics in comparison["per_level"].items():
+    for level_name, metrics in final["per_level"].items():
         print(f"\n  [{level_name.upper()}]")
-        print(f"    Task Completion:    {metrics['task_completion_rate']:.1%}")
+        tc_str = f"{metrics['task_completion_rate']:.1%}"
+        if "task_completion_std" in metrics:
+            tc_str += f" (±{metrics['task_completion_std']:.1%})"
+        print(f"    Task Completion:    {tc_str}")
         print(f"    Autonomy Score:     {metrics['autonomy_score']:.1%}")
         print(f"    Intervention Rate:  {metrics['intervention_rate']:.1%}")
         print(f"    Avg Latency:        {metrics['avg_latency_ms']:.1f} ms")
@@ -406,18 +520,35 @@ def run_governance_comparison(
         print(f"    Gov. Blocks:        {metrics['total_governance_blocks']}")
         print(f"    Gov. Mutations:     {metrics['total_governance_mutations']}")
 
-    if comparison.get("tradeoffs"):
-        t = comparison["tradeoffs"]
+    # Print governance action accuracy
+    if final.get("governance_action_accuracy"):
+        print("\n  GOVERNANCE ACTION ACCURACY (deterministic scenarios only):")
+        for level_name, acc in final["governance_action_accuracy"].items():
+            accuracy = acc.get("governance_action_accuracy", 0)
+            det_eval = acc.get("deterministic_evaluated", "?")
+            print(
+                f"    [{level_name.upper()}] {accuracy:.1%}  ({det_eval} deterministic)"
+            )
+
+    if final.get("tradeoffs"):
+        t = final["tradeoffs"]
         print("\n  TRADE-OFF DELTAS (LOW -> HIGH):")
         print(f"    Completion drop:    {t['completion_delta']:+.1%}")
         print(f"    Autonomy drop:      {t['autonomy_delta']:+.1%}")
         print(f"    Intervention rise:  {t['intervention_delta']:+.1%}")
         print(f"    Latency increase:   {t['latency_delta_ms']:+.1f} ms")
 
+    if num_runs > 1 and final.get("per_run_completion"):
+        print("\n  PER-RUN TASK COMPLETION:")
+        for level_name, rates in final["per_run_completion"].items():
+            rates_str = ", ".join(f"{r:.1%}" for r in rates)
+            print(f"    [{level_name.upper()}] {rates_str}")
+
     print(f"\n  Total wall time:      {total_elapsed:.1f}s")
 
-    export_comparison(comparison, all_results, output_dir)
-    return comparison
+    # Export last run's detailed results (or first if single run)
+    export_comparison(final, all_run_results[-1], output_dir)
+    return final
 
 
 # ── pytest integration ───────────────────────────────────────────────
@@ -434,6 +565,14 @@ def test_governance_comparison_runs():
         assert level_name in comparison["per_level"]
         metrics = comparison["per_level"][level_name]
         assert metrics["total_scenarios"] > 0
+
+    # Verify governance action accuracy is computed
+    assert "governance_action_accuracy" in comparison
+    for level_name in ["low", "medium", "high"]:
+        if level_name in comparison["governance_action_accuracy"]:
+            acc = comparison["governance_action_accuracy"][level_name]
+            assert "governance_action_accuracy" in acc
+            assert 0.0 <= acc["governance_action_accuracy"] <= 1.0
 
 
 # ── CLI ──────────────────────────────────────────────────────────────
@@ -458,13 +597,26 @@ if __name__ == "__main__":
         action="store_true",
         help="Run only 3 scenarios for verification",
     )
+    parser.add_argument(
+        "--runs",
+        type=int,
+        default=1,
+        help="Number of runs to average (default: 1). Reduces LLM variance.",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
     print("RQ3: SAFETY/COMPLIANCE TRADE-OFF EVALUATION")
     print("REAL LLM MODE")
+    if args.runs > 1:
+        print(f"AVERAGING OVER {args.runs} RUNS")
     print("=" * 60)
 
     levels = args.levels.split(",") if args.levels else None
     max_sc = 3 if args.dry_run else None
-    run_governance_comparison(Path(args.output), levels=levels, max_scenarios=max_sc)
+    run_governance_comparison(
+        Path(args.output),
+        levels=levels,
+        max_scenarios=max_sc,
+        num_runs=args.runs,
+    )

@@ -169,7 +169,7 @@ pytest tests/test_e2e_scenarios.py -v
 ## Project Structure
 
 ```
-agent-factory-orchestration/
+agent-factory/
 ├── app/                              # Backend application
 │   ├── main.py                       # FastAPI entry point (/health, /chat)
 │   ├── llm_client.py                 # Unified Azure/OpenAI LLM client

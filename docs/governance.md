@@ -371,25 +371,46 @@ python -m evaluation.rq2_harness --no-judge          # Structural checks only
 
 ### RQ3 — Governance Trade-Off Evaluation
 
-The RQ3 evaluation (`evaluation/run_governance_comparison.py`) measures the trade-off between governance strictness and task completion by running the same scenarios at three governance levels:
+The RQ3 evaluation (`evaluation/run_governance_comparison.py`) measures the trade-off between governance strictness and task completion by running 28 scenarios at three governance levels:
 
 | Governance Level | Pre-Guardrails | Post-Guardrails | Explainability |
 |-----------------|----------------|-----------------|----------------|
-| LOW (minimal) | Length check only | Blocked phrases only | Summary only |
-| MEDIUM (standard) | Full (PII + intent blocking) | Full (hallucination + tone) | Summary + Detailed |
-| HIGH (strict) | Full + enhanced | Full + enhanced | All three levels |
+| LOW (minimal) | Disabled (no checks) | Disabled (no blocked phrases, hallucination, or tone) | Summary only |
+| MEDIUM (standard) | Full (query length ≤4000 + intent blocking) | Full (hallucination + tone + blocked phrases) | Summary + Detailed |
+| HIGH (strict) | Strict (query length ≤2000 + intent blocking) | Full (same as MEDIUM) | All three levels |
+
+**Scenario categories (28 total):**
+
+| Category | Count | Governance Sensitivity |
+|----------|-------|----------------------|
+| safe_request | 12 | None — should pass at all levels |
+| input_validation | 5 | Deterministic — query length triggers pre-guardrail blocks |
+| compliance_violation | 4 | Indeterminate — depends on whether LLM generates blocked phrases |
+| hallucination_risk | 4 | Indeterminate — depends on whether LLM hallucinates actions |
+| tone_violation | 3 | Indeterminate — depends on whether LLM uses jargon |
 
 **Metrics captured per level:**
 - **Task completion rate** — Fraction of scenarios where the agent produced a correct response
 - **Autonomy score** — `1 − intervention_rate`; how often the system completes without governance blocking
 - **Intervention rate** — Fraction of scenarios where guardrails blocked or mutated the response
+- **Governance action accuracy** — Correctness of governance decisions on deterministic scenarios only (62 out of 84 total data points). Computed by `expected_governance_action()` which derives the expected block/allow decision from the scenario category and governance config — no hardcoding needed.
+- **Per-category breakdown** — Task completion reported per scenario category at each level
 - **Latency** — Average wall-clock time per scenario
 
-**Expected trade-off:** Higher governance levels should show lower task completion (more false positives from strict guardrails) but higher intervention rates (catching more policy violations). Due to LLM non-determinism at temperature=1.0 and small sample sizes (18 scenarios per level), results may vary between runs. Multiple runs can be averaged to reduce variance.
+**Separating governance correctness from LLM variance:**
+
+The evaluation cleanly separates three layers of the trade-off:
+1. **Governance action accuracy** (deterministic) — Did governance block/allow correctly? Expected ~100%. At LOW, all 28 scenarios are deterministic (all post-checks disabled). At MEDIUM/HIGH, 17 are deterministic and 11 are indeterminate (depending on LLM output).
+2. **Autonomy/intervention** (deterministic) — Perfectly monotonic: stricter levels intervene more.
+3. **Task completion** (non-deterministic) — Subject to LLM variance at temperature=1.0. Not expected to decline monotonically because governance post-processing (tone control, hallucination detection) can *improve* response quality.
+
+**Multi-run averaging:** The `--runs N` flag runs the full evaluation N times and reports mean ± std dev for task completion, reducing the impact of LLM variance.
 
 **CLI usage:**
 ```bash
 python -m evaluation.run_governance_comparison --output evaluation/results/rq3/
+python -m evaluation.run_governance_comparison --runs 3    # Average over 3 runs
+python -m evaluation.run_governance_comparison --dry-run   # Quick test with 3 scenarios
 ```
 
 ---

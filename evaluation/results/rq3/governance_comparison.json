@@ -2,56 +2,206 @@
   "per_level": {
     "low": {
       "governance_level": "low",
-      "total_scenarios": 18,
-      "task_completion_rate": 0.5,
+      "total_scenarios": 28,
+      "task_completion_rate": 0.6786,
       "intervention_rate": 0.0,
       "autonomy_score": 1.0,
-      "avg_latency_ms": 70904.23,
+      "avg_latency_ms": 53344.32,
       "total_governance_blocks": 0,
       "total_governance_escalations": 0,
       "total_governance_mutations": 0,
-      "total_governance_skips": 72,
+      "total_governance_skips": 112,
       "false_positive_rate": 0.0,
-      "passed": 9,
-      "failed": 9
+      "passed": 19,
+      "failed": 9,
+      "by_category": {
+        "compliance_violation": {
+          "count": 4,
+          "passed": 1,
+          "task_completion_rate": 0.25
+        },
+        "hallucination_risk": {
+          "count": 4,
+          "passed": 4,
+          "task_completion_rate": 1.0
+        },
+        "input_validation": {
+          "count": 5,
+          "passed": 4,
+          "task_completion_rate": 0.8
+        },
+        "safe_request": {
+          "count": 12,
+          "passed": 8,
+          "task_completion_rate": 0.6667
+        },
+        "tone_violation": {
+          "count": 3,
+          "passed": 2,
+          "task_completion_rate": 0.6667
+        }
+      }
     },
     "medium": {
       "governance_level": "medium",
-      "total_scenarios": 18,
-      "task_completion_rate": 0.4444,
-      "intervention_rate": 0.0556,
-      "autonomy_score": 0.9444,
-      "avg_latency_ms": 37966.77,
-      "total_governance_blocks": 1,
+      "total_scenarios": 28,
+      "task_completion_rate": 0.6071,
+      "intervention_rate": 0.0714,
+      "autonomy_score": 0.9286,
+      "avg_latency_ms": 42499.49,
+      "total_governance_blocks": 2,
       "total_governance_escalations": 0,
       "total_governance_mutations": 0,
       "total_governance_skips": 0,
       "false_positive_rate": 0.0,
-      "passed": 8,
-      "failed": 10
+      "passed": 17,
+      "failed": 11,
+      "by_category": {
+        "compliance_violation": {
+          "count": 4,
+          "passed": 2,
+          "task_completion_rate": 0.5
+        },
+        "hallucination_risk": {
+          "count": 4,
+          "passed": 4,
+          "task_completion_rate": 1.0
+        },
+        "input_validation": {
+          "count": 5,
+          "passed": 2,
+          "task_completion_rate": 0.4
+        },
+        "safe_request": {
+          "count": 12,
+          "passed": 7,
+          "task_completion_rate": 0.5833
+        },
+        "tone_violation": {
+          "count": 3,
+          "passed": 2,
+          "task_completion_rate": 0.6667
+        }
+      }
     },
     "high": {
       "governance_level": "high",
-      "total_scenarios": 18,
-      "task_completion_rate": 0.5556,
-      "intervention_rate": 0.1667,
-      "autonomy_score": 0.8333,
-      "avg_latency_ms": 33478.73,
-      "total_governance_blocks": 3,
+      "total_scenarios": 28,
+      "task_completion_rate": 0.5357,
+      "intervention_rate": 0.1429,
+      "autonomy_score": 0.8571,
+      "avg_latency_ms": 34696.55,
+      "total_governance_blocks": 4,
       "total_governance_escalations": 0,
       "total_governance_mutations": 0,
       "total_governance_skips": 0,
       "false_positive_rate": 0.0,
-      "passed": 10,
-      "failed": 8
+      "passed": 15,
+      "failed": 13,
+      "by_category": {
+        "compliance_violation": {
+          "count": 4,
+          "passed": 1,
+          "task_completion_rate": 0.25
+        },
+        "hallucination_risk": {
+          "count": 4,
+          "passed": 4,
+          "task_completion_rate": 1.0
+        },
+        "input_validation": {
+          "count": 5,
+          "passed": 1,
+          "task_completion_rate": 0.2
+        },
+        "safe_request": {
+          "count": 12,
+          "passed": 8,
+          "task_completion_rate": 0.6667
+        },
+        "tone_violation": {
+          "count": 3,
+          "passed": 1,
+          "task_completion_rate": 0.3333
+        }
+      }
+    }
+  },
+  "governance_action_accuracy": {
+    "low": {
+      "governance_action_accuracy": 1.0,
+      "deterministic_evaluated": 28,
+      "deterministic_correct": 28,
+      "by_category": {
+        "compliance_violation": {
+          "accuracy": 1.0,
+          "total": 4,
+          "correct": 4
+        },
+        "hallucination_risk": {
+          "accuracy": 1.0,
+          "total": 4,
+          "correct": 4
+        },
+        "input_validation": {
+          "accuracy": 1.0,
+          "total": 5,
+          "correct": 5
+        },
+        "safe_request": {
+          "accuracy": 1.0,
+          "total": 12,
+          "correct": 12
+        },
+        "tone_violation": {
+          "accuracy": 1.0,
+          "total": 3,
+          "correct": 3
+        }
+      }
+    },
+    "medium": {
+      "governance_action_accuracy": 1.0,
+      "deterministic_evaluated": 17,
+      "deterministic_correct": 17,
+      "by_category": {
+        "input_validation": {
+          "accuracy": 1.0,
+          "total": 5,
+          "correct": 5
+        },
+        "safe_request": {
+          "accuracy": 1.0,
+          "total": 12,
+          "correct": 12
+        }
+      }
+    },
+    "high": {
+      "governance_action_accuracy": 1.0,
+      "deterministic_evaluated": 17,
+      "deterministic_correct": 17,
+      "by_category": {
+        "input_validation": {
+          "accuracy": 1.0,
+          "total": 5,
+          "correct": 5
+        },
+        "safe_request": {
+          "accuracy": 1.0,
+          "total": 12,
+          "correct": 12
+        }
+      }
     }
   },
   "tradeoffs": {
-    "completion_delta": -0.0556,
-    "autonomy_delta": 0.1667,
-    "intervention_delta": 0.1667,
-    "latency_delta_ms": -37425.5
+    "completion_delta": 0.1429,
+    "autonomy_delta": 0.1429,
+    "intervention_delta": 0.1429,
+    "latency_delta_ms": -18647.77
   },
   "execution_mode": "real_llm",
-  "total_wall_time_seconds": 3922.16
+  "total_wall_time_seconds": 4512.98,
+  "total_scenarios": 28
 }
