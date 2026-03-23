@@ -230,8 +230,16 @@ agent-factory/
 │       ├── lib/                     # API client, constants, classify
 │       └── types/                   # TypeScript type definitions
 │
-├── evaluation/                       # Estimator comparison framework
-│   └── solvability_comparison.py    # TF-IDF vs Neural evaluation
+├── evaluation/                       # Research question evaluation harnesses
+│   ├── harness.py                   # RQ1 harness — routing accuracy & orchestration
+│   ├── rq2_harness.py               # RQ2 harness — explainability & IEEE compliance
+│   ├── rq2_judge.py                 # RQ2 LLM-as-judge (faithfulness, completeness, clarity)
+│   ├── run_governance_comparison.py # RQ3 harness — governance trade-off evaluation
+│   ├── governance_metrics.py        # RQ3 metrics aggregation
+│   ├── solvability_comparison.py    # TF-IDF vs Neural estimator comparison
+│   ├── scenarios/                   # Ground truth & governance scenario definitions
+│   ├── results/                     # Evaluation output (rq1/, rq2/, rq3/)
+│   └── rq4/                         # RQ4 harness — multi-turn conversation evaluation
 │
 ├── scripts/                          # Utility scripts
 │   ├── _bootstrap.py                # Shared agent registry loading

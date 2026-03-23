@@ -338,6 +338,62 @@ Each response is wrapped in a UMF envelope per IEEE P3394:
 
 The frontend renders governance data through several panels:
 
+## Evaluation Methodology
+
+### RQ2 — Explainability Quality (LLM-as-Judge)
+
+The RQ2 evaluation (`evaluation/rq2_harness.py`) assesses explanation quality using two complementary approaches:
+
+**Structural checks (deterministic):**
+- IEEE compliance rate across P3394, 2894-2024, and 3152-2024 standards
+- Explainability coverage (presence of summary, detailed, and full explanations)
+- Provenance and agent identity disclosure
+
+**LLM-as-judge (non-deterministic):**
+
+The `RQ2ExplanationJudge` (`evaluation/rq2_judge.py`) evaluates each explanation level against the execution trace on three dimensions:
+
+| Dimension | What It Measures | Scale |
+|-----------|-----------------|-------|
+| **Faithfulness** | Does the explanation accurately describe what the trace shows happened? | 1–5 |
+| **Completeness** | Does the explanation cover all significant routing, agent, and guardrail decisions? | 1–5 |
+| **Clarity** | Is the explanation appropriate for its intended audience level? | 1–5 |
+
+The judge receives the original query, execution trace (ground truth), raw system response, and generated explanation. It uses `gpt-5-mini` via `app.llm_client.chat_json` with temperature=1.0 (Azure minimum). One judge call is made per explanation level per scenario (3 calls × 30 scenarios = 90 judge evaluations per run).
+
+This addresses the circularity problem in pure structural checks: IEEE compliance verifies that required fields *exist*, but the judge evaluates whether the explanation content is *faithful to what actually happened*, *complete in covering decisions*, and *clear for its audience*.
+
+**CLI usage:**
+```bash
+python -m evaluation.rq2_harness                    # With judge (default)
+python -m evaluation.rq2_harness --no-judge          # Structural checks only
+```
+
+### RQ3 — Governance Trade-Off Evaluation
+
+The RQ3 evaluation (`evaluation/run_governance_comparison.py`) measures the trade-off between governance strictness and task completion by running the same scenarios at three governance levels:
+
+| Governance Level | Pre-Guardrails | Post-Guardrails | Explainability |
+|-----------------|----------------|-----------------|----------------|
+| LOW (minimal) | Length check only | Blocked phrases only | Summary only |
+| MEDIUM (standard) | Full (PII + intent blocking) | Full (hallucination + tone) | Summary + Detailed |
+| HIGH (strict) | Full + enhanced | Full + enhanced | All three levels |
+
+**Metrics captured per level:**
+- **Task completion rate** — Fraction of scenarios where the agent produced a correct response
+- **Autonomy score** — `1 − intervention_rate`; how often the system completes without governance blocking
+- **Intervention rate** — Fraction of scenarios where guardrails blocked or mutated the response
+- **Latency** — Average wall-clock time per scenario
+
+**Expected trade-off:** Higher governance levels should show lower task completion (more false positives from strict guardrails) but higher intervention rates (catching more policy violations). Due to LLM non-determinism at temperature=1.0 and small sample sizes (18 scenarios per level), results may vary between runs. Multiple runs can be averaged to reduce variance.
+
+**CLI usage:**
+```bash
+python -m evaluation.run_governance_comparison --output evaluation/results/rq3/
+```
+
+---
+
 ### GovernancePanel
 
 Three tabs showing compliance data:
