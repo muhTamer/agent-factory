@@ -75,7 +75,7 @@ The spine (`app/runtime/spine.py`) executes the **invariant pipeline**:
 2. INFER      → Determine INFORMATIONAL / ACTIONABLE / MIXED intent
 3. GUARD_PRE  → PII redaction, intent blocking, query length check
 4. EXECUTE    → Dispatch to agent or AOP coordinator
-5. SELECT     → Choose best response from execution result
+5. SELECT     → Choose best response from agent execution
 6. RESPOND    → Voice renderer generates customer-facing text
 7. GUARD_POST → Hallucination detection, tone control, blocked phrases
 8. RETURN     → Governance enrichment, audit logging, response delivery
@@ -506,7 +506,7 @@ evaluation/
 │   └── scenarios/
 ├── scenarios/                    # Ground truth & governance scenarios
 │   ├── ground_truth.json         # 30 scenarios with expected agents/intents
-│   └── governance_scenarios.json # 18 scenarios per governance level
+│   └── governance_scenarios.json # 28 scenarios per governance level
 └── results/                      # Output directory (gitignored)
     ├── rq1/
     ├── rq2/
@@ -525,7 +525,7 @@ Two-layer evaluation:
 
 ### RQ3 — Governance Trade-Offs
 
-Runs 18 scenarios at LOW/MEDIUM/HIGH governance levels to measure the trade-off between guardrail strictness and task completion autonomy. Results may vary between runs due to LLM non-determinism.
+Runs 28 scenarios at LOW/MEDIUM/HIGH governance levels to measure the trade-off between guardrail strictness and task completion autonomy. Includes a **governance action accuracy** metric that evaluates correctness on 62 deterministic data points (query length blocking, disabled-check pass-through), separating governance mechanism correctness from LLM variance. Supports `--runs N` for multi-run averaging to reduce non-determinism.
 
 ### RQ4 — Multi-Turn Conversations
 
