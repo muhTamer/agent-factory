@@ -1,0 +1,137 @@
+{
+  "total_scenarios": 45,
+  "tfidf_accuracy": 0.7333,
+  "neural_accuracy": 0.6889,
+  "tfidf_correct": 33,
+  "neural_correct": 31,
+  "agreement_rate": 0.6444,
+  "standard_match": {
+    "count": 21,
+    "tfidf_accuracy": 0.7619,
+    "neural_accuracy": 0.6667
+  },
+  "lexical_gap": {
+    "count": 24,
+    "tfidf_accuracy": 0.7083,
+    "neural_accuracy": 0.7083
+  },
+  "latency": {
+    "avg_tfidf_ms": 8.55,
+    "avg_neural_ms": 177.39,
+    "speedup_factor": 20.7
+  },
+  "mcnemar": {
+    "contingency": {
+      "both_correct": 26,
+      "tfidf_only": 7,
+      "neural_only": 5,
+      "both_wrong": 7
+    },
+    "discordant_pairs": 12,
+    "chi2": 0.0833,
+    "p_value": 0.7728,
+    "significant_at_005": false,
+    "favours": "tfidf"
+  },
+  "by_category": {
+    "complaint_ambiguous": {
+      "count": 1,
+      "tfidf_correct": 0,
+      "tfidf_accuracy": 0.0,
+      "neural_correct": 1,
+      "neural_accuracy": 1.0
+    },
+    "complaint_lexical_gap": {
+      "count": 7,
+      "tfidf_correct": 0,
+      "tfidf_accuracy": 0.0,
+      "neural_correct": 3,
+      "neural_accuracy": 0.4286
+    },
+    "complaint_standard": {
+      "count": 4,
+      "tfidf_correct": 0,
+      "tfidf_accuracy": 0.0,
+      "neural_correct": 1,
+      "neural_accuracy": 0.25
+    },
+    "faq_ambiguous": {
+      "count": 3,
+      "tfidf_correct": 3,
+      "tfidf_accuracy": 1.0,
+      "neural_correct": 1,
+      "neural_accuracy": 0.3333
+    },
+    "faq_lexical_gap": {
+      "count": 7,
+      "tfidf_correct": 7,
+      "tfidf_accuracy": 1.0,
+      "neural_correct": 5,
+      "neural_accuracy": 0.7143
+    },
+    "faq_standard": {
+      "count": 8,
+      "tfidf_correct": 8,
+      "tfidf_accuracy": 1.0,
+      "neural_correct": 6,
+      "neural_accuracy": 0.75
+    },
+    "refund_ambiguous": {
+      "count": 1,
+      "tfidf_correct": 1,
+      "tfidf_accuracy": 1.0,
+      "neural_correct": 1,
+      "neural_accuracy": 1.0
+    },
+    "refund_lexical_gap": {
+      "count": 9,
+      "tfidf_correct": 9,
+      "tfidf_accuracy": 1.0,
+      "neural_correct": 8,
+      "neural_accuracy": 0.8889
+    },
+    "refund_standard": {
+      "count": 5,
+      "tfidf_correct": 5,
+      "tfidf_accuracy": 1.0,
+      "neural_correct": 5,
+      "neural_accuracy": 1.0
+    }
+  },
+  "confusion_tfidf": {
+    "complaints_agent_v1": {
+      "complaints_agent_v1": 0,
+      "customer_faq_agent_v1": 0,
+      "refunds_agent_v1": 12
+    },
+    "customer_faq_agent_v1": {
+      "complaints_agent_v1": 0,
+      "customer_faq_agent_v1": 18,
+      "refunds_agent_v1": 0
+    },
+    "refunds_agent_v1": {
+      "complaints_agent_v1": 0,
+      "customer_faq_agent_v1": 0,
+      "refunds_agent_v1": 15
+    }
+  },
+  "confusion_neural": {
+    "complaints_agent_v1": {
+      "complaints_agent_v1": 5,
+      "customer_faq_agent_v1": 4,
+      "refunds_agent_v1": 3
+    },
+    "customer_faq_agent_v1": {
+      "complaints_agent_v1": 2,
+      "customer_faq_agent_v1": 12,
+      "refunds_agent_v1": 4
+    },
+    "refunds_agent_v1": {
+      "complaints_agent_v1": 1,
+      "customer_faq_agent_v1": 0,
+      "refunds_agent_v1": 14
+    }
+  },
+  "wall_time_seconds": 8.37,
+  "neural_mlp_trained": true
+}

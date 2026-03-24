@@ -17,6 +17,7 @@ Training specs (per AOP paper):
 from __future__ import annotations
 
 import json
+import random
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -100,6 +101,10 @@ class RewardModelTrainer:
             raise ValueError(f"No training data found in {data_path}")
 
         print(f"[Trainer] Loaded {len(raw)} examples from {data_path}")
+
+        # Shuffle before splitting to ensure representative val set
+        random.seed(42)
+        random.shuffle(raw)
 
         # Train/val split
         split_idx = max(1, int(len(raw) * (1 - val_split)))

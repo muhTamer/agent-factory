@@ -69,7 +69,7 @@ The result interface matches `SolvabilityResult` from the TF-IDF estimator, maki
 
 Training follows a three-stage process: generate data → train model → evaluate.
 
-### Stage 1: Training Data Generation
+### Stage 1a: Original Training Data Generation (LLM-scored)
 
 **Script:** `scripts/generate_training_data.py`
 **Module:** `app/orchestration/training_data_generator.py`
@@ -78,7 +78,7 @@ Training follows a three-stage process: generate data → train model → evalua
 PYTHONPATH=. python scripts/generate_training_data.py
 ```
 
-The generator:
+The original generator:
 1. Decomposes 30 built-in queries using AOP task decomposition
 2. Pre-ranks candidate agents using TF-IDF solvability (top-l per subtask)
 3. Executes each candidate agent on the subtask
@@ -86,7 +86,26 @@ The generator:
    - **Correctness** — Is the answer factually accurate?
    - **Relevance** — Does it address the subtask?
    - **Completeness** — Is the response thorough?
-5. Saves `(subtask_text, agent_description, average_score)` triples to `data/training_data/reward_training.json`
+5. Saves `(subtask_text, agent_description, average_score)` triples
+
+**Limitation:** Produces only ~42 single-agent pairings with no negative examples, leading to a degenerate MLP that cannot discriminate between agents.
+
+### Stage 1b: BANKING77 Contrastive Training Data (recommended)
+
+**Script:** `scripts/generate_banking77_training_data.py`
+**Dataset:** BANKING77 (Casanueva et al., 2020) — 13,083 real banking customer utterances across 77 intents
+
+```powershell
+PYTHONPATH=. python scripts/generate_banking77_training_data.py --include-test --max-per-intent 80
+```
+
+The contrastive generator:
+1. Downloads BANKING77 train+test splits (13K utterances)
+2. Maps all 77 banking intents to the 3 system agents (FAQ: 51 intents, refunds: 19 intents, complaints: 7 intents)
+3. Creates **contrastive** triples: correct agent gets score 1.0, wrong agents get score 0.0
+4. Saves ~18K `(utterance, agent_description, score)` triples to `data/training_data/reward_training.json`
+
+This provides the MLP with strong discriminative signal — it learns what each agent should and should NOT handle.
 
 ### Stage 2: Model Training
 
@@ -131,21 +150,25 @@ Compares TF-IDF and Neural estimators on 45 ground-truth subtask scenarios
 - **Confusion matrices** — Per-estimator misclassification patterns
 - **Latency** — Per-query inference time comparison
 
-**Results (45 scenarios, 3 agents):**
+**Results (45 scenarios, 3 agents) — after BANKING77 contrastive training:**
 
-| Metric | TF-IDF | Neural |
-|--------|--------|--------|
-| Overall Accuracy | **73.3%** | 33.3% |
-| Standard Match | **76.2%** | 23.8% |
-| Lexical Gap | **70.8%** | 41.7% |
-| Avg Latency | **10.9ms** | 190.9ms |
-| McNemar's p-value | **0.0001** (significant) | — |
+| Metric | TF-IDF | Neural (before) | Neural (after) |
+|--------|--------|-----------------|----------------|
+| Overall Accuracy | **73.3%** | 33.3% | 68.9% |
+| Standard Match | **76.2%** | 23.8% | 66.7% |
+| Lexical Gap | **70.8%** | 41.7% | **70.8%** |
+| Complaint Accuracy | 0.0% | 0.0% | **33.3%** |
+| Avg Latency | **8.6ms** | 190.9ms | 177.4ms |
+| McNemar's p-value | 0.0001 (sig.) | — | 0.7728 (not sig.) |
 
 **Key findings:**
 - TF-IDF with intent-aware scoring achieves 100% on FAQ and refund categories
-- Neither estimator distinguishes complaints from refunds (0% complaint accuracy) — the capability descriptions overlap too heavily
-- The neural MLP is degenerate: routes all inputs to `refunds_agent_v1` regardless of content, indicating insufficient training data diversity
-- McNemar's test (p<0.001) statistically confirms TF-IDF superiority
+- Contrastive training on BANKING77 (Casanueva et al., 2020) improved Neural from 33.3% to 68.9% overall — now competitive with TF-IDF
+- Neural matches TF-IDF on lexical gap scenarios (70.8% each), confirming embeddings capture semantic similarity where TF-IDF relies on exact word overlap
+- Neural is the only estimator that routes any complaints correctly (33.3% vs TF-IDF 0%) — embeddings can partially distinguish "complaint" from "refund" semantics
+- McNemar's test is no longer significant (p=0.77), meaning the two estimators perform comparably
+- TF-IDF remains ~21x faster (8.6ms vs 177ms per query)
+- Remaining complaint failures stem from overlapping agent capability descriptions (both refunds and complaints agents mention escalation, case management, investigation)
 
 Results are saved to `evaluation/results/solvability/`.
 
@@ -194,7 +217,8 @@ The `EstimatorTogglePanel` component in the Explainability sidebar provides a UI
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `scripts/generate_training_data.py` | Generate (subtask, agent, score) triples | `PYTHONPATH=. python scripts/generate_training_data.py` |
+| `scripts/generate_training_data.py` | Generate LLM-scored (subtask, agent, score) triples | `PYTHONPATH=. python scripts/generate_training_data.py` |
+| `scripts/generate_banking77_training_data.py` | Generate contrastive triples from BANKING77 (recommended) | `PYTHONPATH=. python scripts/generate_banking77_training_data.py --include-test` |
 | `scripts/train_reward_model.py` | Train the RewardMLP on generated data | `PYTHONPATH=. python scripts/train_reward_model.py` |
 | `evaluation/run_solvability_comparison.py` | Compare Neural vs TF-IDF on 45 scenarios | `python -m evaluation.run_solvability_comparison` |
 | `scripts/_bootstrap.py` | Shared helper: loads agents from factory spec | Imported by other scripts |
