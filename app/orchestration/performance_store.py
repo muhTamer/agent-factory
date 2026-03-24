@@ -100,12 +100,32 @@ class PerformanceStore:
             return 0.5
         return sum(1 for r in records if r.success) / len(records)
 
+    # Bayesian prior strength: an agent needs this many records before
+    # its historical score meaningfully deviates from the 0.5 neutral prior.
+    # Prevents feedback-loop bias where a frequently-picked agent accumulates
+    # a skewed average that reinforces its own selection.
+    PRIOR_WEIGHT = 10
+    PRIOR_SCORE = 0.5
+
     def agent_avg_score(self, agent_id: str) -> float:
         """
-        Returns average quality score for a given agent.
-        Returns 0.5 (neutral prior) if no history exists.
+        Returns Bayesian-smoothed average quality score for a given agent.
+
+        Uses a conjugate prior to blend the observed average with a 0.5
+        neutral prior, weighted by sample count:
+
+            score = (prior_weight * 0.5 + n * observed_avg) / (prior_weight + n)
+
+        With prior_weight=10, an agent needs 10+ records before its
+        historical score meaningfully deviates from 0.5.  This prevents
+        feedback-loop bias where a frequently-selected agent accumulates
+        a skewed average that reinforces its own selection.
         """
         records = self.query(agent_id=agent_id)
-        if not records:
-            return 0.5
-        return sum(r.score for r in records) / len(records)
+        n = len(records)
+        if n == 0:
+            return self.PRIOR_SCORE
+        observed_avg = sum(r.score for r in records) / n
+        return (self.PRIOR_WEIGHT * self.PRIOR_SCORE + n * observed_avg) / (
+            self.PRIOR_WEIGHT + n
+        )

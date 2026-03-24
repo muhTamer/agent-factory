@@ -125,7 +125,9 @@ def test_historical_performance_with_records(tmp_path):
 
     refund_scores = [s for s in result.scores if s.agent_id == "refund_agent"]
     assert len(refund_scores) == 1
-    assert refund_scores[0].historical_performance == 0.8  # (0.9 + 0.7) / 2
+    # Bayesian smoothed: (10 * 0.5 + 2 * 0.8) / (10 + 2) = 6.6 / 12 = 0.55
+    expected = (store.PRIOR_WEIGHT * 0.5 + 2 * 0.8) / (store.PRIOR_WEIGHT + 2)
+    assert abs(refund_scores[0].historical_performance - expected) < 1e-9
 
 
 def test_history_boosts_assignment(tmp_path):

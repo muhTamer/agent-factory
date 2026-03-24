@@ -66,7 +66,14 @@ def run_solvability_comparison(
     tfidf = SolvabilityEstimator(clean_store, use_intent_scoring=True)
     tfidf_raw = SolvabilityEstimator(clean_store, use_intent_scoring=False)
     neural = NeuralSolvabilityEstimator(
-        clean_store, model_path=Path("models/reward_mlp.pt")
+        clean_store,
+        model_path=Path("models/reward_mlp.pt"),
+        use_intent_scoring=True,
+    )
+    neural_raw = NeuralSolvabilityEstimator(
+        clean_store,
+        model_path=Path("models/reward_mlp.pt"),
+        use_intent_scoring=False,
     )
 
     print(f"Neural MLP trained: {neural.is_trained}")
@@ -75,7 +82,7 @@ def run_solvability_comparison(
     print(f"Scenarios: {len(scenarios)}")
     print()
 
-    # ── Run 1: TF-IDF (with intent scoring) vs Neural ────────────
+    # ── Run 1: TF-IDF (with intent scoring) vs Neural (with intent scoring) ──
     comparison = SolvabilityComparison(
         tfidf_estimator=tfidf,
         neural_estimator=neural,
@@ -96,11 +103,11 @@ def run_solvability_comparison(
     summary["wall_time_seconds"] = round(wall_time, 2)
     summary["neural_mlp_trained"] = neural.is_trained
 
-    # ── Run 2: TF-IDF (raw, no intent scoring) vs Neural ─────────
+    # ── Run 2: TF-IDF (raw, no intent scoring) vs Neural (raw) ──
     print("\n")
     comparison_raw = SolvabilityComparison(
         tfidf_estimator=tfidf_raw,
-        neural_estimator=neural,
+        neural_estimator=neural_raw,
         registry=registry,
     )
 

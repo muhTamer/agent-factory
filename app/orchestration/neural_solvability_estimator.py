@@ -99,6 +99,12 @@ class NeuralSolvabilityEstimator:
 
     DEFAULT_MODEL_PATH = Path("models/reward_mlp.pt")
 
+    # Intent-aware scoring constants (shared with TF-IDF estimator)
+    _INFORMATIONAL_PREFIX = "informational:"
+    _ACTION_PREFIX = "action:"
+    _ACTION_PENALTY = 0.3
+    _INTENT_KIND_BONUS = 0.15
+
     def __init__(
         self,
         performance_store: PerformanceStore,
@@ -107,10 +113,12 @@ class NeuralSolvabilityEstimator:
         model_path: Optional[Path] = None,
         embedding_model: str = "all-MiniLM-L6-v2",
         device: Optional[str] = None,
+        use_intent_scoring: bool = True,
     ):
         self.store = performance_store
         self.alpha = alpha
         self.beta = beta
+        self.use_intent_scoring = use_intent_scoring
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
         # Load sentence embedding model (frozen — never fine-tuned)
@@ -182,6 +190,15 @@ class NeuralSolvabilityEstimator:
             best_agent = ""
             best_combined = -1.0
 
+            # Determine intent from decomposer prefix label
+            lower = subtask.lower().lstrip()
+            if lower.startswith(self._INFORMATIONAL_PREFIX):
+                subtask_intent = "informational"
+            elif lower.startswith(self._ACTION_PREFIX):
+                subtask_intent = "action"
+            else:
+                subtask_intent = "unknown"
+
             for j, aid in enumerate(agent_ids):
                 # Concatenate subtask + agent embeddings → 768d
                 concat_emb = torch.cat([subtask_embs[i], agent_embs[j]]).unsqueeze(0)
@@ -196,10 +213,38 @@ class NeuralSolvabilityEstimator:
                 # Combined score (same formula as TF-IDF estimator)
                 combined = self.alpha * neural_sim + self.beta * hist_perf
 
+                # Intent-aware scoring (same logic as TF-IDF estimator)
+                modifiers = ""
+                if self.use_intent_scoring:
+                    from app.orchestration.solvability_estimator import (
+                        SolvabilityEstimator,
+                    )
+
+                    meta = agent_catalog[aid]
+                    agent_kind = meta.get("agent_kind", "")
+                    inferred_kind = SolvabilityEstimator._infer_agent_kind(
+                        meta, agent_kind
+                    )
+
+                    if subtask_intent == "informational":
+                        if inferred_kind == "action":
+                            combined *= self._ACTION_PENALTY
+                            modifiers += " [penalty: info->action_agent]"
+                        if inferred_kind == "knowledge":
+                            combined += self._INTENT_KIND_BONUS
+                            modifiers += " [bonus: info->knowledge]"
+                    elif subtask_intent == "action":
+                        if inferred_kind == "knowledge":
+                            combined *= self._ACTION_PENALTY
+                            modifiers += " [penalty: action->knowledge_agent]"
+                        if inferred_kind == "action":
+                            combined += self._INTENT_KIND_BONUS
+                            modifiers += " [bonus: action->workflow]"
+
                 reasoning = (
-                    f"neural={neural_sim:.3f} (α={self.alpha}), "
-                    f"historical={hist_perf:.3f} (β={self.beta}), "
-                    f"combined={combined:.3f}"
+                    f"neural={neural_sim:.3f} (a={self.alpha}), "
+                    f"historical={hist_perf:.3f} (b={self.beta}), "
+                    f"combined={combined:.3f}{modifiers}"
                 )
 
                 score = NeuralSolvabilityScore(

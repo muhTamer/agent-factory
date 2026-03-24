@@ -78,7 +78,9 @@ def test_agent_avg_score(tmp_path):
     store.append(ExecutionRecord("agent_a", "t2", True, 0.8, 150))
 
     avg = store.agent_avg_score("agent_a")
-    assert avg == 0.7  # (0.6 + 0.8) / 2
+    # Bayesian smoothed: (10 * 0.5 + 2 * 0.7) / (10 + 2) = 6.4 / 12 ≈ 0.5333
+    expected = (store.PRIOR_WEIGHT * 0.5 + 2 * 0.7) / (store.PRIOR_WEIGHT + 2)
+    assert abs(avg - expected) < 1e-9
 
 
 def test_agent_avg_score_no_history(tmp_path):
