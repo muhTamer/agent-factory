@@ -195,21 +195,22 @@ class SolvabilityEstimator:
                 #     This ensures correct assignment even when TF-IDF scores are
                 #     near-zero (e.g. "account"≠"accounts" — no stemming).
                 agent_kind = meta.get("agent_kind", "")
+                inferred_kind = self._infer_agent_kind(meta, agent_kind)
                 penalty_applied = False
                 bonus_applied = False
 
                 if subtask_intent == "informational":
-                    if meta.get("requires_user_context"):
+                    if inferred_kind == "action":
                         combined *= self._ACTION_PENALTY
                         penalty_applied = True
-                    if agent_kind == "knowledge_rag":
+                    if inferred_kind == "knowledge":
                         combined += self._INTENT_KIND_BONUS
                         bonus_applied = True
                 elif subtask_intent == "action":
-                    if not meta.get("requires_user_context"):
+                    if inferred_kind == "knowledge":
                         combined *= self._ACTION_PENALTY
                         penalty_applied = True
-                    if agent_kind == "workflow_runner":
+                    if inferred_kind == "action":
                         combined += self._INTENT_KIND_BONUS
                         bonus_applied = True
 
@@ -280,6 +281,57 @@ class SolvabilityEstimator:
     def _historical_performance(self, agent_id: str) -> float:
         """Read average score from performance store (0.5 neutral prior)."""
         return self.store.agent_avg_score(agent_id)
+
+    # Keywords that indicate a knowledge/FAQ-style agent.
+    _KNOWLEDGE_SIGNALS = {
+        "faq",
+        "retrieve",
+        "summarize",
+        "answer",
+        "knowledge",
+        "information",
+    }
+    # Keywords that indicate an action/workflow agent.
+    _ACTION_SIGNALS = {
+        "process",
+        "execute",
+        "initiate",
+        "escalate",
+        "investigate",
+        "file",
+        "manage",
+    }
+
+    @staticmethod
+    def _infer_agent_kind(meta: Dict[str, Any], explicit_kind: str) -> str:
+        """Infer whether an agent is knowledge-oriented or action-oriented.
+
+        Uses explicit agent_kind if set to a recognised value; otherwise
+        falls back to keyword signals in description and capabilities.
+        Returns "knowledge", "action", or "unknown".
+        """
+        if explicit_kind == "knowledge_rag":
+            return "knowledge"
+        if explicit_kind == "workflow_runner":
+            return "action"
+
+        # Infer from description + capabilities text
+        desc = (meta.get("description", "") or "").lower()
+        caps = " ".join(str(c) for c in (meta.get("capabilities", []) or [])).lower()
+        text = desc + " " + caps
+
+        knowledge_hits = sum(
+            1 for kw in SolvabilityEstimator._KNOWLEDGE_SIGNALS if kw in text
+        )
+        action_hits = sum(
+            1 for kw in SolvabilityEstimator._ACTION_SIGNALS if kw in text
+        )
+
+        if knowledge_hits > action_hits:
+            return "knowledge"
+        if action_hits > knowledge_hits:
+            return "action"
+        return "unknown"
 
     @staticmethod
     def _build_agent_text(agent_meta: Dict[str, Any]) -> str:

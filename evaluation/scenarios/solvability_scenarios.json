@@ -1,0 +1,329 @@
+[
+  {
+    "scenario_id": "S001",
+    "subtask": "INFORMATIONAL: refund policy details",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_standard"
+  },
+  {
+    "scenario_id": "S002",
+    "subtask": "ACTION: process refund for order #12345",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": false,
+    "category": "refund_standard"
+  },
+  {
+    "scenario_id": "S003",
+    "subtask": "INFORMATIONAL: account opening requirements",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_standard"
+  },
+  {
+    "scenario_id": "S004",
+    "subtask": "ACTION: file a formal complaint about branch service",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": false,
+    "category": "complaint_standard"
+  },
+  {
+    "scenario_id": "S005",
+    "subtask": "INFORMATIONAL: what is the cheque clearing time",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_standard"
+  },
+  {
+    "scenario_id": "S006",
+    "subtask": "ACTION: refund EUR 200 charge on account",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": false,
+    "category": "refund_standard"
+  },
+  {
+    "scenario_id": "S007",
+    "subtask": "ACTION: escalate complaint to manager",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": false,
+    "category": "complaint_standard"
+  },
+  {
+    "scenario_id": "S008",
+    "subtask": "INFORMATIONAL: Premium Current Account features",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_standard"
+  },
+  {
+    "scenario_id": "S009",
+    "subtask": "ACTION: process reversal for duplicate EUR 75 transaction",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": false,
+    "category": "refund_standard"
+  },
+  {
+    "scenario_id": "S010",
+    "subtask": "ACTION: register customer dissatisfaction with service quality",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": false,
+    "category": "complaint_standard"
+  },
+  {
+    "scenario_id": "S011",
+    "subtask": "INFORMATIONAL: EEFC Account eligibility for SEZ units",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_standard"
+  },
+  {
+    "scenario_id": "S012",
+    "subtask": "ACTION: initiate refund for cancelled subscription EUR 29.99",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": false,
+    "category": "refund_standard"
+  },
+  {
+    "scenario_id": "S013",
+    "subtask": "INFORMATIONAL: Flexi Account initial deposit amount",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_standard"
+  },
+  {
+    "scenario_id": "S014",
+    "subtask": "ACTION: log complaint about hidden account fees",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": false,
+    "category": "complaint_standard"
+  },
+  {
+    "scenario_id": "S015",
+    "subtask": "ACTION: process refund for unauthorized EUR 500 foreign charge",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": false,
+    "category": "refund_standard"
+  },
+
+  {
+    "scenario_id": "S016",
+    "subtask": "INFORMATIONAL: how to get my money back",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": true,
+    "category": "faq_lexical_gap"
+  },
+  {
+    "scenario_id": "S017",
+    "subtask": "ACTION: reverse the charge on my card",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": true,
+    "category": "refund_lexical_gap"
+  },
+  {
+    "scenario_id": "S018",
+    "subtask": "INFORMATIONAL: what happens if I'm unhappy with my purchase",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": true,
+    "category": "faq_lexical_gap"
+  },
+  {
+    "scenario_id": "S019",
+    "subtask": "ACTION: give me back what I paid for order #999",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": true,
+    "category": "refund_lexical_gap"
+  },
+  {
+    "scenario_id": "S020",
+    "subtask": "INFORMATIONAL: steps to terminate my membership",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": true,
+    "category": "faq_lexical_gap"
+  },
+  {
+    "scenario_id": "S021",
+    "subtask": "ACTION: I was overcharged and want it fixed",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": true,
+    "category": "refund_lexical_gap"
+  },
+  {
+    "scenario_id": "S022",
+    "subtask": "INFORMATIONAL: how do I move my account to a different branch",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": true,
+    "category": "faq_lexical_gap"
+  },
+  {
+    "scenario_id": "S023",
+    "subtask": "ACTION: I'm furious about the terrible experience at your office",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": true,
+    "category": "complaint_lexical_gap"
+  },
+  {
+    "scenario_id": "S024",
+    "subtask": "ACTION: undo the debit that appeared on my statement yesterday",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": true,
+    "category": "refund_lexical_gap"
+  },
+  {
+    "scenario_id": "S025",
+    "subtask": "INFORMATIONAL: tell me about the savings options you offer",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": true,
+    "category": "faq_lexical_gap"
+  },
+  {
+    "scenario_id": "S026",
+    "subtask": "ACTION: your staff was rude and I demand an apology and compensation",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": true,
+    "category": "complaint_lexical_gap"
+  },
+  {
+    "scenario_id": "S027",
+    "subtask": "ACTION: the ATM ate my card and took money but gave me nothing",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": true,
+    "category": "refund_lexical_gap"
+  },
+  {
+    "scenario_id": "S028",
+    "subtask": "INFORMATIONAL: what documents do I need to open an account",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": true,
+    "category": "faq_lexical_gap"
+  },
+  {
+    "scenario_id": "S029",
+    "subtask": "ACTION: I've been waiting 3 weeks for a resolution and nothing has happened",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": true,
+    "category": "complaint_lexical_gap"
+  },
+  {
+    "scenario_id": "S030",
+    "subtask": "ACTION: put the money back into my account from the wrong deduction",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": true,
+    "category": "refund_lexical_gap"
+  },
+
+  {
+    "scenario_id": "S031",
+    "subtask": "INFORMATIONAL: can I get a refund on my current account fees",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_ambiguous",
+    "notes": "Informational query about refund policy, not an action request"
+  },
+  {
+    "scenario_id": "S032",
+    "subtask": "ACTION: I want to complain about a refund that was denied",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": false,
+    "category": "complaint_ambiguous",
+    "notes": "Complaint about refund process, not a refund request itself"
+  },
+  {
+    "scenario_id": "S033",
+    "subtask": "INFORMATIONAL: what is the process for filing a complaint",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_ambiguous",
+    "notes": "Asking about complaint process (FAQ), not actually filing one"
+  },
+  {
+    "scenario_id": "S034",
+    "subtask": "ACTION: credit back the annual fee that was charged incorrectly",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": true,
+    "category": "refund_ambiguous",
+    "notes": "Uses 'credit back' instead of 'refund'"
+  },
+  {
+    "scenario_id": "S035",
+    "subtask": "INFORMATIONAL: explain your returns and exchange policy",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_ambiguous",
+    "notes": "Asking about policy, not requesting a return"
+  },
+  {
+    "scenario_id": "S036",
+    "subtask": "ACTION: escalate this matter to the ombudsman immediately",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": true,
+    "category": "complaint_lexical_gap"
+  },
+  {
+    "scenario_id": "S037",
+    "subtask": "INFORMATIONAL: how long does an international wire transfer take",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_standard"
+  },
+  {
+    "scenario_id": "S038",
+    "subtask": "ACTION: reimburse me for the EUR 150 service charge",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": true,
+    "category": "refund_lexical_gap",
+    "notes": "Uses 'reimburse' instead of 'refund'"
+  },
+  {
+    "scenario_id": "S039",
+    "subtask": "ACTION: I need to report a problem with my last transaction",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": true,
+    "category": "complaint_lexical_gap",
+    "notes": "'Report a problem' maps to complaint intake"
+  },
+  {
+    "scenario_id": "S040",
+    "subtask": "INFORMATIONAL: what interest rates do you offer on fixed deposits",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": false,
+    "category": "faq_standard"
+  },
+  {
+    "scenario_id": "S041",
+    "subtask": "ACTION: return the funds from the failed direct debit",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": true,
+    "category": "refund_lexical_gap",
+    "notes": "'Return funds' instead of 'refund'"
+  },
+  {
+    "scenario_id": "S042",
+    "subtask": "ACTION: investigate why my complaint from last month was ignored",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": true,
+    "category": "complaint_lexical_gap"
+  },
+  {
+    "scenario_id": "S043",
+    "subtask": "INFORMATIONAL: do you have a mobile banking app",
+    "correct_agent": "customer_faq_agent_v1",
+    "lexical_gap": true,
+    "category": "faq_lexical_gap"
+  },
+  {
+    "scenario_id": "S044",
+    "subtask": "ACTION: process chargeback for disputed online purchase EUR 89",
+    "correct_agent": "refunds_agent_v1",
+    "lexical_gap": true,
+    "category": "refund_lexical_gap",
+    "notes": "'Chargeback' is domain synonym for refund/reversal"
+  },
+  {
+    "scenario_id": "S045",
+    "subtask": "ACTION: make a formal grievance about discriminatory treatment",
+    "correct_agent": "complaints_agent_v1",
+    "lexical_gap": true,
+    "category": "complaint_lexical_gap",
+    "notes": "'Grievance' instead of 'complaint'"
+  }
+]

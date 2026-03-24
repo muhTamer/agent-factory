@@ -496,6 +496,8 @@ The system includes a research evaluation framework that tests four research que
 ```
 evaluation/
 ├── harness.py                    # RQ1: Routing accuracy & orchestration
+├── solvability_comparison.py     # RQ1: TF-IDF vs Neural solvability comparison
+├── run_solvability_comparison.py # RQ1: Solvability comparison runner (45 scenarios)
 ├── rq2_harness.py                # RQ2: Explainability & IEEE compliance
 ├── rq2_judge.py                  # RQ2: LLM-as-judge for explanation quality
 ├── run_governance_comparison.py  # RQ3: Governance trade-off evaluation
@@ -506,16 +508,20 @@ evaluation/
 │   └── scenarios/
 ├── scenarios/                    # Ground truth & governance scenarios
 │   ├── ground_truth.json         # 30 scenarios with expected agents/intents
-│   └── governance_scenarios.json # 28 scenarios per governance level
+│   ├── governance_scenarios.json # 28 scenarios per governance level
+│   └── solvability_scenarios.json # 45 subtask scenarios for estimator comparison
 └── results/                      # Output directory (gitignored)
     ├── rq1/
     ├── rq2/
-    └── rq3/
+    ├── rq3/
+    └── solvability/
 ```
 
 ### RQ1 — Intent Routing & Orchestration
 
 Runs 30 scenarios through `RuntimeSpine`, comparing routed agent and intent against ground truth. Measures routing accuracy, orchestration pattern selection, and agent selection rates.
+
+**Solvability Estimator Comparison:** `evaluation/run_solvability_comparison.py` compares TF-IDF vs Neural solvability estimators on 45 subtask scenarios with McNemar's test. TF-IDF with intent-aware scoring (73.3%) significantly outperforms the neural MLP (33.3%, p<0.001). See `docs/neural-solvability.md`.
 
 ### RQ2 — Explainability & IEEE Compliance
 

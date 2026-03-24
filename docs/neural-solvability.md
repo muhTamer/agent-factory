@@ -111,20 +111,43 @@ The trainer pre-computes all embeddings using `all-MiniLM-L6-v2` before training
 
 ### Stage 3: Evaluation
 
-**Script:** `scripts/run_comparison.py`
+**Script:** `evaluation/run_solvability_comparison.py`
 **Module:** `evaluation/solvability_comparison.py`
 
 ```powershell
-PYTHONPATH=. python scripts/run_comparison.py
+python -m evaluation.run_solvability_comparison
+python -m evaluation.run_solvability_comparison --detailed   # per-scenario output
+python -m evaluation.run_solvability_comparison --dry-run    # 5 scenarios only
 ```
 
-Compares TF-IDF and Neural estimators on 8 test scenarios with ground-truth agent assignments. Metrics:
-- **Accuracy** — Correct top-1 agent assignment rate
-- **Agreement rate** — How often both estimators pick the same agent
-- **Lexical gap performance** — Accuracy on paraphrased queries
-- **Latency** — Per-query inference time
+Compares TF-IDF and Neural estimators on 45 ground-truth subtask scenarios
+(15 standard match, 24 lexical gap, 6 ambiguous) across three agents.
 
-Results are saved to `evaluation/comparison_results.json`.
+**Metrics:**
+- **Overall accuracy** — Correct top-1 agent assignment rate
+- **Standard match vs lexical gap accuracy** — How each estimator handles word-mismatch cases
+- **Per-category breakdown** — Accuracy by scenario category (faq_standard, refund_lexical_gap, etc.)
+- **McNemar's test** — Paired statistical significance test (chi-squared, p-value)
+- **Confusion matrices** — Per-estimator misclassification patterns
+- **Latency** — Per-query inference time comparison
+
+**Results (45 scenarios, 3 agents):**
+
+| Metric | TF-IDF | Neural |
+|--------|--------|--------|
+| Overall Accuracy | **73.3%** | 33.3% |
+| Standard Match | **76.2%** | 23.8% |
+| Lexical Gap | **70.8%** | 41.7% |
+| Avg Latency | **10.9ms** | 190.9ms |
+| McNemar's p-value | **0.0001** (significant) | — |
+
+**Key findings:**
+- TF-IDF with intent-aware scoring achieves 100% on FAQ and refund categories
+- Neither estimator distinguishes complaints from refunds (0% complaint accuracy) — the capability descriptions overlap too heavily
+- The neural MLP is degenerate: routes all inputs to `refunds_agent_v1` regardless of content, indicating insufficient training data diversity
+- McNemar's test (p<0.001) statistically confirms TF-IDF superiority
+
+Results are saved to `evaluation/results/solvability/`.
 
 ---
 
@@ -173,7 +196,7 @@ The `EstimatorTogglePanel` component in the Explainability sidebar provides a UI
 |--------|---------|-------|
 | `scripts/generate_training_data.py` | Generate (subtask, agent, score) triples | `PYTHONPATH=. python scripts/generate_training_data.py` |
 | `scripts/train_reward_model.py` | Train the RewardMLP on generated data | `PYTHONPATH=. python scripts/train_reward_model.py` |
-| `scripts/run_comparison.py` | Compare Neural vs TF-IDF on test scenarios | `PYTHONPATH=. python scripts/run_comparison.py` |
+| `evaluation/run_solvability_comparison.py` | Compare Neural vs TF-IDF on 45 scenarios | `python -m evaluation.run_solvability_comparison` |
 | `scripts/_bootstrap.py` | Shared helper: loads agents from factory spec | Imported by other scripts |
 
 All scripts require `PYTHONPATH=.` to resolve `app.*` imports.
