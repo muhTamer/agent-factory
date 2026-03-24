@@ -48,7 +48,8 @@ def run_solvability_comparison(
     # Bootstrap
     registry, store = bootstrap_registry()
 
-    tfidf = SolvabilityEstimator(store)
+    tfidf = SolvabilityEstimator(store, use_intent_scoring=True)
+    tfidf_raw = SolvabilityEstimator(store, use_intent_scoring=False)
     neural = NeuralSolvabilityEstimator(store, model_path=Path("models/reward_mlp.pt"))
 
     print(f"Neural MLP trained: {neural.is_trained}")
@@ -56,18 +57,17 @@ def run_solvability_comparison(
     print(f"Scenarios: {len(scenarios)}")
     print()
 
+    # ── Run 1: TF-IDF (with intent scoring) vs Neural ────────────
     comparison = SolvabilityComparison(
         tfidf_estimator=tfidf,
         neural_estimator=neural,
         registry=registry,
     )
 
-    # Run comparison
     t0 = time.time()
     results = comparison.compare_on_scenarios(scenarios)
     wall_time = time.time() - t0
 
-    # Print results
     if detailed:
         comparison.print_detailed(results)
 
@@ -77,6 +77,68 @@ def run_solvability_comparison(
     summary = comparison.compute_summary(results)
     summary["wall_time_seconds"] = round(wall_time, 2)
     summary["neural_mlp_trained"] = neural.is_trained
+
+    # ── Run 2: TF-IDF (raw, no intent scoring) vs Neural ─────────
+    print("\n")
+    comparison_raw = SolvabilityComparison(
+        tfidf_estimator=tfidf_raw,
+        neural_estimator=neural,
+        registry=registry,
+    )
+
+    results_raw = comparison_raw.compare_on_scenarios(scenarios)
+
+    # Override header for raw comparison
+    print("=" * 70)
+    print("ABLATION: TF-IDF (raw, no intent scoring) vs Neural")
+    print("=" * 70)
+    raw_summary = comparison_raw.compute_summary(results_raw)
+    total = raw_summary["total_scenarios"]
+    print(f"Total subtasks evaluated: {total}")
+    print()
+    print("OVERALL ACCURACY:")
+    print(
+        f"  TF-IDF (raw): {raw_summary['tfidf_correct']}/{total}"
+        f" ({100*raw_summary['tfidf_accuracy']:.1f}%)"
+    )
+    print(
+        f"  Neural:       {raw_summary['neural_correct']}/{total}"
+        f" ({100*raw_summary['neural_accuracy']:.1f}%)"
+    )
+    print(f"  Agreement:    {100*raw_summary['agreement_rate']:.1f}%")
+
+    std = raw_summary["standard_match"]
+    lex = raw_summary["lexical_gap"]
+    print(f"\nSTANDARD MATCH ({std['count']} cases):")
+    print(f"  TF-IDF (raw): {100*std['tfidf_accuracy']:.1f}%")
+    print(f"  Neural:       {100*std['neural_accuracy']:.1f}%")
+    print(f"\nLEXICAL GAP ({lex['count']} cases):")
+    print(f"  TF-IDF (raw): {100*lex['tfidf_accuracy']:.1f}%")
+    print(f"  Neural:       {100*lex['neural_accuracy']:.1f}%")
+
+    mc = raw_summary["mcnemar"]
+    print("\nMcNEMAR'S TEST:")
+    ct = mc["contingency"]
+    print(f"  Both correct: {ct['both_correct']}  |  TF-IDF only: {ct['tfidf_only']}")
+    print(f"  Neural only:  {ct['neural_only']}  |  Both wrong:   {ct['both_wrong']}")
+    print(
+        f"  chi2={mc['chi2']:.4f}  p={mc['p_value']:.4f}"
+        f"  significant={mc['significant_at_005']}"
+    )
+    print(f"  Favours: {mc['favours']}")
+
+    by_cat = raw_summary["by_category"]
+    if by_cat:
+        print("\nPER-CATEGORY ACCURACY:")
+        for cat, data in by_cat.items():
+            print(
+                f"  {cat:25s}  n={data['count']:2d}  "
+                f"TF-IDF(raw)={100*data['tfidf_accuracy']:5.1f}%  "
+                f"Neural={100*data['neural_accuracy']:5.1f}%"
+            )
+    print("=" * 70)
+
+    summary["ablation_raw_tfidf"] = raw_summary
 
     # Export
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -124,10 +124,12 @@ class SolvabilityEstimator:
         performance_store: PerformanceStore,
         alpha: float = 0.6,
         beta: float = 0.4,
+        use_intent_scoring: bool = True,
     ):
         self.store = performance_store
         self.alpha = alpha
         self.beta = beta
+        self.use_intent_scoring = use_intent_scoring
 
     def estimate(
         self,
@@ -183,7 +185,8 @@ class SolvabilityEstimator:
                 hist_perf = self._historical_performance(aid)
                 combined = self.alpha * txt_sim + self.beta * hist_perf
 
-                # Intent-aware scoring adjustment:
+                # Intent-aware scoring adjustment (optional — controlled by
+                # use_intent_scoring flag):
                 #
                 # (a) Penalty (multiplicative): penalise mismatched (subtask, agent) pairs.
                 #     INFORMATIONAL subtask + action agent → ×0.3
@@ -199,20 +202,21 @@ class SolvabilityEstimator:
                 penalty_applied = False
                 bonus_applied = False
 
-                if subtask_intent == "informational":
-                    if inferred_kind == "action":
-                        combined *= self._ACTION_PENALTY
-                        penalty_applied = True
-                    if inferred_kind == "knowledge":
-                        combined += self._INTENT_KIND_BONUS
-                        bonus_applied = True
-                elif subtask_intent == "action":
-                    if inferred_kind == "knowledge":
-                        combined *= self._ACTION_PENALTY
-                        penalty_applied = True
-                    if inferred_kind == "action":
-                        combined += self._INTENT_KIND_BONUS
-                        bonus_applied = True
+                if self.use_intent_scoring:
+                    if subtask_intent == "informational":
+                        if inferred_kind == "action":
+                            combined *= self._ACTION_PENALTY
+                            penalty_applied = True
+                        if inferred_kind == "knowledge":
+                            combined += self._INTENT_KIND_BONUS
+                            bonus_applied = True
+                    elif subtask_intent == "action":
+                        if inferred_kind == "knowledge":
+                            combined *= self._ACTION_PENALTY
+                            penalty_applied = True
+                        if inferred_kind == "action":
+                            combined += self._INTENT_KIND_BONUS
+                            bonus_applied = True
 
                 modifiers = ""
                 if penalty_applied:
