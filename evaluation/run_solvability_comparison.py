@@ -45,15 +45,33 @@ def run_solvability_comparison(
         scenarios = scenarios[:max_scenarios]
         print(f"Dry-run mode: running {len(scenarios)} scenarios only")
 
-    # Bootstrap
-    registry, store = bootstrap_registry()
+    # Bootstrap — use a clean PerformanceStore so all agents start at
+    # the 0.5 neutral prior.  The production store (.factory/performance_history.json)
+    # may contain leftover records from previous runs that bias scoring.
+    import tempfile
 
-    tfidf = SolvabilityEstimator(store, use_intent_scoring=True)
-    tfidf_raw = SolvabilityEstimator(store, use_intent_scoring=False)
-    neural = NeuralSolvabilityEstimator(store, model_path=Path("models/reward_mlp.pt"))
+    from app.orchestration.performance_store import PerformanceStore
+
+    registry, _prod_store = bootstrap_registry()
+    clean_store = PerformanceStore(
+        path=str(Path(tempfile.mkdtemp(prefix="solv_eval_")) / "empty_store.json")
+    )
+
+    # Verify neutral priors
+    for aid in registry.all_ids():
+        assert (
+            clean_store.agent_avg_score(aid) == 0.5
+        ), f"Expected neutral prior 0.5 for {aid}"
+
+    tfidf = SolvabilityEstimator(clean_store, use_intent_scoring=True)
+    tfidf_raw = SolvabilityEstimator(clean_store, use_intent_scoring=False)
+    neural = NeuralSolvabilityEstimator(
+        clean_store, model_path=Path("models/reward_mlp.pt")
+    )
 
     print(f"Neural MLP trained: {neural.is_trained}")
     print(f"Agents in registry: {registry.all_ids()}")
+    print("Performance store: clean (all agents at 0.5 neutral prior)")
     print(f"Scenarios: {len(scenarios)}")
     print()
 
