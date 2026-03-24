@@ -496,6 +496,7 @@ The system includes a research evaluation framework that tests four research que
 ```
 evaluation/
 ├── harness.py                    # RQ1: Routing accuracy & orchestration
+<<<<<<< HEAD
 ├── solvability_comparison.py     # RQ1: TF-IDF vs Neural solvability comparison
 ├── run_solvability_comparison.py # RQ1: Solvability comparison runner (45 scenarios)
 ├── rq2_harness.py                # RQ2: Explainability & IEEE compliance
@@ -522,6 +523,7 @@ evaluation/
 Runs 30 scenarios through `RuntimeSpine`, comparing routed agent and intent against ground truth. Measures routing accuracy, orchestration pattern selection, and agent selection rates.
 
 **Solvability Estimator Comparison:** `evaluation/run_solvability_comparison.py` compares TF-IDF vs Neural solvability estimators on 45 subtask scenarios with McNemar's test. TF-IDF with intent-aware scoring (73.3%) significantly outperforms the neural MLP (33.3%, p<0.001). See `docs/neural-solvability.md`.
+
 
 ### RQ2 — Explainability & IEEE Compliance
 

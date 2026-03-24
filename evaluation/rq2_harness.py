@@ -577,6 +577,7 @@ def run_rq2_evaluation(
             time.sleep(INTER_SCENARIO_DELAY)
 
     total_elapsed = time.time() - total_start
+
     metrics = harness.compute_metrics(all_results)
 
     # Print summary
