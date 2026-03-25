@@ -669,7 +669,6 @@ class DomainAgentEngine:
             "intent": self.config.domain,
             "domain": self.config.domain,
             "agent_id": self.config.agent_id,
-            "score": 0.7,
         }
 
         if last_step.action == "respond":
