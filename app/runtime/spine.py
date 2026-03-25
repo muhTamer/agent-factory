@@ -261,8 +261,19 @@ class RuntimeSpine:
                 }
             )
 
+        # IEEE 3152-R2: disclose agent identity for delegation responses.
+        # At the task-menu stage no single domain agent has executed yet,
+        # so there is no top-level agent_id. Instead, delegated_agents
+        # lists the real agents assigned to each subtask — the 3152-R2
+        # compliance check recognises this as agent identity disclosure
+        # for multi-agent delegation patterns.
+        delegated_agents = [
+            st.assigned_agent_id for st in pending if st.assigned_agent_id
+        ]
+
         return {
             "text": "",  # Filled by voice rendering
+            "delegated_agents": delegated_agents,
             "orchestration_pattern": "aop_task_menu",
             "task_menu": task_list,
             "plan_query": plan.query,

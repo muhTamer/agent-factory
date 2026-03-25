@@ -613,15 +613,29 @@ class IEEEComplianceChecker:
         )
 
         # R2: Agent identity disclosed
+        # For direct routing, agent_id identifies the single handling agent.
+        # For multi-agent delegation, delegated_agents lists the agents
+        # assigned to subtasks — this satisfies 3152-R2 because the user
+        # can identify which agents are involved in handling their request.
         agent_id = response.get("agent_id") or (
             env.get("sender", {}).get("agent_id") if env else None
         )
+        delegated = response.get("delegated_agents", [])
+        has_identity = bool(agent_id) or (
+            isinstance(delegated, list) and len(delegated) > 0
+        )
+        if agent_id:
+            evidence = f"agent_id={agent_id}"
+        elif delegated:
+            evidence = f"delegated_agents={delegated}"
+        else:
+            evidence = ""
         results.append(
             ComplianceResult(
                 requirement=IEEE_3152_REQUIREMENTS[1],
-                compliant=bool(agent_id),
-                evidence=f"agent_id={agent_id}" if agent_id else "",
-                gap="" if agent_id else "No agent identity disclosed in response",
+                compliant=has_identity,
+                evidence=evidence,
+                gap="" if has_identity else "No agent identity disclosed in response",
             )
         )
 

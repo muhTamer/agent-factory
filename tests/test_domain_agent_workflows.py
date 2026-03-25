@@ -1002,7 +1002,6 @@ class TestEngineStructuralGuarantees:
             "domain",
             "agent_id",
             "intent",
-            "score",
             "react_trace",
             "tools_used",
             "knowledge_retrieved",

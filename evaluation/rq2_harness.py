@@ -184,6 +184,11 @@ class RQ2Harness:
             trace.add(
                 "select", selected_agent=resp["agent_id"], score=resp.get("score", 0)
             )
+        if resp.get("delegated_agents"):
+            trace.add(
+                "aop_delegation",
+                delegated_agents=resp["delegated_agents"],
+            )
         if resp.get("subtask_results"):
             trace.add(
                 "aop_execute",
@@ -256,8 +261,11 @@ class RQ2Harness:
                 result.provenance_present = True
                 break
 
-        # Agent identity
-        result.agent_identity_disclosed = bool(resp.get("agent_id"))
+        # Agent identity (direct routing or delegation via delegated_agents)
+        delegated = resp.get("delegated_agents", [])
+        result.agent_identity_disclosed = bool(resp.get("agent_id")) or (
+            isinstance(delegated, list) and len(delegated) > 0
+        )
 
         # Decisions documented
         detailed = expl_dicts.get("detailed", {})
