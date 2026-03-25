@@ -496,7 +496,6 @@ The system includes a research evaluation framework that tests four research que
 ```
 evaluation/
 ├── harness.py                    # RQ1: Routing accuracy & orchestration
-<<<<<<< HEAD
 ├── solvability_comparison.py     # RQ1: TF-IDF vs Neural solvability comparison
 ├── run_solvability_comparison.py # RQ1: Solvability comparison runner (45 scenarios)
 ├── rq2_harness.py                # RQ2: Explainability & IEEE compliance

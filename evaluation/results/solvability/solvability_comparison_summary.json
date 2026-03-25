@@ -16,9 +16,9 @@
     "neural_accuracy": 0.875
   },
   "latency": {
-    "avg_tfidf_ms": 1.47,
-    "avg_neural_ms": 144.4,
-    "speedup_factor": 98.5
+    "avg_tfidf_ms": 1.25,
+    "avg_neural_ms": 131.8,
+    "speedup_factor": 105.1
   },
   "mcnemar": {
     "contingency": {
@@ -132,7 +132,7 @@
       "refunds_agent_v1": 14
     }
   },
-  "wall_time_seconds": 6.56,
+  "wall_time_seconds": 5.99,
   "neural_mlp_trained": true,
   "ablation_raw_tfidf": {
     "total_scenarios": 45,
@@ -152,9 +152,9 @@
       "neural_accuracy": 0.7083
     },
     "latency": {
-      "avg_tfidf_ms": 1.6,
-      "avg_neural_ms": 161.22,
-      "speedup_factor": 100.9
+      "avg_tfidf_ms": 1.13,
+      "avg_neural_ms": 117.31,
+      "speedup_factor": 103.4
     },
     "mcnemar": {
       "contingency": {

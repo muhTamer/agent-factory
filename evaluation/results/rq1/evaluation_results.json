@@ -7,7 +7,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 25361.14309995901,
+    "latency_ms": 30592.95770013705,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -19,7 +19,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 25361.14309995901
+        "latency_ms": 30592.95770013705
       }
     ],
     "governance_events": []
@@ -32,7 +32,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 29130.21239999216,
+    "latency_ms": 31915.280200075358,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -44,7 +44,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 29130.21239999216
+        "latency_ms": 31915.280200075358
       }
     ],
     "governance_events": []
@@ -57,7 +57,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 27346.594300004654,
+    "latency_ms": 35818.152599968016,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -69,7 +69,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 27346.594300004654
+        "latency_ms": 35818.152599968016
       }
     ],
     "governance_events": []
@@ -82,7 +82,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 27682.774100103416,
+    "latency_ms": 30730.82109983079,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -94,7 +94,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 27682.774100103416
+        "latency_ms": 30730.82109983079
       }
     ],
     "governance_events": []
@@ -107,7 +107,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 23038.28540001996,
+    "latency_ms": 26246.839500032365,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -119,7 +119,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 23038.28540001996
+        "latency_ms": 26246.839500032365
       }
     ],
     "governance_events": []
@@ -132,7 +132,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 40751.831499976106,
+    "latency_ms": 44793.450499884784,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -144,7 +144,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 40751.831499976106
+        "latency_ms": 44793.450499884784
       }
     ],
     "governance_events": []
@@ -157,7 +157,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 71336.96690003853,
+    "latency_ms": 59830.75369987637,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -169,7 +169,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 71336.96690003853
+        "latency_ms": 59830.75369987637
       }
     ],
     "governance_events": []
@@ -178,11 +178,11 @@
     "scenario_id": "refund_01",
     "category": "actionable_routing",
     "description": "Refund: simple eligible refund under EUR 5000",
-    "success": false,
+    "success": true,
     "pattern_correct": true,
     "agent_correct": true,
-    "answer_keywords_found": false,
-    "latency_ms": 40550.47550005838,
+    "answer_keywords_found": true,
+    "latency_ms": 55535.1413001772,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -193,8 +193,8 @@
         "query": "I want a refund for a EUR 200 charge on my account",
         "pattern_correct": true,
         "agent_correct": true,
-        "answer_keywords_found": false,
-        "latency_ms": 40550.47550005838
+        "answer_keywords_found": true,
+        "latency_ms": 55535.1413001772
       }
     ],
     "governance_events": []
@@ -203,11 +203,11 @@
     "scenario_id": "refund_02",
     "category": "actionable_routing",
     "description": "Refund: customer provides transaction details",
-    "success": false,
+    "success": true,
     "pattern_correct": true,
     "agent_correct": true,
-    "answer_keywords_found": false,
-    "latency_ms": 46365.585800027475,
+    "answer_keywords_found": true,
+    "latency_ms": 79492.29299998842,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -218,8 +218,8 @@
         "query": "I need a refund for order number 12345, charged EUR 150 on my card",
         "pattern_correct": true,
         "agent_correct": true,
-        "answer_keywords_found": false,
-        "latency_ms": 46365.585800027475
+        "answer_keywords_found": true,
+        "latency_ms": 79492.29299998842
       }
     ],
     "governance_events": []
@@ -232,7 +232,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": false,
-    "latency_ms": 37386.44199992996,
+    "latency_ms": 56871.49560009129,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -244,7 +244,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": false,
-        "latency_ms": 37386.44199992996
+        "latency_ms": 56871.49560009129
       }
     ],
     "governance_events": []
@@ -257,7 +257,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 40542.97319997568,
+    "latency_ms": 35943.12920002267,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -269,7 +269,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 40542.97319997568
+        "latency_ms": 35943.12920002267
       }
     ],
     "governance_events": []
@@ -282,7 +282,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": false,
-    "latency_ms": 40853.065700037405,
+    "latency_ms": 39626.7423001118,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -294,7 +294,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": false,
-        "latency_ms": 40853.065700037405
+        "latency_ms": 39626.7423001118
       }
     ],
     "governance_events": []
@@ -307,7 +307,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 125190.4733000556,
+    "latency_ms": 54896.347399801016,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -319,7 +319,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 125190.4733000556
+        "latency_ms": 54896.347399801016
       }
     ],
     "governance_events": []
@@ -332,7 +332,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 105072.73560005706,
+    "latency_ms": 64635.45550010167,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -344,7 +344,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 105072.73560005706
+        "latency_ms": 64635.45550010167
       }
     ],
     "governance_events": []
@@ -357,7 +357,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 97131.42629992217,
+    "latency_ms": 40707.0950998459,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -369,7 +369,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 97131.42629992217
+        "latency_ms": 40707.0950998459
       }
     ],
     "governance_events": []
@@ -382,7 +382,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": false,
-    "latency_ms": 89843.85940001812,
+    "latency_ms": 47212.29650010355,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -394,7 +394,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": false,
-        "latency_ms": 89843.85940001812
+        "latency_ms": 47212.29650010355
       }
     ],
     "governance_events": []
@@ -407,7 +407,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 82312.02589999884,
+    "latency_ms": 44543.18400006741,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -419,7 +419,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 82312.02589999884
+        "latency_ms": 44543.18400006741
       }
     ],
     "governance_events": []
@@ -432,10 +432,10 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 40634.70519997645,
+    "latency_ms": 41080.41119994596,
     "agent_calls": 1,
     "completeness_score": 1.0,
-    "solvability_score": 0.1686,
+    "solvability_score": 0.71825,
     "error": null,
     "turns": [
       {
@@ -444,7 +444,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 40634.70519997645
+        "latency_ms": 41080.41119994596
       }
     ],
     "governance_events": []
@@ -457,10 +457,10 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 66034.22090003733,
+    "latency_ms": 40415.861499961466,
     "agent_calls": 1,
     "completeness_score": 1.0,
-    "solvability_score": 0.26355,
+    "solvability_score": 0.53625,
     "error": null,
     "turns": [
       {
@@ -469,7 +469,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 66034.22090003733
+        "latency_ms": 40415.861499961466
       }
     ],
     "governance_events": []
@@ -482,10 +482,10 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 62251.27300003078,
+    "latency_ms": 39192.14840000495,
     "agent_calls": 1,
     "completeness_score": 1.0,
-    "solvability_score": 0.3274666666666667,
+    "solvability_score": 0.6499999999999999,
     "error": null,
     "turns": [
       {
@@ -494,7 +494,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 62251.27300003078
+        "latency_ms": 39192.14840000495
       }
     ],
     "governance_events": []
@@ -507,10 +507,10 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 69001.18929997552,
+    "latency_ms": 124689.6278001368,
     "agent_calls": 1,
     "completeness_score": 1.0,
-    "solvability_score": 0.14345,
+    "solvability_score": 0.7971333333333334,
     "error": null,
     "turns": [
       {
@@ -519,7 +519,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 69001.18929997552
+        "latency_ms": 124689.6278001368
       }
     ],
     "governance_events": []
@@ -532,10 +532,10 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 78462.26860000752,
+    "latency_ms": 64532.50220022164,
     "agent_calls": 1,
-    "completeness_score": 0.6,
-    "solvability_score": 0.274925,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8,
     "error": null,
     "turns": [
       {
@@ -544,7 +544,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 78462.26860000752
+        "latency_ms": 64532.50220022164
       }
     ],
     "governance_events": []
@@ -557,10 +557,10 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 81634.8624000093,
+    "latency_ms": 34613.88930003159,
     "agent_calls": 1,
     "completeness_score": 1.0,
-    "solvability_score": 0.353925,
+    "solvability_score": 0.94995,
     "error": null,
     "turns": [
       {
@@ -569,7 +569,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 81634.8624000093
+        "latency_ms": 34613.88930003159
       }
     ],
     "governance_events": []
@@ -582,7 +582,7 @@
     "pattern_correct": false,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 58287.89320006035,
+    "latency_ms": 81295.2293001581,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -594,7 +594,7 @@
         "pattern_correct": false,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 58287.89320006035
+        "latency_ms": 81295.2293001581
       }
     ],
     "governance_events": []
@@ -607,10 +607,10 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 35384.16900008451,
+    "latency_ms": 49598.67289988324,
     "agent_calls": 1,
     "completeness_score": 1.0,
-    "solvability_score": 0.20326666666666668,
+    "solvability_score": 0.94755,
     "error": null,
     "turns": [
       {
@@ -619,7 +619,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 35384.16900008451
+        "latency_ms": 49598.67289988324
       }
     ],
     "governance_events": []
@@ -632,7 +632,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 39982.72500000894,
+    "latency_ms": 46797.17339994386,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -644,7 +644,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 39982.72500000894
+        "latency_ms": 46797.17339994386
       }
     ],
     "governance_events": []
@@ -657,7 +657,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": false,
-    "latency_ms": 81316.98870006949,
+    "latency_ms": 47917.31639998034,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -669,7 +669,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": false,
-        "latency_ms": 81316.98870006949
+        "latency_ms": 47917.31639998034
       }
     ],
     "governance_events": []
@@ -682,10 +682,10 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 91820.12930000201,
+    "latency_ms": 38648.557299980894,
     "agent_calls": 1,
-    "completeness_score": 0.75,
-    "solvability_score": 0.24398,
+    "completeness_score": 1.0,
+    "solvability_score": 0.48235,
     "error": null,
     "turns": [
       {
@@ -694,7 +694,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 91820.12930000201
+        "latency_ms": 38648.557299980894
       }
     ],
     "governance_events": []
@@ -707,7 +707,7 @@
     "pattern_correct": true,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 36267.820200067945,
+    "latency_ms": 31856.470099883154,
     "agent_calls": 1,
     "completeness_score": null,
     "solvability_score": 0.7,
@@ -719,7 +719,7 @@
         "pattern_correct": true,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 36267.820200067945
+        "latency_ms": 31856.470099883154
       }
     ],
     "governance_events": []
@@ -729,22 +729,22 @@
     "category": "graceful_degradation",
     "description": "Legal threat requiring human intervention (graceful AOP handling)",
     "success": true,
-    "pattern_correct": true,
+    "pattern_correct": false,
     "agent_correct": true,
     "answer_keywords_found": true,
-    "latency_ms": 73077.50729995314,
+    "latency_ms": 38129.096100106835,
     "agent_calls": 1,
-    "completeness_score": 1.0,
-    "solvability_score": 0.23472500000000002,
+    "completeness_score": null,
+    "solvability_score": 0.7,
     "error": null,
     "turns": [
       {
         "turn_index": 0,
         "query": "I am suing your bank for negligence and demand my lawyer speaks with your CEO immediately",
-        "pattern_correct": true,
+        "pattern_correct": false,
         "agent_correct": true,
         "answer_keywords_found": true,
-        "latency_ms": 73077.50729995314
+        "latency_ms": 38129.096100106835
       }
     ],
     "governance_events": []

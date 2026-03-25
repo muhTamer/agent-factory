@@ -1,16 +1,16 @@
 {
-  "orchestration_accuracy": 0.9667,
-  "reasoning_accuracy": 0.8,
+  "orchestration_accuracy": 0.9333,
+  "reasoning_accuracy": 0.8667,
   "agent_accuracy": 1.0,
-  "solvability_correlation": -0.3206,
-  "completeness_rate": 0.9278,
-  "avg_latency_ms": 58801.75,
+  "solvability_correlation": 0.0582,
+  "completeness_rate": 1.0,
+  "avg_latency_ms": 48605.28,
   "latency_by_category": {
-    "actionable_routing": 70524.91,
-    "graceful_degradation": 64493.03,
-    "hierarchical_delegation": 66336.42,
-    "hitl_escalation": 46836.03,
-    "informational_routing": 34949.69
+    "actionable_routing": 51946.32,
+    "graceful_degradation": 40669.72,
+    "hierarchical_delegation": 57420.74,
+    "hitl_escalation": 65446.95,
+    "informational_routing": 37132.61
   },
   "steps_by_category": {
     "actionable_routing": 1.0,
@@ -20,9 +20,9 @@
     "informational_routing": 1.0
   },
   "total_scenarios": 30,
-  "passed": 24,
-  "failed": 6,
+  "passed": 26,
+  "failed": 4,
   "execution_mode": "real_llm",
-  "total_wall_time_seconds": 1793.2,
+  "total_wall_time_seconds": 1487.32,
   "inter_scenario_delay_seconds": 1.0
 }

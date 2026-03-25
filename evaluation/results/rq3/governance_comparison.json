@@ -2,28 +2,33 @@
   "per_level": {
     "low": {
       "governance_level": "low",
-      "total_scenarios": 28,
-      "task_completion_rate": 0.6786,
+      "total_scenarios": 31,
+      "task_completion_rate": 0.5484,
       "intervention_rate": 0.0,
       "autonomy_score": 1.0,
-      "avg_latency_ms": 53344.32,
+      "avg_latency_ms": 52057.72,
       "total_governance_blocks": 0,
       "total_governance_escalations": 0,
       "total_governance_mutations": 0,
-      "total_governance_skips": 112,
+      "total_governance_skips": 124,
       "false_positive_rate": 0.0,
-      "passed": 19,
-      "failed": 9,
+      "passed": 17,
+      "failed": 14,
       "by_category": {
         "compliance_violation": {
           "count": 4,
-          "passed": 1,
-          "task_completion_rate": 0.25
+          "passed": 0,
+          "task_completion_rate": 0.0
         },
         "hallucination_risk": {
           "count": 4,
-          "passed": 4,
-          "task_completion_rate": 1.0
+          "passed": 3,
+          "task_completion_rate": 0.75
+        },
+        "high_only_compliance": {
+          "count": 3,
+          "passed": 1,
+          "task_completion_rate": 0.3333
         },
         "input_validation": {
           "count": 5,
@@ -32,8 +37,8 @@
         },
         "safe_request": {
           "count": 12,
-          "passed": 8,
-          "task_completion_rate": 0.6667
+          "passed": 7,
+          "task_completion_rate": 0.5833
         },
         "tone_violation": {
           "count": 3,
@@ -44,18 +49,18 @@
     },
     "medium": {
       "governance_level": "medium",
-      "total_scenarios": 28,
-      "task_completion_rate": 0.6071,
-      "intervention_rate": 0.0714,
-      "autonomy_score": 0.9286,
-      "avg_latency_ms": 42499.49,
+      "total_scenarios": 31,
+      "task_completion_rate": 0.6129,
+      "intervention_rate": 0.0645,
+      "autonomy_score": 0.9355,
+      "avg_latency_ms": 35141.65,
       "total_governance_blocks": 2,
       "total_governance_escalations": 0,
       "total_governance_mutations": 0,
       "total_governance_skips": 0,
       "false_positive_rate": 0.0,
-      "passed": 17,
-      "failed": 11,
+      "passed": 19,
+      "failed": 12,
       "by_category": {
         "compliance_violation": {
           "count": 4,
@@ -67,10 +72,15 @@
           "passed": 4,
           "task_completion_rate": 1.0
         },
+        "high_only_compliance": {
+          "count": 3,
+          "passed": 1,
+          "task_completion_rate": 0.3333
+        },
         "input_validation": {
           "count": 5,
-          "passed": 2,
-          "task_completion_rate": 0.4
+          "passed": 3,
+          "task_completion_rate": 0.6
         },
         "safe_request": {
           "count": 12,
@@ -86,18 +96,18 @@
     },
     "high": {
       "governance_level": "high",
-      "total_scenarios": 28,
-      "task_completion_rate": 0.5357,
-      "intervention_rate": 0.1429,
-      "autonomy_score": 0.8571,
-      "avg_latency_ms": 34696.55,
+      "total_scenarios": 31,
+      "task_completion_rate": 0.5161,
+      "intervention_rate": 0.129,
+      "autonomy_score": 0.871,
+      "avg_latency_ms": 32463.69,
       "total_governance_blocks": 4,
       "total_governance_escalations": 0,
       "total_governance_mutations": 0,
       "total_governance_skips": 0,
       "false_positive_rate": 0.0,
-      "passed": 15,
-      "failed": 13,
+      "passed": 16,
+      "failed": 15,
       "by_category": {
         "compliance_violation": {
           "count": 4,
@@ -106,8 +116,13 @@
         },
         "hallucination_risk": {
           "count": 4,
-          "passed": 4,
-          "task_completion_rate": 1.0
+          "passed": 3,
+          "task_completion_rate": 0.75
+        },
+        "high_only_compliance": {
+          "count": 3,
+          "passed": 1,
+          "task_completion_rate": 0.3333
         },
         "input_validation": {
           "count": 5,
@@ -116,8 +131,8 @@
         },
         "safe_request": {
           "count": 12,
-          "passed": 8,
-          "task_completion_rate": 0.6667
+          "passed": 9,
+          "task_completion_rate": 0.75
         },
         "tone_violation": {
           "count": 3,
@@ -196,12 +211,12 @@
     }
   },
   "tradeoffs": {
-    "completion_delta": 0.1429,
-    "autonomy_delta": 0.1429,
-    "intervention_delta": 0.1429,
-    "latency_delta_ms": -18647.77
+    "completion_delta": 0.0323,
+    "autonomy_delta": 0.129,
+    "intervention_delta": 0.129,
+    "latency_delta_ms": -19594.03
   },
   "execution_mode": "real_llm",
-  "total_wall_time_seconds": 4512.98,
-  "total_scenarios": 28
+  "total_wall_time_seconds": 4609.74,
+  "total_scenarios": 31
 }
