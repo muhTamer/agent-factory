@@ -491,52 +491,83 @@ The default demo server uses the **configurable MCP server**, which reads tool d
 
 ## Evaluation Framework
 
-The system includes a research evaluation framework that tests four research questions using real LLM calls against the live runtime.
+The system includes a comprehensive research evaluation framework with **three baselines** (Meta-Agent Factory, AutoGen, LangGraph), **60 ground truth scenarios**, and automated retry for Azure rate-limit failures. See [docs/evaluation.md](docs/evaluation.md) for full details.
 
 ```
 evaluation/
-├── harness.py                    # RQ1: Routing accuracy & orchestration
-├── solvability_comparison.py     # RQ1: TF-IDF vs Neural solvability comparison
-├── run_solvability_comparison.py # RQ1: Solvability comparison runner (45 scenarios)
+├── harness.py                    # RQ1: Meta-Agent Factory routing & orchestration
+├── autogen_baseline.py           # RQ1: AutoGen SelectorGroupChat baseline
+├── langgraph_baseline.py         # RQ1: LangGraph Supervisor baseline
+├── retry_eval_timeouts.py        # Unified retry for Azure rate-limit timeouts
+├── retry_autogen_timeouts.py     # AutoGen-specific async retry
+├── solvability_comparison.py     # TF-IDF vs Neural solvability comparison
 ├── rq2_harness.py                # RQ2: Explainability & IEEE compliance
 ├── rq2_judge.py                  # RQ2: LLM-as-judge for explanation quality
 ├── run_governance_comparison.py  # RQ3: Governance trade-off evaluation
 ├── governance_metrics.py         # RQ3: Metrics aggregation
-├── rq4/                          # RQ4: Multi-turn conversation evaluation
-│   ├── harness.py
-│   ├── judge.py
-│   └── scenarios/
-├── scenarios/                    # Ground truth & governance scenarios
-│   ├── ground_truth.json         # 30 scenarios with expected agents/intents
+├── run_ablation.py               # Component ablation studies
+├── smoke_test.py                 # Quick pre-evaluation validation
+├── scenarios/                    # Ground truth scenarios
+│   ├── ground_truth.json         # 60 scenarios across 5 categories
 │   ├── governance_scenarios.json # 28 scenarios per governance level
-│   └── solvability_scenarios.json # 45 subtask scenarios for estimator comparison
-└── results/                      # Output directory (gitignored)
-    ├── rq1/
-    ├── rq2/
-    ├── rq3/
-    └── solvability/
+│   └── solvability_scenarios.json
+├── results/                      # Output directory (gitignored)
+│   ├── rq1/
+│   ├── autogen_baseline/
+│   ├── langgraph_baseline/
+│   ├── rq2/
+│   ├── rq3/
+│   └── solvability/
+└── logs/                         # Evaluation run logs
 ```
 
-### RQ1 — Intent Routing & Orchestration
+### Scenario Categories (60 total)
 
-Runs 30 scenarios through `RuntimeSpine`, comparing routed agent and intent against ground truth. Measures routing accuracy, orchestration pattern selection, and agent selection rates.
+| Category | N | Description |
+|----------|---|-------------|
+| `informational_routing` | 14 | FAQ and knowledge queries → single agent |
+| `actionable_routing` | 10 | Tool-calling workflows (refund, complaint) |
+| `hierarchical_delegation` | 24 | Multi-intent → AOP decomposition |
+| `hitl_escalation` | 6 | Human-in-the-loop escalation triggers |
+| `graceful_degradation` | 6 | Edge cases, ambiguous queries, fallback |
 
-**Solvability Estimator Comparison:** `evaluation/run_solvability_comparison.py` compares TF-IDF vs Neural solvability estimators on 45 subtask scenarios with McNemar's test. TF-IDF with intent-aware scoring (73.3%) significantly outperforms the neural MLP (33.3%, p<0.001). See `docs/neural-solvability.md`.
+### RQ1 — Framework Comparison
 
+Three-way comparison of orchestration frameworks on the same 60 scenarios:
+
+1. **Meta-Agent Factory** — Our RuntimeSpine with intent-aware routing, AOP, and governance
+2. **AutoGen SelectorGroupChat** — Microsoft's multi-agent chat with LLM-based speaker selection (`max_messages=4`)
+3. **LangGraph Supervisor** — LangChain's supervisor pattern with `create_supervisor` and ReAct agents
+
+All baselines use the same model (`gpt-5-mini`), knowledge corpora, and tool stubs to isolate architectural differences.
+
+**Soft-Pass Mechanism:** When routing is correct but the LLM non-deterministically skips tool calls (answers from knowledge instead), the scenario is marked `success=True, soft_pass=True`. This captures LLM non-determinism without penalizing correct orchestration.
+
+**Retry System:** Azure S0 tier rate limits cause frequent timeouts, especially with AutoGen's multi-agent message passing (3x API calls per turn). The `retry_eval_timeouts.py` script loops retries until zero timeout failures remain, with progressive delay escalation between rounds.
+
+```bash
+# Run baselines
+python -m evaluation.autogen_baseline
+python -m evaluation.langgraph_baseline
+
+# Retry timeout failures (loops until zero remain)
+python -m evaluation.retry_eval_timeouts --framework autogen --delay 20 --timeout 600
+python -m evaluation.retry_eval_timeouts --framework langgraph --delay 20 --timeout 600
+```
 
 ### RQ2 — Explainability & IEEE Compliance
 
 Two-layer evaluation:
 1. **Structural compliance** — Checks IEEE P3394, 2894-2024, and 3152-2024 field presence (deterministic)
-2. **LLM-as-judge** — Evaluates explanation faithfulness, completeness, and clarity (1–5 scale) by comparing generated explanations against execution traces. Uses `gpt-5-mini` to avoid circularity in structural-only checks.
+2. **LLM-as-judge** — Evaluates explanation faithfulness, completeness, and clarity (1–5 scale) by comparing generated explanations against execution traces
 
 ### RQ3 — Governance Trade-Offs
 
-Runs 28 scenarios at LOW/MEDIUM/HIGH governance levels to measure the trade-off between guardrail strictness and task completion autonomy. Includes a **governance action accuracy** metric that evaluates correctness on 62 deterministic data points (query length blocking, disabled-check pass-through), separating governance mechanism correctness from LLM variance. Supports `--runs N` for multi-run averaging to reduce non-determinism.
+Runs scenarios at LOW/MEDIUM/HIGH governance levels to measure the trade-off between guardrail strictness and task completion autonomy. Includes a **governance action accuracy** metric that separates governance mechanism correctness from LLM variance. Supports `--runs N` for multi-run averaging.
 
-### RQ4 — Multi-Turn Conversations
+### Solvability Estimator Comparison
 
-Evaluates agent performance across multi-turn dialogue using persona-driven strategies (cooperative, adversarial, confused). See `evaluation/rq4/` for details.
+Compares TF-IDF vs Neural (MiniLM+MLP) solvability estimators with McNemar's test for statistical significance. See [docs/neural-solvability.md](docs/neural-solvability.md).
 
 ---
 

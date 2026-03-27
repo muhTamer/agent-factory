@@ -176,7 +176,7 @@ agent-factory/
 │   ├── infer_capabilities.py         # Document classification & agent proposal
 │   │
 │   ├── runtime/                      # Core runtime components
-│   │   ├── spine.py                  # Request orchestration backbone (B3.5)
+│   │   ├── spine.py                  # Request orchestration backbone
 │   │   ├── router.py                 # Intent-aware LLM routing
 │   │   ├── routing.py               # Router protocol & DefaultRouter
 │   │   ├── domain_agent_engine.py    # ReAct reasoning engine
@@ -232,13 +232,19 @@ agent-factory/
 │
 ├── evaluation/                       # Research question evaluation harnesses
 │   ├── harness.py                   # RQ1 harness — routing accuracy & orchestration
+│   ├── autogen_baseline.py          # AutoGen SelectorGroupChat baseline (60 scenarios)
+│   ├── langgraph_baseline.py        # LangGraph Supervisor baseline (60 scenarios)
+│   ├── retry_eval_timeouts.py       # Unified retry for timeout failures (AutoGen/LangGraph)
 │   ├── rq2_harness.py               # RQ2 harness — explainability & IEEE compliance
 │   ├── rq2_judge.py                 # RQ2 LLM-as-judge (faithfulness, completeness, clarity)
 │   ├── run_governance_comparison.py # RQ3 harness — governance trade-off evaluation
 │   ├── governance_metrics.py        # RQ3 metrics aggregation
 │   ├── solvability_comparison.py    # TF-IDF vs Neural estimator comparison
+│   ├── smoke_test.py                # Quick connectivity & agent smoke test
 │   ├── scenarios/                   # Ground truth & governance scenario definitions
-│   ├── results/                     # Evaluation output (rq1/, rq2/, rq3/)
+│   │   └── ground_truth.json        # 60 scenarios across 5 categories
+│   ├── results/                     # Evaluation output (rq1/, autogen/, langgraph/)
+│   ├── logs/                        # Evaluation run logs
 │   └── rq4/                         # RQ4 harness — multi-turn conversation evaluation
 │
 ├── scripts/                          # Utility scripts
@@ -424,3 +430,4 @@ Detailed documentation is available in the [docs/](docs/) directory:
 - **[docs/tools-and-rag.md](docs/tools-and-rag.md)** — Tool system, RAG indexing, embeddings
 - **[docs/governance.md](docs/governance.md)** — IEEE standards, explainability levels, guardrails
 - **[docs/neural-solvability.md](docs/neural-solvability.md)** — Neural solvability estimator: architecture, training, evaluation
+- **[docs/evaluation.md](docs/evaluation.md)** — Evaluation framework: scenarios, baselines, metrics, CLI usage
