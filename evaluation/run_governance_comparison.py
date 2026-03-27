@@ -545,6 +545,37 @@ def run_governance_comparison(
         print(f"    Intervention rise:  {t['intervention_delta']:+.1%}")
         print(f"    Latency increase:   {t['latency_delta_ms']:+.1f} ms")
 
+    # Statistical tests
+    st = final.get("statistical_tests", {})
+    if st and "error" not in st:
+        print("\n  REPEATED-MEASURES STATISTICAL TESTS:")
+        if "cochrans_q" in st and "error" not in st["cochrans_q"]:
+            cq = st["cochrans_q"]
+            sig = "*" if cq["significant"] else "n.s."
+            print(
+                f"    Cochran's Q:        Q={cq['Q']:.3f}, p={cq['p_value']:.4f} {sig}"
+            )
+        if "friedman" in st:
+            fr = st["friedman"]
+            sig = "*" if fr["significant"] else "n.s."
+            print(
+                f"    Friedman:            χ²={fr['chi2']:.3f}, p={fr['p_value']:.4f} {sig}"
+            )
+            print(f"    Kendall's W:         {fr['kendall_w']:.3f}")
+        if "pairwise_wilcoxon" in st:
+            print("    Pairwise (Bonferroni-corrected Wilcoxon):")
+            for pw in st["pairwise_wilcoxon"]:
+                if "error" in pw:
+                    print(f"      {pw['pair']:20s}  error: {pw['error']}")
+                elif "note" in pw:
+                    print(f"      {pw['pair']:20s}  {pw['note']}")
+                else:
+                    sig = "*" if pw["significant"] else "n.s."
+                    print(
+                        f"      {pw['pair']:20s}  p_adj={pw['p_adjusted']:.4f} "
+                        f"Δ={pw['mean_diff']:+.3f} {sig}"
+                    )
+
     if num_runs > 1 and final.get("per_run_completion"):
         print("\n  PER-RUN TASK COMPLETION:")
         for level_name, rates in final["per_run_completion"].items():

@@ -5,9 +5,9 @@ Multi-Level Explainability Engine — IEEE 2894-2024 Alignment
 Generates explanations at three granularity levels from existing
 runtime traces, WITHOUT any LLM calls:
 
-  SUMMARY   — User-facing: "Your question was answered using our FAQ system"
-  DETAILED  — Auditor: agents involved, decision scores, policy citations
-  FULL      — Developer: complete trace with timing and raw data
+  SUMMARY   — User-facing: plain language, no jargon, no internal IDs
+  DETAILED  — Auditor: routing rationale, policies applied, governance checks
+  FULL      — Developer: complete trace with react steps and raw data
 
 Maps directly to IEEE 2894-2024 requirements for explanation completeness,
 accuracy, and audience-appropriateness.
@@ -15,9 +15,10 @@ accuracy, and audience-appropriateness.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.runtime.trace import Trace
 
@@ -50,25 +51,49 @@ class Explanation:
         }
 
 
-# ── Pattern labels for user-facing narratives ────────────────────────
+# ── Human-readable labels ────────────────────────────────────────────
+
+_DOMAIN_LABELS = {
+    "refunds": "Refunds Specialist",
+    "complaints": "Complaints Handler",
+    "faq": "FAQ & Knowledge Base",
+    "general": "General Assistant",
+}
 
 _PATTERN_LABELS = {
-    "direct": "direct agent routing",
-    "hierarchical_delegation": "multi-agent task decomposition (AOP)",
-    "fsm_workflow": "structured workflow processing",
-    "aop_task_menu": "task planning and selection",
+    "direct": "single-agent routing",
+    "hierarchical_delegation": "multi-agent task decomposition",
+    "fsm_workflow": "structured workflow",
+    "aop_task_menu": "task planning",
     "aop_task_result": "task execution",
-    "aop_plan_declined": "task plan declined by user",
+    "aop_plan_declined": "task plan (declined by user)",
 }
 
-_AGENT_TYPE_LABELS = {
-    "faq_rag": "FAQ knowledge base",
-    "workflow_runner": "workflow processor",
-    "aop_coordinator": "task planning coordinator",
-    "tool_operator": "system tool",
-    "rag_fsm": "knowledge retrieval system",
-    "domain_agent": "domain specialist agent",
-}
+
+def _agent_label(agent_id: str, response: Optional[Dict[str, Any]] = None) -> str:
+    """Convert an internal agent_id to a human-readable label."""
+    # If this is the primary agent, use the response's domain
+    if response and response.get("agent_id") == agent_id:
+        domain = response.get("domain", "")
+        if domain and domain in _DOMAIN_LABELS:
+            return _DOMAIN_LABELS[domain]
+    # Try to extract domain from agent_id pattern like "refunds_agent_v1"
+    for key, label in _DOMAIN_LABELS.items():
+        if key in agent_id:
+            return label
+    return agent_id.replace("_", " ").replace("v1", "").strip().title()
+
+
+def _primary_reason(response: Dict[str, Any]) -> Optional[str]:
+    """Get the router's reason for selecting the primary agent."""
+    plan = response.get("router_plan")
+    if not isinstance(plan, dict):
+        return None
+    primary = plan.get("primary", "")
+    for c in plan.get("candidates", []):
+        if isinstance(c, dict) and c.get("id") == primary:
+            return c.get("reason")
+    return None
 
 
 class ExplainabilityEngine:
@@ -79,11 +104,11 @@ class ExplainabilityEngine:
     ) -> Explanation:
         """Generate an explanation at the specified level."""
         if level == ExplanationLevel.SUMMARY:
-            return self._summary_from_trace(trace, response)
+            return self._summary(trace, response)
         elif level == ExplanationLevel.DETAILED:
-            return self._detailed_from_trace(trace, response)
+            return self._detailed(trace, response)
         else:
-            return self._full_from_trace(trace, response)
+            return self._full(trace, response)
 
     def generate_all_levels(
         self, trace: Trace, response: Dict[str, Any]
@@ -94,96 +119,171 @@ class ExplainabilityEngine:
             for level in ExplanationLevel
         }
 
-    # ── Level 1: Summary (user-facing) ───────────────────────────────
+    # ── Level 1: Summary (user-facing, IEEE 2894-R2) ─────────────────
 
-    def _summary_from_trace(
-        self, trace: Trace, response: Dict[str, Any]
-    ) -> Explanation:
-        """User-facing explanation: what happened in plain language."""
+    def _summary(self, trace: Trace, response: Dict[str, Any]) -> Explanation:
+        """User-facing: plain language, no technical jargon or internal IDs."""
+        agent_id = response.get("agent_id", "")
+        label = _agent_label(agent_id, response)
         pattern = response.get("orchestration_pattern", "direct")
-        pattern_label = _PATTERN_LABELS.get(pattern, pattern)
-        agents = self._extract_agents(trace, response)
-        agent_labels = [_AGENT_TYPE_LABELS.get(a, a) for a in agents]
+        needs_input = response.get("needs_input", False)
 
-        # Build narrative
+        parts: List[str] = []
+
+        # What happened
         if pattern == "hierarchical_delegation":
-            subtask_count = len(response.get("subtask_results", []))
-            narrative = (
-                f"Your query was broken into {subtask_count} part(s) and "
-                f"handled by {len(agents)} specialist agent(s) using {pattern_label}."
+            subtasks = response.get("subtask_results", [])
+            parts.append(
+                f"Your request required multiple steps. The system broke it into "
+                f"{len(subtasks)} part(s) and assigned each to a specialist."
             )
         elif pattern == "fsm_workflow":
             state = response.get("current_state", "processing")
-            narrative = (
-                f"Your request is being processed through a {pattern_label}. "
+            parts.append(
+                f"Your request is being handled through a step-by-step process. "
                 f"Current status: {state}."
             )
-        elif pattern in ("aop_task_menu", "aop_task_result"):
-            narrative = f"The system used {pattern_label} to address your request."
         else:
-            if agent_labels:
-                narrative = f"Your question was answered using our {agent_labels[0]}."
-            else:
-                narrative = "Your query was processed by the system."
+            parts.append(f"Your request was handled by our {label}.")
+
+        # Why this agent
+        reason = _primary_reason(response)
+        if reason:
+            # Simplify the router reason for users — take first sentence
+            first_sentence = reason.split(".")[0].strip()
+            # Remove technical prefixes like "Best match for an ACTIONABLE..."
+            for prefix in ("Best match for ", "Strong intent fit", "High intent fit"):
+                if first_sentence.startswith(prefix):
+                    first_sentence = first_sentence[len(prefix) :].lstrip(":— ")
+                    break
+            if first_sentence:
+                parts.append(f"This specialist was selected because: {first_sentence}.")
+
+        # What the agent did
+        if needs_input:
+            parts.append(
+                "The system needs additional information from you before it can proceed."
+            )
+        elif response.get("knowledge_retrieved"):
+            parts.append("The answer was found by searching our knowledge base.")
+
+        # Policies (simplified)
+        policies = response.get("policies_applied", [])
+        if policies:
+            parts.append(
+                f"The system followed {len(policies)} internal policy rule(s) "
+                f"while processing your request."
+            )
+
+        # AI disclosure (IEEE 3152-R1)
+        parts.append("This response was generated by an AI system.")
 
         return Explanation(
             level=ExplanationLevel.SUMMARY,
-            narrative=narrative,
-            agents_involved=agents,
+            narrative=" ".join(parts),
+            agents_involved=[agent_id] if agent_id else [],
             metrics={"response_time_ms": self._total_latency(trace)},
         )
 
-    # ── Level 2: Detailed (auditor-facing) ───────────────────────────
+    # ── Level 2: Detailed (auditor-facing, IEEE 2894-R3) ─────────────
 
-    def _detailed_from_trace(
-        self, trace: Trace, response: Dict[str, Any]
-    ) -> Explanation:
-        """Auditor-facing explanation: decisions, scores, policies."""
+    def _detailed(self, trace: Trace, response: Dict[str, Any]) -> Explanation:
+        """Auditor-facing: routing decisions, policies, governance checks."""
+        agent_id = response.get("agent_id", "")
+        label = _agent_label(agent_id, response)
         agents = self._extract_agents(trace, response)
         decisions = self._extract_decisions(trace, response)
         provenance = self._extract_provenance(trace, response)
 
-        pattern = response.get("orchestration_pattern", "direct")
-        parts = [f"Orchestration pattern: {pattern}."]
+        parts: List[str] = []
 
-        # Routing decision
-        for d in decisions:
-            if d["stage"] == "route":
+        # 1. Routing decision with rationale (IEEE 2894-R5)
+        plan = response.get("router_plan")
+        if isinstance(plan, dict):
+            primary = plan.get("primary", "?")
+            strategy = plan.get("strategy", "single")
+            score = response.get("score")
+            parts.append(
+                f"ROUTING: The system evaluated {len(plan.get('candidates', []))} "
+                f"candidate agent(s) using strategy '{strategy}'. "
+                f"Selected: {_agent_label(primary, response)} "
+                f"(confidence: {score:.0%})."
+                if score is not None
+                else f"ROUTING: Selected {_agent_label(primary, response)} "
+                f"using '{strategy}' strategy."
+            )
+            # Include runner-up for audit context
+            candidates = plan.get("candidates", [])
+            if len(candidates) > 1:
+                runner_up = candidates[1] if isinstance(candidates[1], dict) else {}
+                ru_id = runner_up.get("id", "?")
+                ru_score = runner_up.get("score", 0)
                 parts.append(
-                    f"Router selected '{d.get('primary', '?')}' with "
-                    f"strategy '{d.get('strategy', '?')}'."
-                )
-            elif d["stage"] == "aop_solvability":
-                assignments = d.get("assignments", {})
-                parts.append(f"AOP assigned {len(assignments)} subtask(s) to agents.")
-            elif d["stage"] == "aop_completeness":
-                complete = d.get("complete", False)
-                parts.append(
-                    f"Completeness check: {'passed' if complete else 'gaps detected'}."
+                    f"Runner-up: {_agent_label(ru_id, response)} "
+                    f"(score: {ru_score:.0%}). "
+                    f"Reason for primary selection: {candidates[0].get('reason', 'N/A')}"
+                    if isinstance(candidates[0], dict)
+                    else ""
                 )
 
-        # Guardrail activity
+        # 2. Policies applied (IEEE 2894-R5 rationale)
+        policies = response.get("policies_applied", [])
+        if policies:
+            parts.append(f"POLICIES APPLIED ({len(policies)}):")
+            for i, pol in enumerate(policies[:5], 1):  # Cap at 5 for readability
+                pol_text = pol if isinstance(pol, str) else str(pol)
+                parts.append(f"  {i}. {pol_text[:150]}")
+            if len(policies) > 5:
+                parts.append(f"  ... and {len(policies) - 5} more.")
+
+        # 3. Knowledge and data sources (IEEE 2894-R4 provenance)
+        ks = response.get("knowledge_sources", [])
+        ps = response.get("policy_sources", [])
+        if ks:
+            parts.append(f"KNOWLEDGE SOURCES: {len(ks)} source(s) consulted.")
+            for src in ks[:3]:
+                if isinstance(src, dict):
+                    parts.append(f"  - {src.get('name', src.get('source', 'unknown'))}")
+        if ps:
+            parts.append(f"POLICY SOURCES: {len(ps)} policy document(s) referenced.")
+            for src in ps[:3]:
+                if isinstance(src, dict):
+                    parts.append(f"  - {src.get('name', 'unnamed policy')}")
+
+        # 4. Tools used
+        tools = response.get("tools_used", [])
+        if tools:
+            parts.append(f"TOOLS INVOKED: {', '.join(tools)}.")
+
+        # 5. Guardrail activity
         guard_events = [
             e
             for e in trace.events
             if e.stage
-            in ("guard_pre_ok", "guard_post_ok", "guard_pre_block", "guard_post_block")
+            in (
+                "guard_pre_ok",
+                "guard_post_ok",
+                "guard_pre_block",
+                "guard_post_block",
+            )
         ]
         if guard_events:
             blocks = sum(1 for e in guard_events if "block" in e.stage)
             parts.append(
-                f"Guardrails evaluated: {len(guard_events)} check(s), "
+                f"GOVERNANCE: {len(guard_events)} guardrail check(s) executed, "
                 f"{blocks} intervention(s)."
             )
 
-        # Scores
-        score = response.get("score")
-        if score is not None:
-            parts.append(f"Confidence score: {score:.2f}.")
+        # 6. AI disclosure (IEEE 3152-R1/R2)
+        parts.append(
+            f"AI DISCLOSURE: This response was generated by an AI system. "
+            f"Processing agent: {label} ({agent_id}). "
+            f"Total agents involved: {len(agents)}."
+        )
 
         return Explanation(
             level=ExplanationLevel.DETAILED,
-            narrative=" ".join(parts),
+            narrative="\n".join(parts),
             agents_involved=agents,
             decisions=decisions,
             provenance=provenance,
@@ -192,32 +292,96 @@ class ExplainabilityEngine:
 
     # ── Level 3: Full (developer-facing) ─────────────────────────────
 
-    def _full_from_trace(self, trace: Trace, response: Dict[str, Any]) -> Explanation:
-        """Developer-facing explanation: complete trace dump."""
+    def _full(self, trace: Trace, response: Dict[str, Any]) -> Explanation:
+        """Developer-facing: complete trace with react steps and raw data."""
         agents = self._extract_agents(trace, response)
         decisions = self._extract_decisions(trace, response)
         provenance = self._extract_provenance(trace, response)
 
-        # Full event log
-        events = []
-        base_ts = trace.started_ts_ms
-        for event in trace.events:
-            events.append(
-                {
-                    "delta_ms": event.ts_ms - base_ts,
-                    "stage": event.stage,
-                    "data": event.data,
-                }
-            )
+        parts: List[str] = []
 
-        narrative = (
-            f"Full execution trace for request {trace.request_id}. "
-            f"{len(trace.events)} events over {self._total_latency(trace)} ms. "
-            f"Agents: {', '.join(agents) if agents else 'none'}."
-        )
+        # Header
+        parts.append(f"Request ID: {trace.request_id}")
+        parts.append(f"Query: {trace.query!r}")
+        parts.append(f"Agent: {response.get('agent_id', 'N/A')}")
+        parts.append(f"Domain: {response.get('domain', 'N/A')}")
+        parts.append(f"Intent: {response.get('intent', 'N/A')}")
+        parts.append(f"Score: {response.get('score', 'N/A')}")
+        parts.append(f"Wall time: {self._total_latency(trace)} ms")
+        parts.append("")
+
+        # Router plan (full detail)
+        plan = response.get("router_plan")
+        if isinstance(plan, dict):
+            parts.append("=== ROUTER PLAN ===")
+            parts.append(f"Strategy: {plan.get('strategy')}")
+            parts.append(f"Primary: {plan.get('primary')}")
+            for c in plan.get("candidates", []):
+                if isinstance(c, dict):
+                    parts.append(
+                        f"  [{c.get('id')}] score={c.get('score')} "
+                        f"reason={c.get('reason', '')[:200]}"
+                    )
+            parts.append("")
+
+        # React trace (agent's internal reasoning)
+        react = response.get("react_trace")
+        if react:
+            parts.append("=== AGENT REASONING (react_trace) ===")
+            if isinstance(react, str):
+                try:
+                    react = json.loads(react)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            if isinstance(react, list):
+                for step in react:
+                    if isinstance(step, dict):
+                        parts.append(
+                            f"Step {step.get('step', '?')}: "
+                            f"{step.get('thought', step.get('action', ''))[:300]}"
+                        )
+            else:
+                parts.append(str(react)[:500])
+            parts.append("")
+
+        # Policies
+        policies = response.get("policies_applied", [])
+        if policies:
+            parts.append("=== POLICIES APPLIED ===")
+            for pol in policies:
+                parts.append(f"  - {pol}")
+            parts.append("")
+
+        # Tools
+        tools = response.get("tools_used", [])
+        if tools:
+            parts.append(f"=== TOOLS USED === {', '.join(tools)}")
+            parts.append("")
+
+        # Slots / extracted entities
+        slots = response.get("slots", {})
+        if slots:
+            parts.append("=== EXTRACTED SLOTS ===")
+            for k, v in slots.items():
+                parts.append(f"  {k}: {v}")
+            parts.append("")
+
+        # Trace events
+        if trace.events:
+            parts.append("=== TRACE EVENTS ===")
+            base_ts = trace.started_ts_ms
+            for event in trace.events:
+                delta = event.ts_ms - base_ts
+                data_str = (
+                    ", ".join(f"{k}={v!r}" for k, v in event.data.items())
+                    if event.data
+                    else ""
+                )
+                parts.append(f"  +{delta:>6d}ms  [{event.stage}]  {data_str}")
+
+        narrative = "\n".join(parts)
 
         metrics = self._extract_metrics(trace, response)
-        metrics["event_log"] = events
 
         return Explanation(
             level=ExplanationLevel.FULL,
@@ -353,7 +517,7 @@ class ExplainabilityEngine:
                             "citations": citations,
                         }
                     )
-                # Domain agent knowledge sources (from react_trace)
+                # Domain agent knowledge sources
                 ks = result.get("knowledge_sources")
                 if isinstance(ks, list) and ks:
                     prov.append(
@@ -364,7 +528,7 @@ class ExplainabilityEngine:
                         }
                     )
 
-        # Direct-route domain agent provenance (not AOP subtask)
+        # Direct-route domain agent provenance
         ks = response.get("knowledge_sources")
         if isinstance(ks, list) and ks:
             prov.append(
