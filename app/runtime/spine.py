@@ -31,6 +31,16 @@ if TYPE_CHECKING:
 THREAD_CTX: Dict[str, Dict[str, Any]] = {}
 
 
+ORCHESTRATION_MODE = os.getenv("ORCHESTRATION_MODE", "hybrid")
+"""Orchestration mode for ablation study.
+
+Values:
+  - ``hybrid``       (default) — LLM classifies each query as direct or AOP
+  - ``direct_only``  — always direct dispatch, never AOP
+  - ``aop_only``     — always AOP hierarchical delegation
+"""
+
+
 class RuntimeSpine:
     """
     Invariant orchestration backbone.
@@ -335,7 +345,18 @@ class RuntimeSpine:
 
         Uses LLM to detect multi-intent queries.
         Returns: "direct" | "hierarchical_delegation"
+
+        Respects ORCHESTRATION_MODE env var for ablation study:
+          - "direct_only"  → always returns "direct"
+          - "aop_only"     → always returns "hierarchical_delegation"
+          - "hybrid"       → LLM classification (default)
         """
+        mode = ORCHESTRATION_MODE
+        if mode == "direct_only":
+            return "direct"
+        if mode == "aop_only":
+            return "hierarchical_delegation"
+
         from app.llm_client import chat_json
 
         messages = [

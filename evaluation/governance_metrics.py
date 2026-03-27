@@ -14,10 +14,13 @@ Computes thesis-aligned metrics for comparing governance levels:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from app.runtime.governance_config import GovernanceConfig, GovernanceLevel
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -231,6 +234,155 @@ def compute_rq3_metrics(results: List[GovernanceScenarioResult]) -> Dict[str, An
     }
 
 
+def compute_repeated_measures_anova(
+    all_results: Dict[str, List[GovernanceScenarioResult]],
+) -> Dict[str, Any]:
+    """Repeated-measures ANOVA for task completion across governance levels.
+
+    Design: 31 scenarios (subjects) x 3 governance levels (within-subject factor).
+    Dependent variable: task completion (1.0 = success, 0.0 = failure).
+
+    Uses Friedman test (non-parametric alternative) since the dependent variable
+    is binary, violating ANOVA normality assumptions. Also reports parametric
+    repeated-measures F-test for comparison.
+
+    Post-hoc: Wilcoxon signed-rank tests with Bonferroni correction for
+    pairwise level comparisons.
+
+    Effect size: Kendall's W (coefficient of concordance).
+
+    Returns dict with test statistics, p-values, pairwise comparisons, and
+    effect sizes.
+    """
+    try:
+        from scipy import stats as scipy_stats
+        import numpy as np
+    except ImportError:
+        logger.warning("scipy/numpy not available — skipping ANOVA")
+        return {"error": "scipy or numpy not installed"}
+
+    # Build aligned arrays: rows = scenarios, columns = levels
+    levels = sorted(all_results.keys())  # ['high', 'low', 'medium']
+    if len(levels) < 2:
+        return {"error": "need at least 2 governance levels"}
+
+    # Build scenario-id -> {level: success} mapping
+    scenario_ids = sorted(
+        set(r.scenario_id for results in all_results.values() for r in results)
+    )
+    data: Dict[str, Dict[str, float]] = {sid: {} for sid in scenario_ids}
+    for level_name, results in all_results.items():
+        for r in results:
+            data[r.scenario_id][level_name] = 1.0 if r.success else 0.0
+
+    # Only include scenarios present in ALL levels
+    complete = [sid for sid in scenario_ids if all(lv in data[sid] for lv in levels)]
+    if len(complete) < 3:
+        return {"error": f"only {len(complete)} complete scenarios across levels"}
+
+    # Matrix: rows = scenarios, columns = levels
+    matrix = np.array([[data[sid][lv] for lv in levels] for sid in complete])
+    n_subjects = matrix.shape[0]
+
+    result: Dict[str, Any] = {
+        "n_scenarios": n_subjects,
+        "n_levels": len(levels),
+        "levels": levels,
+    }
+
+    # ── Friedman test (non-parametric repeated-measures) ──────────
+    if len(levels) == 3:
+        friedman_stat, friedman_p = scipy_stats.friedmanchisquare(
+            matrix[:, 0], matrix[:, 1], matrix[:, 2]
+        )
+        # Kendall's W effect size = chi2 / (n * (k-1))
+        k = len(levels)
+        kendall_w = friedman_stat / (n_subjects * (k - 1))
+        result["friedman"] = {
+            "chi2": round(float(friedman_stat), 4),
+            "p_value": round(float(friedman_p), 6),
+            "kendall_w": round(float(kendall_w), 4),
+            "significant": bool(friedman_p < 0.05),
+        }
+
+    # ── Cochran's Q test (exact test for binary repeated measures) ─
+    if len(levels) >= 2:
+        try:
+            # Cochran's Q: specific to binary data in repeated-measures
+            # Q = (k-1) * [k * sum(Gj^2) - T^2] / [k*T - sum(Li^2)]
+            k = len(levels)
+            col_sums = matrix.sum(axis=0)  # Gj
+            row_sums = matrix.sum(axis=1)  # Li
+            T = matrix.sum()
+            Q_num = (k - 1) * (k * (col_sums**2).sum() - T**2)
+            Q_den = k * T - (row_sums**2).sum()
+            if Q_den > 0:
+                Q_stat = Q_num / Q_den
+                Q_p = 1.0 - scipy_stats.chi2.cdf(Q_stat, df=k - 1)
+                result["cochrans_q"] = {
+                    "Q": round(float(Q_stat), 4),
+                    "p_value": round(float(Q_p), 6),
+                    "df": k - 1,
+                    "significant": bool(Q_p < 0.05),
+                }
+        except Exception as e:
+            result["cochrans_q"] = {"error": str(e)}
+
+    # ── Pairwise post-hoc: Wilcoxon signed-rank with Bonferroni ───
+    pairwise: List[Dict[str, Any]] = []
+    n_comparisons = len(levels) * (len(levels) - 1) // 2
+    for i in range(len(levels)):
+        for j in range(i + 1, len(levels)):
+            a, b = matrix[:, i], matrix[:, j]
+            diff = a - b
+            # Wilcoxon requires non-zero differences
+            nonzero = diff[diff != 0]
+            if len(nonzero) < 1:
+                pairwise.append(
+                    {
+                        "pair": f"{levels[i]} vs {levels[j]}",
+                        "note": "no differences observed",
+                        "p_value": 1.0,
+                        "p_adjusted": 1.0,
+                        "significant": False,
+                    }
+                )
+                continue
+            try:
+                stat, p = scipy_stats.wilcoxon(nonzero)
+                p_adj = min(p * n_comparisons, 1.0)  # Bonferroni
+                pairwise.append(
+                    {
+                        "pair": f"{levels[i]} vs {levels[j]}",
+                        "statistic": round(float(stat), 4),
+                        "p_value": round(float(p), 6),
+                        "p_adjusted": round(float(p_adj), 6),
+                        "significant": bool(p_adj < 0.05),
+                        "mean_diff": round(float(a.mean() - b.mean()), 4),
+                    }
+                )
+            except Exception as e:
+                pairwise.append(
+                    {
+                        "pair": f"{levels[i]} vs {levels[j]}",
+                        "error": str(e),
+                    }
+                )
+    result["pairwise_wilcoxon"] = pairwise
+
+    # ── Per-level descriptive stats ───────────────────────────────
+    result["descriptive"] = {
+        levels[i]: {
+            "mean": round(float(matrix[:, i].mean()), 4),
+            "std": round(float(matrix[:, i].std()), 4),
+            "sum_success": int(matrix[:, i].sum()),
+        }
+        for i in range(len(levels))
+    }
+
+    return result
+
+
 def compute_comparison_table(
     all_results: Dict[str, List[GovernanceScenarioResult]],
     scenarios: Optional[List[Dict[str, Any]]] = None,
@@ -277,8 +429,12 @@ def compute_comparison_table(
             ),
         }
 
+    # Repeated-measures statistical tests
+    statistical_tests = compute_repeated_measures_anova(all_results)
+
     return {
         "per_level": per_level,
         "governance_action_accuracy": governance_accuracy,
         "tradeoffs": tradeoffs,
+        "statistical_tests": statistical_tests,
     }

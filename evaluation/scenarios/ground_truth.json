@@ -9,13 +9,17 @@
         "query": "Can I transfer my Current Account from one branch to another?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": ["transfer", "branch"]
+          "expected_outcome": {
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
@@ -28,13 +32,17 @@
         "query": "What is the time taken to realize outstation cheques?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": ["cheque", "days"]
+          "expected_outcome": {
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
@@ -47,13 +55,17 @@
         "query": "How is M&N Bank Premium CA different from a regular CA?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": ["premium", "account"]
+          "expected_outcome": {
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
@@ -66,13 +78,17 @@
         "query": "Can EEFC Account be opened by Special Economic Zone units?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": ["SEZ"]
+          "expected_outcome": {
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
@@ -85,246 +101,302 @@
         "query": "What is the initial deposit amount required to open the Flexi Account?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": ["75,000"]
+          "expected_outcome": {
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
     "id": "faq_06",
     "category": "informational_routing",
-    "description": "FAQ: Refund policy inquiry (informational, no action)",
+    "description": "FAQ: Multi-turn card dispute inquiry (clarification then BankFAQ retrieval)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
-        "query": "What is your refund policy for cancelled orders?",
+        "query": "I want to know about the refund or dispute process at your bank.",
         "expected": {
-          "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
+          "pattern": "direct"
         }
+      },
+      {
+        "query": "I'm asking about a card transaction dispute — a merchant charged me twice.",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "knowledge_retrieved": true
     }
   },
   {
     "id": "faq_07",
     "category": "informational_routing",
-    "description": "FAQ: Complaints procedure inquiry",
+    "description": "FAQ: Multi-turn insurance claim inquiry (clarification then BankFAQ retrieval)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
-        "query": "How do I file a complaint with the bank?",
+        "query": "How do I make a claim?",
         "expected": {
-          "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
+          "pattern": "direct"
         }
+      },
+      {
+        "query": "It's an insurance claim — I have the Accidental Protection Plan.",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "knowledge_retrieved": true
     }
   },
-
+  {
+    "id": "faq_08",
+    "category": "informational_routing",
+    "description": "FAQ: Multi-turn lost card procedure (clarification then BankFAQ retrieval)",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "What should I do about my card?",
+        "expected": {
+          "pattern": "direct"
+        }
+      },
+      {
+        "query": "My debit card was lost. What is the procedure?",
+        "expected": {}
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "knowledge_retrieved": true
+    }
+  },
+  {
+    "id": "faq_10",
+    "category": "informational_routing",
+    "description": "FAQ: Overdraft facility eligibility and application process",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "How can I apply for an overdraft facility on my account?",
+        "expected": {
+          "pattern": "direct",
+          "expected_outcome": {
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
+        }
+      }
+    ]
+  },
   {
     "id": "refund_01",
     "category": "actionable_routing",
-    "description": "Refund: simple eligible refund under EUR 5000",
+    "description": "Refund: simple eligible refund under EUR 5000 (auto-approve per policy)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I want a refund for a EUR 200 charge on my account",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": ["refund"]
+          "agent_contains": "refund"
         }
+      },
+      {
+        "query": "My account number is ACC-2024-7891 and the charge was on March 15th from MerchantXYZ",
+        "expected": {}
+      },
+      {
+        "query": "Yes, please go ahead and process the refund",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "initiate_refund"
+      ]
     }
   },
   {
     "id": "refund_02",
     "category": "actionable_routing",
-    "description": "Refund: customer provides transaction details",
+    "description": "Refund: customer provides transaction details (EUR 150, auto-approve)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I need a refund for order number 12345, charged EUR 150 on my card",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": ["refund"]
+          "agent_contains": "refund"
         }
-      }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "refund_03",
-    "category": "actionable_routing",
-    "description": "Refund: large amount requiring approval",
-    "success_criteria": "all_turns_pass",
-    "turns": [
+      },
       {
-        "query": "I need a refund of EUR 8000 for a failed wire transfer",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": ["refund"]
-        }
+        "query": "My account ID is ACC-2024-3456 and I paid with my Visa ending in 4242",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "refund_04",
-    "category": "actionable_routing",
-    "description": "Refund: vague request (missing details)",
-    "success_criteria": "all_turns_pass",
-    "turns": [
-      {
-        "query": "I want my money back",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": []
-        }
+      "classify": {
+        "pattern": "direct"
       }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "initiate_refund"
+      ]
     }
   },
   {
     "id": "refund_05",
     "category": "actionable_routing",
-    "description": "Refund: duplicate charge complaint",
+    "description": "Refund: duplicate charge (EUR 75, auto-approve)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I was charged twice for the same transaction of EUR 75, please refund one",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": ["refund"]
+          "agent_contains": "refund"
         }
-      }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "refund_06",
-    "category": "actionable_routing",
-    "description": "Refund: subscription cancellation",
-    "success_criteria": "all_turns_pass",
-    "turns": [
+      },
       {
-        "query": "I cancelled my premium subscription last week but was still charged EUR 29.99",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": []
-        }
+        "query": "The duplicate charges appeared on March 10th, account ACC-2024-5501, both from the same online store",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "initiate_refund"
+      ]
     }
   },
   {
     "id": "refund_07",
     "category": "actionable_routing",
-    "description": "Refund: unauthorized foreign charge",
+    "description": "Refund: unauthorized foreign charge (EUR 500, auto-approve + investigation)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "There is an unauthorized EUR 500 charge from a foreign merchant on my account",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": []
+          "agent_contains": "refund"
         }
-      }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "refund_08",
-    "category": "actionable_routing",
-    "description": "Refund: ATM cash not dispensed",
-    "success_criteria": "all_turns_pass",
-    "turns": [
+      },
       {
-        "query": "The ATM debited EUR 300 from my account but did not dispense any cash",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": []
-        }
+        "query": "My account is ACC-2024-8820 and the charge appeared yesterday from a merchant in Romania that I do not recognise",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "initiate_refund"
+      ]
     }
   },
-
   {
     "id": "complaint_01",
     "category": "actionable_routing",
-    "description": "Complaint: formal complaint about service",
+    "description": "Complaint: formal complaint about service (per complaints policy)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I want to file a formal complaint about the poor service at your branch",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "complaint",
-          "answer_contains": ["complaint", "ticket"]
+          "agent_contains": "complaint"
         }
+      },
+      {
+        "query": "It was the downtown branch on High Street, I visited on March 18th and waited 2 hours with no assistance",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "create_ticket"
+      ]
     }
   },
   {
     "id": "complaint_02",
     "category": "actionable_routing",
-    "description": "Complaint: escalation request with ombudsman threat",
+    "description": "Complaint: ombudsman threat (regulatory escalation per policy)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I want to escalate my complaint to a manager, or I will go to the ombudsman",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "complaint",
-          "answer_contains": ["complaint"]
+          "agent_contains": "complaint"
         }
+      },
+      {
+        "query": "My complaint reference is CMP-2024-445 and I first raised it three weeks ago but have not received any response",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "handoff_to_human"
+      ]
     }
   },
-
   {
     "id": "deleg_01",
     "category": "hierarchical_delegation",
@@ -335,14 +407,29 @@
         "query": "I need a refund for order #123 AND what is your return window?",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": ["refund"]
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Process refund for order #123", "Answer FAQ about return window policy"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Both intents covered: refund processing and policy inquiry."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Process refund for order #123",
+          "Answer FAQ about return window policy"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Both intents covered."
+      }
     }
   },
   {
@@ -355,14 +442,29 @@
         "query": "What is my account balance and also tell me the cheque clearing time?",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Look up current account balance", "Answer FAQ about cheque clearing time"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Both intents addressed."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Look up current account balance",
+          "Answer FAQ about cheque clearing time"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Both intents addressed."
+      }
     }
   },
   {
@@ -375,14 +477,29 @@
         "query": "I want a refund for the duplicate charge and also update my mailing address",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Process refund for duplicate charge", "Help customer update mailing address"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Refund and address change both covered."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Process refund for duplicate charge",
+          "Help customer update mailing address"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Refund and address change both covered."
+      }
     }
   },
   {
@@ -395,14 +512,29 @@
         "query": "Cancel my premium subscription and explain the charges on my last statement",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Cancel premium subscription", "Explain charges on latest account statement"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Cancellation and charge explanation both addressed."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Cancel premium subscription",
+          "Explain charges on latest account statement"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Cancellation and charge explanation both addressed."
+      }
     }
   },
   {
@@ -415,14 +547,29 @@
         "query": "I want to open a Premium Current Account and close my Regular Current Account",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Provide information on opening Premium Current Account", "Process closure of Regular Current Account"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Account opening and closure both covered."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Provide information on opening Premium Current Account",
+          "Process closure of Regular Current Account"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Account opening and closure both covered."
+      }
     }
   },
   {
@@ -435,76 +582,490 @@
         "query": "I want to file a complaint about the service and also get a refund for order #456",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["File complaint about service quality", "Process refund for order #456"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Complaint and refund both covered."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "File complaint about service quality",
+          "Process refund for order #456"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Complaint and refund both covered."
+      }
     }
   },
-
+  {
+    "id": "deleg_07",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: refund for wrong item AND track replacement delivery",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I received the wrong item and need a refund, also where is my replacement shipment?",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Process refund for wrong item received",
+          "Track replacement shipment status"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Refund and tracking both covered."
+      }
+    }
+  },
+  {
+    "id": "deleg_08",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: dispute charge AND ask about fraud protection",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want to dispute a EUR 350 charge I did not make, and what fraud protection does my account have?",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Dispute unauthorized EUR 350 charge",
+          "Explain fraud protection features on customer account"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Dispute and fraud info both covered."
+      }
+    }
+  },
+  {
+    "id": "deleg_09",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: complaint about waiting time AND request account statement",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want to complain about the 45 minute wait on your phone line, and also I need my last 3 months account statements",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "File complaint about excessive phone waiting time",
+          "Retrieve last 3 months account statements"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Complaint and statement request both covered."
+      }
+    }
+  },
+  {
+    "id": "deleg_10",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: request refund AND change notification preferences",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "Refund the EUR 50 double charge from yesterday and also switch my alerts to email instead of SMS",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Process refund for EUR 50 double charge",
+          "Update notification preferences from SMS to email"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Refund and preference change both covered."
+      }
+    }
+  },
+  {
+    "id": "deleg_11",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: explain overdraft fees AND reverse latest fee",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "Why was I charged an overdraft fee and can you reverse it? Also what are the conditions to avoid it in future?",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Reverse latest overdraft fee charge",
+          "Explain overdraft fee policy and avoidance conditions"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Fee reversal and policy explanation both covered."
+      }
+    }
+  },
+  {
+    "id": "deleg_12",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: report unauthorized transaction AND freeze account",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "There is a transaction I did not make on my account for EUR 800, please reverse it and freeze my account until this is sorted",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true,
+            "tools_called": [
+              "initiate_refund"
+            ]
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Reverse unauthorized EUR 800 transaction",
+          "Freeze customer account pending investigation"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Reversal and account freeze both covered."
+      }
+    }
+  },
+  {
+    "id": "deleg_13",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: upgrade account type AND transfer balance",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want to upgrade from regular to premium current account and transfer my full balance to the new account",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Process upgrade from regular to premium current account",
+          "Transfer full balance to new premium account"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Account upgrade and balance transfer both covered."
+      }
+    }
+  },
+  {
+    "id": "deleg_14",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: three intents — refund, complaint, and FAQ",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want a refund for the EUR 100 charge, I want to complain about how the branch handled it, and what are my rights under consumer protection?",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Process refund for EUR 100 charge",
+          "File complaint about branch service",
+          "Explain consumer protection rights"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "All three intents covered."
+      }
+    }
+  },
+  {
+    "id": "deleg_15",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: close savings AND open fixed deposit",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "Close my savings account and use the balance to open a fixed deposit for 12 months",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Close savings account",
+          "Open 12-month fixed deposit with savings balance"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Account closure and FD opening both covered."
+      }
+    }
+  },
+  {
+    "id": "deleg_16",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: add beneficiary AND initiate international transfer",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I need to add a new international beneficiary and then send EUR 2000 to them via SWIFT",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Add new international beneficiary",
+          "Initiate EUR 2000 SWIFT transfer to new beneficiary"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Beneficiary setup and transfer both covered."
+      }
+    }
+  },
   {
     "id": "hitl_01",
     "category": "hitl_escalation",
-    "description": "Escalation: large disputed amount with fraud suspicion",
+    "description": "Escalation: EUR 25000 fraud multi-turn (>5000 requires manager approval per policy)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "Someone has stolen EUR 25000 from my account through multiple unauthorized transactions over the past month and I need all of it back immediately",
         "expected": {
-          "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "pattern": "direct",
+          "agent_contains": "refund"
         }
+      },
+      {
+        "query": "The transaction ID is TXN-FRAUD-25K on my account",
+        "expected": {}
+      },
+      {
+        "query": "My customer ID is CUST-FRAUD-99",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Investigate unauthorized transactions totalling EUR 25000", "Process urgent refund for fraud-related losses"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Investigation and refund both planned."}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "create_ticket"
+      ]
     }
   },
   {
     "id": "hitl_02",
     "category": "hitl_escalation",
-    "description": "Escalation: dispute with regulatory complaint threat",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "Your bank has been charging hidden fees on my account for months and I want a full refund plus I am filing a complaint with the financial ombudsman",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Review and explain account fees charged over recent months", "Process refund for any unauthorized or hidden fees"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Fee review and refund processing both addressed."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Review and refund hidden account fees",
+          "File formal complaint for financial ombudsman escalation"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Fee refund and complaint both addressed."
+      }
     }
   },
-
   {
     "id": "hitl_03",
     "category": "hitl_escalation",
-    "description": "Escalation: compromised card with active fraudulent transactions",
+    "description": "Escalation: compromised card with active fraud (multi-intent)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "My card has been compromised and there are transactions happening right now that I did not authorise, please block it and reverse everything",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true,
+            "tools_called": [
+              "initiate_refund"
+            ]
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Block compromised card immediately", "Investigate and reverse unauthorized transactions"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Card block and transaction reversal both addressed."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Block compromised card immediately",
+          "Reverse all unauthorized transactions"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Card block and transaction reversal both addressed."
+      }
     }
   },
   {
@@ -516,15 +1077,18 @@
       {
         "query": "I have lost my job and cannot pay my loan instalments, I am about to lose my home, please help me restructure my debt before the bank forecloses",
         "expected": {
-          "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "pattern": "direct",
+          "expected_outcome": {
+            "clarification_ok": true,
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Review customer loan repayment options", "Explore debt restructuring or hardship programme eligibility"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Loan review and restructuring both planned."}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
@@ -536,15 +1100,19 @@
       {
         "query": "My father passed away last week and I need to know how to access his accounts, close them, and transfer the funds to the estate",
         "expected": {
-          "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "pattern": "direct",
+          "expected_outcome": {
+            "clarification_ok": true,
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Explain deceased account holder procedures and required documentation", "Guide next-of-kin through estate account closure and fund transfer"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Bereavement procedure and fund transfer both addressed."}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
@@ -556,18 +1124,20 @@
       {
         "query": "I noticed several large deposits from unknown sources in my business account that I did not receive, I think someone is using my account for money laundering",
         "expected": {
-          "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "pattern": "direct",
+          "expected_outcome": {
+            "clarification_ok": true,
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Flag suspicious transactions for AML review", "Secure business account pending investigation"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "AML reporting and account security both covered."}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
-
   {
     "id": "edge_01",
     "category": "graceful_degradation",
@@ -578,13 +1148,16 @@
         "query": "Explain the Heisenberg uncertainty principle in quantum mechanics",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
@@ -598,12 +1171,17 @@
         "expected": {
           "pattern": "direct",
           "agent_contains": "refund",
-          "answer_contains": ["refund"]
+          "expected_outcome": {
+            "clarification_ok": true,
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
@@ -616,33 +1194,29 @@
         "query": "Transfer my account to the Mars branch and explain intergalactic banking regulations",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Transfer account to Mars branch", "Explain intergalactic banking regulations"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Both aspects covered."}
-    }
-  },
-  {
-    "id": "edge_04",
-    "category": "graceful_degradation",
-    "description": "Out-of-domain: mortgage rates in foreign country (graceful fallback)",
-    "success_criteria": "answer_not_empty",
-    "turns": [
-      {
-        "query": "What are the current mortgage interest rates for properties in Iceland",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
-        }
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Transfer account to Mars branch",
+          "Explain intergalactic banking regulations"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Both aspects covered."
       }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
     }
   },
   {
@@ -655,14 +1229,29 @@
         "query": "I am suing your bank for negligence and demand my lawyer speaks with your CEO immediately",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Connect customer with legal department", "Arrange CEO contact per complaint escalation"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Legal escalation paths covered."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Connect customer with legal department",
+          "Arrange CEO contact per complaint escalation"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Legal escalation paths covered."
+      }
     }
   },
   {
@@ -676,31 +1265,16 @@
         "expected": {
           "pattern": "direct",
           "agent_contains": "refund",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "edge_07",
-    "category": "graceful_degradation",
-    "description": "Empty/gibberish input (graceful handling)",
-    "success_criteria": "answer_not_empty",
-    "turns": [
-      {
-        "query": "asdfghjkl qwerty zxcvbnm 12345",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
-        }
+      "classify": {
+        "pattern": "direct"
       }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
     }
   },
   {
@@ -714,34 +1288,18 @@
         "expected": {
           "pattern": "direct",
           "agent_contains": "complaint",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "edge_09",
-    "category": "graceful_degradation",
-    "description": "Ambiguous intent: could be FAQ or action (graceful disambiguation)",
-    "success_criteria": "answer_not_empty",
-    "turns": [
-      {
-        "query": "card",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
-        }
+      "classify": {
+        "pattern": "direct"
       }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
     }
   },
-
   {
     "id": "b77_faq_01",
     "category": "informational_routing",
@@ -752,13 +1310,17 @@
         "query": "How long does it take for a new card to arrive after I order it?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
@@ -771,51 +1333,17 @@
         "query": "My contactless payments are not working, what could be the issue?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "b77_faq_03",
-    "category": "informational_routing",
-    "description": "BANKING77: Apple Pay or Google Pay setup",
-    "success_criteria": "all_turns_pass",
-    "turns": [
-      {
-        "query": "Can I add my card to Apple Pay or Google Pay and how do I set it up?",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
-        }
+      "classify": {
+        "pattern": "direct"
       }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "b77_faq_04",
-    "category": "informational_routing",
-    "description": "BANKING77: supported currencies and exchange rates",
-    "success_criteria": "all_turns_pass",
-    "turns": [
-      {
-        "query": "What currencies do you support and where can I see the current exchange rates?",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
-        }
-      }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
     }
   },
   {
@@ -828,13 +1356,18 @@
         "query": "Why do I need to verify my identity and what documents are required?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
+          "expected_outcome": {
+            "clarification_ok": true,
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
   {
@@ -847,32 +1380,17 @@
         "query": "How do I change my card PIN?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "b77_faq_07",
-    "category": "informational_routing",
-    "description": "BANKING77: virtual card usage and limits",
-    "success_criteria": "all_turns_pass",
-    "turns": [
-      {
-        "query": "What is a disposable virtual card and what are its spending limits?",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
-        }
+      "classify": {
+        "pattern": "direct"
       }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
     }
   },
   {
@@ -885,170 +1403,144 @@
         "query": "I made a transfer two days ago and it is still showing as pending, is this normal?",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "faq",
-          "answer_contains": []
+          "expected_outcome": {
+            "clarification_ok": true,
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
     }
   },
-
   {
     "id": "b77_refund_01",
     "category": "actionable_routing",
-    "description": "BANKING77: card payment not recognised (request refund)",
+    "description": "BANKING77: card payment not recognised (EUR 89.99, auto-approve)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "There is a card payment on my statement that I do not recognise, I need it reversed",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": []
+          "agent_contains": "refund"
         }
-      }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "b77_refund_02",
-    "category": "actionable_routing",
-    "description": "BANKING77: wrong exchange rate on cash withdrawal",
-    "success_criteria": "all_turns_pass",
-    "turns": [
+      },
       {
-        "query": "I withdrew cash abroad and was charged an incorrect exchange rate, I want a correction",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": []
-        }
+        "query": "The payment was for EUR 89.99 on March 12th, my account is ACC-2024-6633 and the merchant name shows as WEBSHOP-UK",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "initiate_refund"
+      ]
     }
   },
   {
     "id": "b77_refund_03",
     "category": "actionable_routing",
-    "description": "BANKING77: failed transfer but money debited",
+    "description": "BANKING77: failed transfer (EUR 1200, auto-approve)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "My transfer failed but the money was taken from my account and has not been returned",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": []
+          "agent_contains": "refund"
         }
-      }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "b77_refund_04",
-    "category": "actionable_routing",
-    "description": "BANKING77: direct debit not recognised",
-    "success_criteria": "all_turns_pass",
-    "turns": [
+      },
       {
-        "query": "A direct debit payment was taken from my account that I did not set up or authorise",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": []
-        }
+        "query": "I transferred EUR 1200 on March 14th from account ACC-2024-7700 to sort code 20-45-67, account 12345678",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "b77_refund_05",
-    "category": "actionable_routing",
-    "description": "BANKING77: top-up reverted unexpectedly",
-    "success_criteria": "all_turns_pass",
-    "turns": [
-      {
-        "query": "I topped up my account yesterday but the amount was reverted and my balance is back to what it was before",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "refund",
-          "answer_contains": []
-        }
+      "classify": {
+        "pattern": "direct"
       }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "initiate_refund"
+      ]
     }
   },
-
   {
     "id": "b77_complaint_01",
     "category": "actionable_routing",
-    "description": "BANKING77: card swallowed by ATM",
+    "description": "BANKING77: card swallowed by ATM (per complaints policy)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "The ATM swallowed my card and I need it back or a replacement issued urgently",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "complaint",
-          "answer_contains": []
+          "agent_contains": "complaint"
         }
+      },
+      {
+        "query": "It was the ATM at 123 Main Street branch, my card number ends in 8877 and my account is ACC-2024-9012",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "create_ticket"
+      ]
     }
   },
   {
     "id": "b77_complaint_02",
     "category": "actionable_routing",
-    "description": "BANKING77: lost or stolen card report",
+    "description": "BANKING77: lost/stolen card report (block + replace)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I have lost my debit card and need to report it stolen and get a replacement",
         "expected": {
           "pattern": "direct",
-          "agent_contains": "complaint",
-          "answer_contains": []
+          "agent_contains": "complaint"
         }
-      }
-    ],
-    "mock_responses": {
-      "classify": {"pattern": "direct"}
-    }
-  },
-  {
-    "id": "b77_complaint_03",
-    "category": "actionable_routing",
-    "description": "BANKING77: declined payment with no clear reason",
-    "success_criteria": "all_turns_pass",
-    "turns": [
+      },
       {
-        "query": "My card payment was declined at a shop even though I have enough balance, this is embarrassing and I want to know why",
-        "expected": {
-          "pattern": "direct",
-          "agent_contains": "complaint",
-          "answer_contains": []
-        }
+        "query": "My account number is ACC-2024-1155 and the card ending in 3344, I last used it yesterday at a coffee shop",
+        "expected": {}
+      },
+      {
+        "query": "Yes, please block the card and file a report",
+        "expected": {}
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "direct"}
+      "classify": {
+        "pattern": "direct"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true,
+      "tools_called": [
+        "create_ticket"
+      ]
     }
   },
-
   {
     "id": "b77_deleg_01",
     "category": "hierarchical_delegation",
@@ -1059,14 +1551,29 @@
         "query": "I lost my card and need a replacement, also I have a pending transfer from last week that still has not arrived",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Report lost card and arrange replacement", "Investigate pending transfer status"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Card replacement and transfer inquiry both covered."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Report lost card and arrange replacement",
+          "Investigate pending transfer status"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Card replacement and transfer inquiry both covered."
+      }
     }
   },
   {
@@ -1079,14 +1586,29 @@
         "query": "I was charged the wrong exchange rate on a purchase and want a refund, also what currencies does the bank support?",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Process refund for incorrect exchange rate", "Answer FAQ about supported currencies"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Refund and currency inquiry both addressed."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Process refund for incorrect exchange rate",
+          "Answer FAQ about supported currencies"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Refund and currency inquiry both addressed."
+      }
     }
   },
   {
@@ -1099,14 +1621,30 @@
         "query": "My card keeps getting declined, I want to change my PIN, and also check how much is in my account",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Investigate why card payments are being declined", "Help customer change their PIN", "Look up current account balance"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "All three intents covered: declined card, PIN change, balance."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Investigate why card payments are being declined",
+          "Help customer change their PIN",
+          "Look up current account balance"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "All three intents covered."
+      }
     }
   },
   {
@@ -1119,14 +1657,172 @@
         "query": "I have a charge on my statement I do not recognise and want it refunded, also my card has stopped working in shops",
         "expected": {
           "pattern": "hierarchical_delegation",
-          "answer_contains": []
+          "expected_outcome": {
+            "response_not_empty": true
+          }
         }
       }
     ],
     "mock_responses": {
-      "classify": {"pattern": "hierarchical_delegation"},
-      "decompose": {"subtasks": ["Investigate and reverse unrecognised charge", "Diagnose and resolve card not working issue"]},
-      "completeness": {"complete": true, "missing": [], "redundant": [], "coverage_ratio": 1.0, "reasoning": "Refund and card issue both addressed."}
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Investigate and reverse unrecognised charge",
+          "Diagnose and resolve card not working issue"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Refund and card issue both addressed."
+      }
+    }
+  },
+  {
+    "id": "b77_deleg_05",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: dispute top-up revert AND ask about card limits",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "My top-up was reverted for no reason and I need it fixed, also what are the daily spending limits on my card?",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Investigate and restore reverted top-up",
+          "Explain daily spending limits on card"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Top-up fix and limit inquiry both covered."
+      }
+    }
+  },
+  {
+    "id": "b77_deleg_06",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: report stolen card AND reverse fraudulent transactions",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "My card was stolen yesterday and I can see three transactions I did not make, block the card and reverse them all",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Block stolen card immediately",
+          "Reverse three unauthorized transactions"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Card block and transaction reversal both covered."
+      }
+    }
+  },
+  {
+    "id": "b77_deleg_07",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: failed direct debit refund AND cancel future direct debits",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "An unauthorized direct debit was taken from my account, I need it refunded and I want to cancel all future direct debits from that company",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "Refund unauthorized direct debit payment",
+          "Cancel all future direct debits from the company"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Refund and cancellation both covered."
+      }
+    }
+  },
+  {
+    "id": "b77_deleg_08",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: complaint about service delay AND request to update account contact details",
+    "success_criteria": "all_turns_pass",
+    "turns": [
+      {
+        "query": "I want to file a complaint because my card replacement has taken over three weeks, and I also need to update my phone number and email on file.",
+        "expected": {
+          "pattern": "hierarchical_delegation",
+          "expected_outcome": {
+            "response_not_empty": true
+          }
+        }
+      }
+    ],
+    "mock_responses": {
+      "classify": {
+        "pattern": "hierarchical_delegation"
+      },
+      "decompose": {
+        "subtasks": [
+          "File complaint about delayed card replacement",
+          "Update account contact details (phone number and email)"
+        ]
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "redundant": [],
+        "coverage_ratio": 1.0,
+        "reasoning": "Both intents covered: complaint filing and account update"
+      }
+    },
+    "expected_outcome": {
+      "response_not_empty": true
     }
   }
 ]

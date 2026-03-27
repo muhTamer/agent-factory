@@ -141,9 +141,7 @@ def _collect_explanations(sample: List[Dict]) -> List[Dict[str, Any]]:
                     "category": sc["category"],
                     "description": sc.get("description", ""),
                     "query": query,
-                    "answer": (
-                        answer[:1000] if isinstance(answer, str) else str(answer)[:1000]
-                    ),
+                    "answer": answer if isinstance(answer, str) else str(answer),
                     "agent_id": resp.get("agent_id", ""),
                     "delegated_agents": resp.get("delegated_agents", []),
                     "explanations": {
@@ -226,7 +224,7 @@ def _generate_html(items: List[Dict[str, Any]], output_path: Path) -> None:
   .wizard-nav button:disabled {{ opacity: 0.3; }}
 
   /* ── Main eval styles ── */
-  .hidden {{ display: none; }}
+  .hidden {{ display: none !important; }}
   .progress {{ text-align: center; margin: 10px 0 20px; font-size: 14px; color: #666; }}
   .progress-bar {{ width: 100%; height: 6px; background: #ddd; border-radius: 3px; margin: 8px 0; }}
   .progress-fill {{ height: 100%; background: #2d6a4f; border-radius: 3px; transition: width 0.3s; }}
@@ -236,7 +234,7 @@ def _generate_html(items: List[Dict[str, Any]], output_path: Path) -> None:
   .section {{ margin: 16px 0; }}
   .section h3 {{ font-size: 15px; color: #555; margin-bottom: 6px; border-bottom: 1px solid #eee; padding-bottom: 4px; }}
   .query {{ background: #e8f4f8; padding: 12px; border-radius: 6px; font-style: italic; }}
-  .answer {{ background: #f0f7f0; padding: 12px; border-radius: 6px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }}
+  .answer {{ background: #f0f7f0; padding: 12px; border-radius: 6px; white-space: pre-wrap; }}
   .explanation {{ background: #fff9e6; padding: 12px; border-radius: 6px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }}
   .trace {{ background: #f5f0ff; padding: 12px; border-radius: 6px; font-size: 12px; font-family: monospace; white-space: pre-wrap; max-height: 150px; overflow-y: auto; }}
   .rating-group {{ margin: 12px 0; padding: 14px; background: #fafafa; border-radius: 6px; border: 1px solid #eee; }}
@@ -251,6 +249,26 @@ def _generate_html(items: List[Dict[str, Any]], output_path: Path) -> None:
   .level-tabs button {{ padding: 8px 18px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer; font-size: 13px; }}
   .level-tabs button.active {{ background: #2d6a4f; color: white; border-color: #2d6a4f; }}
   .level-desc {{ font-size: 12px; color: #666; font-style: italic; margin-bottom: 8px; }}
+
+  /* ── Role selector cards ── */
+  .role-cards {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 20px 0; }}
+  @media (max-width: 700px) {{ .role-cards {{ grid-template-columns: 1fr; }} }}
+  .role-card {{ padding: 20px; border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; text-align: center; transition: all 0.2s; background: white; }}
+  .role-card:hover {{ border-color: #2d6a4f; background: #f0f7f0; }}
+  .role-card.selected {{ border-color: #2d6a4f; background: #e8f4e8; box-shadow: 0 2px 12px rgba(45,106,79,0.15); }}
+  .role-card .role-icon {{ font-size: 36px; margin-bottom: 8px; }}
+  .role-card .role-name {{ font-weight: 700; font-size: 16px; color: #1a1a2e; margin-bottom: 4px; }}
+  .role-card .role-level {{ font-size: 13px; font-weight: 600; margin-bottom: 8px; }}
+  .role-card .role-level-summary {{ color: #0077b6; }}
+  .role-card .role-level-detailed {{ color: #e65100; }}
+  .role-card .role-level-full {{ color: #6c3483; }}
+  .role-card .role-desc {{ font-size: 12px; color: #666; line-height: 1.5; }}
+  .role-card .role-ieee {{ font-size: 11px; color: #999; margin-top: 8px; }}
+  .role-selected-banner {{ background: #e8f4e8; border: 1px solid #2d6a4f; border-radius: 8px; padding: 12px 16px; margin: 12px 0; display: flex; align-items: center; justify-content: space-between; }}
+  .role-selected-banner .role-info {{ font-size: 14px; }}
+  .role-selected-banner .role-info strong {{ color: #2d6a4f; }}
+  .role-selected-banner button {{ padding: 6px 16px; background: #eee; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 12px; }}
+
   .nav {{ display: flex; justify-content: space-between; margin: 20px 0; }}
   .nav button {{ padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; }}
   .nav .prev {{ background: #ddd; color: #333; }}
@@ -260,6 +278,41 @@ def _generate_html(items: List[Dict[str, Any]], output_path: Path) -> None:
   .export-bar button {{ padding: 12px 32px; background: #1a1a2e; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; }}
   .evaluator-info input {{ padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 300px; }}
   .help-toggle {{ position: fixed; bottom: 20px; right: 20px; width: 44px; height: 44px; border-radius: 50%; background: #2d6a4f; color: white; border: none; font-size: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 100; }}
+
+  /* ── Quick-reference side panel (sticky) ── */
+  .ref-overlay {{ position: fixed; top: 0; right: 0; width: 380px; height: 100%; background: white; z-index: 900; box-shadow: -4px 0 20px rgba(0,0,0,0.15); transform: translateX(100%); transition: transform 0.3s ease; overflow-y: auto; padding: 0; }}
+  .ref-overlay.open {{ transform: translateX(0); }}
+  .ref-panel {{ padding: 24px; position: relative; }}
+  .ref-panel h2 {{ margin-bottom: 16px; color: #1a1a2e; font-size: 18px; padding-right: 40px; }}
+  .ref-close {{ position: absolute; top: 16px; right: 16px; background: #eee; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 20px; line-height: 32px; text-align: center; cursor: pointer; color: #555; z-index: 10; }}
+  .ref-close:hover {{ background: #ddd; color: #111; }}
+  @media (max-width: 800px) {{ .ref-overlay {{ width: 100%; }} }}
+  .ref-accordion {{ margin: 8px 0; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }}
+  .ref-accordion-header {{ padding: 12px 16px; background: #f8f9fa; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
+  .ref-accordion-header:hover {{ background: #eef5ee; }}
+  .ref-accordion-body {{ padding: 0 16px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; font-size: 13px; line-height: 1.6; }}
+  .ref-accordion-body.open {{ max-height: 600px; padding: 12px 16px; }}
+  .ref-accordion-body ul {{ margin: 6px 0 6px 16px; }}
+  .ref-tag {{ display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 8px; }}
+  .ref-tag-faith {{ background: #e8f4f8; color: #0077b6; }}
+  .ref-tag-comp {{ background: #e8f4e8; color: #2d6a4f; }}
+  .ref-tag-clar {{ background: #fff3e0; color: #e65100; }}
+
+  /* ── Improved rating UX ── */
+  .rating-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px; }}
+  @media (max-width: 700px) {{ .rating-grid {{ grid-template-columns: 1fr; }} }}
+  .rating-compact {{ padding: 12px; background: #fafafa; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center; }}
+  .rating-compact label {{ display: block; font-weight: 700; font-size: 14px; margin-bottom: 2px; }}
+  .rating-compact .hint {{ font-size: 11px; color: #888; margin-bottom: 8px; }}
+  .rating-compact .stars {{ justify-content: center; }}
+  .rating-compact .stars button {{ width: 36px; height: 36px; font-size: 15px; }}
+  .level-badge {{ display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-right: 8px; }}
+  .level-badge-summary {{ background: #e8f4f8; color: #0077b6; }}
+  .level-badge-detailed {{ background: #fff3e0; color: #e65100; }}
+  .level-badge-full {{ background: #f5f0ff; color: #6c3483; }}
+  .completion-check {{ display: inline-block; width: 18px; height: 18px; border-radius: 50%; text-align: center; line-height: 18px; font-size: 11px; margin-left: 6px; }}
+  .completion-check.done {{ background: #2d6a4f; color: white; }}
+  .completion-check.pending {{ background: #ddd; color: #999; }}
 </style>
 </head>
 <body>
@@ -268,7 +321,8 @@ def _generate_html(items: List[Dict[str, Any]], output_path: Path) -> None:
 <!-- ONBOARDING WIZARD                                          -->
 <!-- ═══════════════════════════════════════════════════════════ -->
 <div class="wizard-overlay" id="wizardOverlay">
-<div class="wizard">
+<div class="wizard" style="position:relative;">
+  <button class="ref-close" id="wizardClose" onclick="document.getElementById('wizardOverlay').classList.add('hidden');document.getElementById('mainApp').classList.remove('hidden');localStorage.setItem('rq2_wizard_done','1');">&times;</button>
   <div class="step-dots" id="stepDots"></div>
   <div id="wizardContent"></div>
   <div class="wizard-nav">
@@ -288,6 +342,7 @@ def _generate_html(items: List[Dict[str, Any]], output_path: Path) -> None:
   <div class="card evaluator-info">
     <label><strong>Your Name:</strong></label>
     <input type="text" id="evaluatorName" placeholder="Enter your name" style="margin-top:8px;">
+    <div id="roleDisplay" style="margin-top:10px;font-size:14px;color:#555;"></div>
   </div>
 
   <div class="progress">
@@ -308,7 +363,101 @@ def _generate_html(items: List[Dict[str, Any]], output_path: Path) -> None:
   </div>
 </div>
 
-<button class="help-toggle" onclick="showWizard()" title="Review guide">?</button>
+<button class="help-toggle" onclick="showRefPanel()" title="Quick reference — IEEE standards &amp; scoring">?</button>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- QUICK-REFERENCE PANEL (replaces wizard replay)             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="ref-overlay" id="refOverlay">
+<div class="ref-panel">
+  <button class="ref-close" onclick="event.stopPropagation();closeRefPanel()">&times;</button>
+  <h2>Quick Reference — Rating Guide</h2>
+  <p style="color:#666;font-size:13px;margin-bottom:16px;">Click any section to expand. These are the IEEE standards behind each rating dimension.</p>
+
+  <div class="ref-accordion">
+    <div class="ref-accordion-header" onclick="toggleRef(this)">
+      Faithfulness <span class="ref-tag ref-tag-faith">IEEE 2894-R7</span>
+      <span>&#9660;</span>
+    </div>
+    <div class="ref-accordion-body">
+      <p><strong>Standard:</strong> <a href="https://standards.ieee.org/ieee/2894/11296/" target="_blank" style="color:#0077b6;">IEEE 2894-2024</a>, Requirement R7 — Traceability</p>
+      <p><strong>Question:</strong> Can each claim in the explanation be verified against the execution trace?</p>
+      <ul>
+        <li><strong>5</strong> — Every claim verifiable in the trace</li>
+        <li><strong>4</strong> — Most claims traceable, minor gaps</li>
+        <li><strong>3</strong> — Mentions key decisions but doesn't link to specific steps</li>
+        <li><strong>2</strong> — Vague references with no grounding</li>
+        <li><strong>1</strong> — Fabricated or contradicts what happened</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="ref-accordion">
+    <div class="ref-accordion-header" onclick="toggleRef(this)">
+      Completeness <span class="ref-tag ref-tag-comp">IEEE 2894-R4/R5 + 3152-R1/R2</span>
+      <span>&#9660;</span>
+    </div>
+    <div class="ref-accordion-body">
+      <p><strong>Standards:</strong> <a href="https://standards.ieee.org/ieee/2894/11296/" target="_blank" style="color:#2d6a4f;">IEEE 2894-R4/R5</a> (provenance, rationale); <a href="https://standards.ieee.org/ieee/3152/11718/" target="_blank" style="color:#2d6a4f;">IEEE 3152-R1/R2</a> (AI disclosure, agent identity)</p>
+      <p><strong>Question:</strong> Are all four elements present?</p>
+      <ul>
+        <li><strong>Data provenance</strong> — what data sources were consulted</li>
+        <li><strong>Decision rationale</strong> — why this path was taken</li>
+        <li><strong>AI nature disclosure</strong> — is it clear this is AI-generated</li>
+        <li><strong>Agent identity</strong> — which AI component(s) handled the request</li>
+      </ul>
+      <p style="margin-top:8px;"><strong>Scoring:</strong></p>
+      <ul>
+        <li><strong>5</strong> — All 4 elements clearly present</li>
+        <li><strong>4</strong> — Covers most, minor omissions</li>
+        <li><strong>3</strong> — Has rationale but lacks provenance, or vice versa</li>
+        <li><strong>2</strong> — Missing provenance and identity</li>
+        <li><strong>1</strong> — None of the 4 elements present</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="ref-accordion">
+    <div class="ref-accordion-header" onclick="toggleRef(this)">
+      Clarity <span class="ref-tag ref-tag-clar">IEEE 2894-R2/R3</span>
+      <span>&#9660;</span>
+    </div>
+    <div class="ref-accordion-body">
+      <p><strong>Standards:</strong> <a href="https://standards.ieee.org/ieee/2894/11296/" target="_blank" style="color:#e65100;">IEEE 2894-R2/R3</a> (user-appropriate, auditor-appropriate)</p>
+      <p><strong>Question:</strong> Is the depth and language right for the intended audience?</p>
+      <ul>
+        <li><strong>Summary</strong> — for customers: plain language, no jargon</li>
+        <li><strong>Detailed</strong> — for auditors: decision points, governance checks, data sources</li>
+        <li><strong>Full</strong> — for developers: event-level trace, timing, IDs, scores</li>
+      </ul>
+      <p style="margin-top:8px;"><strong>Scoring:</strong></p>
+      <ul>
+        <li><strong>5</strong> — Perfectly calibrated for the audience</li>
+        <li><strong>3</strong> — Right information but wrong framing</li>
+        <li><strong>1</strong> — Completely wrong audience level</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="ref-accordion">
+    <div class="ref-accordion-header" onclick="toggleRef(this)">
+      Explanation Levels — What to expect
+      <span>&#9660;</span>
+    </div>
+    <div class="ref-accordion-body">
+      <p><strong>Summary</strong> (<a href="https://standards.ieee.org/ieee/2894/11296/" target="_blank" style="color:#0077b6;">IEEE 2894-R2</a>) — User-facing: plain language about what happened and what it means for the user.</p>
+      <p><strong>Detailed</strong> (<a href="https://standards.ieee.org/ieee/2894/11296/" target="_blank" style="color:#e65100;">IEEE 2894-R3</a>) — Auditor-facing: decision points, which rules/checks applied, data sources referenced, AI disclosure.</p>
+      <p><strong>Full</strong> (Developer trace) — Developer-facing: timestamped event log with agent IDs, processing steps, timing, and raw data.</p>
+      <p style="margin-top:10px;font-size:12px;color:#888;">Read more: <a href="https://standards.ieee.org/ieee/2894/11296/" target="_blank">IEEE 2894-2024 (Explainability)</a> &middot; <a href="https://standards.ieee.org/ieee/3152/11718/" target="_blank">IEEE 3152-2024 (Transparent AI Agents)</a></p>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;text-align:center;">
+    <button onclick="closeRefPanel()" style="padding:10px 32px;background:#2d6a4f;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Got it</button>
+    <button onclick="closeRefPanel();showWizard()" style="padding:10px 32px;background:#eee;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:14px;margin-left:8px;">Replay full tutorial</button>
+  </div>
+</div>
+</div>
 
 <script>
 // ── DATA ──
@@ -363,27 +512,37 @@ const WIZARD_STEPS = [
     `
   }},
   {{
-    title: "Explanation Levels",
+    title: "Choose Your Role",
     html: `
-      <h2>Three Levels of Explanation</h2>
-      <p>IEEE 2894 recognises that different audiences need different levels of detail. The system produces three explanation levels:</p>
+      <h2>Choose Your Evaluation Role</h2>
+      <p>IEEE 2894 recognises that different audiences need different levels of detail. The system produces three explanation levels, each designed for a specific audience.</p>
+      <p style="margin-top:12px;"><strong>Select the role that best matches your background.</strong> You will evaluate the explanation level designed for that audience.</p>
 
-      <h3>Summary (IEEE 2894-R2: User-Appropriate)</h3>
-      <div class="example-box">
-        Intended for <strong>end users / customers</strong>. Should use plain language, explain what happened and what it means for them, without technical jargon.
+      <div class="role-cards" style="margin:20px 0;">
+        <div class="role-card" id="rc-summary" onclick="selectRole('summary')">
+          <div class="role-icon">&#128100;</div>
+          <div class="role-name">End User / Customer</div>
+          <div class="role-level role-level-summary">&#8594; Summary Level</div>
+          <div class="role-desc">Plain language explanation of what happened and why. No technical jargon. Designed so any customer can understand it.</div>
+          <div class="role-ieee">IEEE 2894-R2 (User-Appropriate)</div>
+        </div>
+        <div class="role-card" id="rc-detailed" onclick="selectRole('detailed')">
+          <div class="role-icon">&#128203;</div>
+          <div class="role-name">PM / Auditor / Compliance</div>
+          <div class="role-level role-level-detailed">&#8594; Detailed Level</div>
+          <div class="role-desc">Structured breakdown of routing decisions, policies applied, data sources, and governance checks. For compliance review and audit.</div>
+          <div class="role-ieee">IEEE 2894-R3 (Auditor-Appropriate)</div>
+        </div>
+        <div class="role-card" id="rc-full" onclick="selectRole('full')">
+          <div class="role-icon">&#128187;</div>
+          <div class="role-name">Software Engineer / Developer</div>
+          <div class="role-level role-level-full">&#8594; Full Level</div>
+          <div class="role-desc">Complete technical trace: router plan with candidate scores, agent reasoning steps, tool invocations, policies, and slot extraction.</div>
+          <div class="role-ieee">Developer Trace (Full Transparency)</div>
+        </div>
       </div>
 
-      <h3>Detailed (IEEE 2894-R3: Auditor-Appropriate)</h3>
-      <div class="example-box">
-        Intended for <strong>compliance officers / auditors</strong>. Should include decision points, which rules or checks were applied, and whether standards were met.
-      </div>
-
-      <h3>Full (Developer Trace)</h3>
-      <div class="example-box">
-        Intended for <strong>developers / technical staff</strong>. Should provide event-level detail — agent identifiers, processing steps, timing, and scores.
-      </div>
-
-      <p style="margin-top:12px;">You'll rate each level separately using tabs. Keep the intended audience in mind when scoring.</p>
+      <p style="font-size:13px;color:#888;">Your choice determines which explanation you'll rate. You can change your role later if needed.</p>
     `
   }},
   {{
@@ -532,17 +691,43 @@ const WIZARD_STEPS = [
       </table>
       <p><strong>Practical tips:</strong></p>
       <ul style="margin:8px 0 0 20px;">
-        <li>Rate each explanation level (Summary, Detailed, Full) using the tabs</li>
+        <li>You will see <strong>only</strong> the explanation level matching your chosen role</li>
+        <li>Rate each scenario on Faithfulness, Completeness, and Clarity</li>
         <li>Your ratings auto-save in your browser — you can close and return later</li>
-        <li>Click the <strong>?</strong> button at any time to review this guide</li>
-        <li>When finished, click <strong>Export Results</strong> to download your ratings as a file</li>
+        <li>Click the <strong>?</strong> button at any time to review the rating guide</li>
+        <li>You can change your role at any time using the "Change role" button</li>
+        <li>When finished, click <strong>Export Results</strong> to download your ratings</li>
       </ul>
       <p style="margin-top:16px;">Click <strong>Start Evaluating</strong> to begin!</p>
+      <p id="readyRoleMsg" style="margin-top:12px;padding:10px 14px;background:#e8f4e8;border-radius:6px;font-size:14px;"></p>
     `
   }}
 ];
 
 let wizardStep = 0;
+let selectedRole = localStorage.getItem('rq2_selected_role') || '';
+
+const ROLE_LABELS = {{
+  summary: 'End User / Customer',
+  detailed: 'PM / Auditor / Compliance',
+  full: 'Software Engineer / Developer'
+}};
+const ROLE_LEVEL_LABELS = {{
+  summary: 'Summary',
+  detailed: 'Detailed',
+  full: 'Full'
+}};
+
+function selectRole(role) {{
+  selectedRole = role;
+  localStorage.setItem('rq2_selected_role', role);
+  // Highlight selected card
+  document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+  const card = document.getElementById('rc-' + role);
+  if (card) card.classList.add('selected');
+  // Enable next button
+  document.getElementById('wNext').disabled = false;
+}}
 
 function renderWizard() {{
   const step = WIZARD_STEPS[wizardStep];
@@ -560,13 +745,35 @@ function renderWizard() {{
   document.getElementById('wPrev').style.display = wizardStep === 0 ? 'none' : '';
   const isLast = wizardStep === WIZARD_STEPS.length - 1;
   document.getElementById('wNext').textContent = isLast ? 'Start Evaluating' : 'Next';
+
+  // Role selection step — require a role to proceed
+  const isRoleStep = WIZARD_STEPS[wizardStep].title === 'Choose Your Role';
+  if (isRoleStep) {{
+    document.getElementById('wNext').disabled = !selectedRole;
+    // Re-highlight if already selected
+    if (selectedRole) {{
+      const card = document.getElementById('rc-' + selectedRole);
+      if (card) card.classList.add('selected');
+    }}
+  }} else {{
+    document.getElementById('wNext').disabled = false;
+  }}
+
+  // Ready step — show role confirmation
+  const readyMsg = document.getElementById('readyRoleMsg');
+  if (readyMsg && selectedRole) {{
+    readyMsg.innerHTML = `<strong>Your role:</strong> ${{ROLE_LABELS[selectedRole]}} &mdash; you will evaluate the <strong>${{ROLE_LEVEL_LABELS[selectedRole]}}</strong> explanation level.`;
+  }}
 }}
 
 function wizardNav(dir) {{
   if (dir > 0 && wizardStep === WIZARD_STEPS.length - 1) {{
+    if (!selectedRole) {{ alert('Please select a role first.'); return; }}
     document.getElementById('wizardOverlay').classList.add('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
     localStorage.setItem('rq2_wizard_done', '1');
+    currentLevel = selectedRole;
+    render();
     return;
   }}
   wizardStep = Math.max(0, Math.min(WIZARD_STEPS.length - 1, wizardStep + dir));
@@ -579,13 +786,23 @@ function showWizard() {{
   renderWizard();
 }}
 
-// Skip wizard if already completed
-if (localStorage.getItem('rq2_wizard_done')) {{
-  document.getElementById('wizardOverlay').classList.add('hidden');
-  document.getElementById('mainApp').classList.remove('hidden');
-}} else {{
-  renderWizard();
+// ── Quick-reference side panel ──
+function showRefPanel() {{
+  document.getElementById('refOverlay').classList.add('open');
 }}
+function closeRefPanel() {{
+  document.getElementById('refOverlay').classList.remove('open');
+}}
+function toggleRef(header) {{
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+  const arrow = header.querySelector('span:last-child');
+  arrow.textContent = body.classList.contains('open') ? '\\u25B2' : '\\u25BC';
+}}
+
+// Always show wizard on first load (even if completed before — new survey version)
+// User can skip via X button if they've seen it before
+renderWizard();
 
 // ── RATING DIMENSIONS ──
 const LEVEL_DESCS = {{
@@ -617,10 +834,17 @@ const DIMS = [
 
 let currentIdx = 0;
 let ratings = JSON.parse(localStorage.getItem('rq2_human_ratings') || '{{}}');
-let currentLevel = 'summary';
+let currentLevel = selectedRole || 'summary';
 
 function saveRatings() {{
   localStorage.setItem('rq2_human_ratings', JSON.stringify(ratings));
+}}
+
+function changeRole() {{
+  showWizard();
+  // Jump to role selection step
+  wizardStep = 2; // "Choose Your Role" is the 3rd step (index 2)
+  renderWizard();
 }}
 
 function render() {{
@@ -628,10 +852,14 @@ function render() {{
   const key = item.id;
   if (!ratings[key]) ratings[key] = {{}};
 
-  // Progress
+  // Use the selected role's level
+  const evalLevel = selectedRole || 'summary';
+  currentLevel = evalLevel;
+
+  // Progress — count scenarios where this level is fully rated
   const rated = Object.keys(ratings).filter(k => {{
-    const r = ratings[k];
-    return ['summary','detailed','full'].some(l => r[l] && r[l].faithfulness && r[l].completeness && r[l].clarity);
+    const r = ratings[k]?.[evalLevel];
+    return r && r.faithfulness && r.completeness && r.clarity;
   }}).length;
   document.getElementById('progressText').textContent =
     `Scenario ${{currentIdx+1}} of ${{ITEMS.length}} | ${{rated}} of ${{ITEMS.length}} rated`;
@@ -639,15 +867,23 @@ function render() {{
     `${{(rated / ITEMS.length) * 100}}%`;
 
   const expls = item.explanations || {{}};
-  const levels = Object.keys(expls);
-  if (levels.length && !levels.includes(currentLevel)) currentLevel = levels[0];
-
-  const expl = expls[currentLevel] || {{}};
+  const expl = expls[evalLevel] || {{}};
   const trace = (item.trace_events || []).map(e =>
     `[${{e.event}}] ${{JSON.stringify(e.data)}}`
   ).join('\\n');
 
+  const levelBadgeClass = {{ summary: 'level-badge-summary', detailed: 'level-badge-detailed', full: 'level-badge-full' }};
+  const audienceLabel = {{ summary: 'For customers', detailed: 'For auditors', full: 'For developers' }};
+
   let html = `
+    <div class="role-selected-banner">
+      <div class="role-info">
+        Evaluating as: <strong>${{ROLE_LABELS[evalLevel]}}</strong> &mdash;
+        <span class="level-badge ${{levelBadgeClass[evalLevel] || ''}}">${{ROLE_LEVEL_LABELS[evalLevel]}} Level</span>
+      </div>
+      <button onclick="changeRole()">Change role</button>
+    </div>
+
     <h2>${{item.id}} — ${{item.description}}</h2>
     <div class="meta">Category: ${{item.category}} | Agent: ${{item.agent_id || (item.delegated_agents || []).join(', ') || 'N/A'}}</div>
 
@@ -667,26 +903,22 @@ function render() {{
     </div>
 
     <div class="section">
-      <h3>Explanation Level</h3>
-      <div class="level-tabs">
-        ${{levels.map(l => `<button class="${{l===currentLevel?'active':''}}" onclick="switchLevel('${{l}}')">${{l.charAt(0).toUpperCase()+l.slice(1)}}</button>`).join('')}}
+      <h3>Explanation to Evaluate</h3>
+      <div class="level-desc">
+        <span class="level-badge ${{levelBadgeClass[evalLevel] || ''}}">${{audienceLabel[evalLevel]}}</span>
+        ${{LEVEL_DESCS[evalLevel] || ''}}
       </div>
-      <div class="level-desc">${{LEVEL_DESCS[currentLevel] || ''}}</div>
-      <div class="explanation">
-        <strong>Narrative:</strong>\\n${{escHtml(expl.narrative || '(none)')}}
-        \\n\\n<strong>Agents involved:</strong> ${{(expl.agents_involved || []).join(', ') || 'N/A'}}
-        \\n<strong>Decisions:</strong> ${{(expl.decisions || []).map(d => typeof d === 'string' ? d : JSON.stringify(d)).join('; ') || 'N/A'}}
-        \\n<strong>Provenance:</strong> ${{(expl.provenance || []).map(p => typeof p === 'string' ? p : JSON.stringify(p)).join('; ') || 'N/A'}}
-      </div>
+      <div class="explanation">${{escHtml(expl.narrative || '(no explanation generated)')}}</div>
     </div>
 
-    <h3 style="margin:16px 0 8px;">Rate this <em>${{currentLevel}}</em> explanation</h3>
+    <h3 style="margin:16px 0 8px;">Rate this explanation</h3>
+    <div class="rating-grid">
   `;
 
   for (const dim of DIMS) {{
     const saved = ratings[key]?.[currentLevel]?.[dim.key] || 0;
     html += `
-      <div class="rating-group">
+      <div class="rating-compact">
         <label>${{dim.label}}</label>
         <div class="hint">${{dim.hint}}</div>
         <div class="stars">
@@ -696,6 +928,8 @@ function render() {{
       </div>
     `;
   }}
+
+  html += `</div>`;
 
   document.getElementById('scenarioCard').innerHTML = html;
 
@@ -710,11 +944,6 @@ function escHtml(s) {{
   return d.innerHTML;
 }}
 
-function switchLevel(level) {{
-  currentLevel = level;
-  render();
-}}
-
 function rate(scId, level, dim, score) {{
   if (!ratings[scId]) ratings[scId] = {{}};
   if (!ratings[scId][level]) ratings[scId][level] = {{}};
@@ -725,7 +954,6 @@ function rate(scId, level, dim, score) {{
 
 function navigate(dir) {{
   currentIdx = Math.max(0, Math.min(ITEMS.length - 1, currentIdx + dir));
-  currentLevel = 'summary';
   render();
   window.scrollTo(0, 0);
 }}
@@ -734,6 +962,8 @@ function exportResults() {{
   const name = document.getElementById('evaluatorName').value || 'anonymous';
   const output = {{
     evaluator: name,
+    role: ROLE_LABELS[selectedRole] || 'unknown',
+    explanation_level: selectedRole || 'unknown',
     timestamp: new Date().toISOString(),
     total_scenarios: ITEMS.length,
     ratings: ratings,

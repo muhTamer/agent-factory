@@ -35,7 +35,7 @@ class DomainAgentConfig:
     domain: str  # e.g. "refunds", "orders", "accounts"
     goal: str  # e.g. "Help customers with refund requests"
     policies: List[str] = field(default_factory=list)
-    max_steps: int = 8
+    max_steps: int = 10
     model: str = "gpt-5-mini"
     temperature: float = (
         1.0  # 1.0 is the only value some models accept (o-series, gpt-5-mini)

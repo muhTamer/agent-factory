@@ -1,28 +1,30 @@
 {
-  "orchestration_accuracy": 0.9333,
-  "reasoning_accuracy": 0.8667,
-  "agent_accuracy": 1.0,
-  "solvability_correlation": 0.0582,
+  "orchestration_accuracy": 0.8667,
+  "reasoning_accuracy": 0.9333,
+  "agent_accuracy": 0.9,
+  "outcome_accuracy": 0.85,
+  "solvability_correlation": -0.176,
   "completeness_rate": 1.0,
-  "avg_latency_ms": 48605.28,
+  "avg_latency_ms": 90327.38,
   "latency_by_category": {
-    "actionable_routing": 51946.32,
-    "graceful_degradation": 40669.72,
-    "hierarchical_delegation": 57420.74,
-    "hitl_escalation": 65446.95,
-    "informational_routing": 37132.61
+    "actionable_routing": 166872.54,
+    "graceful_degradation": 84993.12,
+    "hierarchical_delegation": 68477.94,
+    "hitl_escalation": 71170.45,
+    "informational_routing": 83604.67
   },
   "steps_by_category": {
-    "actionable_routing": 1.0,
+    "actionable_routing": 1.6,
     "graceful_degradation": 1.0,
     "hierarchical_delegation": 1.0,
-    "hitl_escalation": 1.0,
-    "informational_routing": 1.0
+    "hitl_escalation": 0.83,
+    "informational_routing": 1.21
   },
-  "total_scenarios": 30,
-  "passed": 26,
+  "total_scenarios": 60,
+  "passed": 56,
+  "soft_passed": 5,
   "failed": 4,
   "execution_mode": "real_llm",
-  "total_wall_time_seconds": 1487.32,
+  "total_wall_time_seconds": 6483.97,
   "inter_scenario_delay_seconds": 1.0
 }

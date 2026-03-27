@@ -35,7 +35,7 @@ def build_agent(
       - knowledge_sources: list[str] (file paths: CSV, YAML, MD)
       - available_tools: list[str] (tool names from ToolRegistry)
       - policies: list[str] (natural language policy constraints)
-      - max_steps: int (optional, default 5)
+      - max_steps: int (optional, default 10)
       - model: str (optional, default "gpt-5-mini")
 
     Output:
@@ -50,7 +50,7 @@ def build_agent(
     knowledge_sources = inputs.get("knowledge_sources") or inputs.get("docs") or []
     available_tools = inputs.get("available_tools") or inputs.get("tools") or []
     policies = inputs.get("policies") or []
-    max_steps = int(inputs.get("max_steps", 5))
+    max_steps = int(inputs.get("max_steps", 10))
     model = str(inputs.get("model", "gpt-5-mini"))
 
     # Ensure lists
@@ -109,7 +109,8 @@ def _generate_agent_source(agent_id: str) -> str:
     """Generate the agent.py wrapper source code."""
     # NOTE: This is a code template, not runtime code.
     # The generated agent.py will import DomainAgentEngine at runtime.
-    return textwrap.dedent(f"""\
+    return textwrap.dedent(
+        f"""\
         # Auto-generated Domain Agent ({agent_id})
         from __future__ import annotations
 
@@ -257,7 +258,7 @@ def _generate_agent_source(agent_id: str) -> str:
                     domain=self.cfg.get("domain", "general"),
                     goal=self.cfg.get("goal", ""),
                     policies=self.cfg.get("policies", []),
-                    max_steps=self.cfg.get("max_steps", 5),
+                    max_steps=self.cfg.get("max_steps", 10),
                     model=self.cfg.get("model", "gpt-5-mini"),
                     enable_dense_retrieval=enable_dense,
                 )
@@ -313,4 +314,5 @@ def _generate_agent_source(agent_id: str) -> str:
                     "available_tools": self.cfg.get("available_tools", []),
                     "vertical": "generic_customer_service",
                 }}
-    """)
+    """
+    )

@@ -130,7 +130,7 @@
         "transaction_id": "{{transaction_id}}",
         "payment_found": true,
         "settlement_status": "settled",
-        "original_transaction_amount": 2000,
+        "original_transaction_amount": 25000,
         "transaction_age_days": 5
       },
       "scenarios": [

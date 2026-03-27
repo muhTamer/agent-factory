@@ -20,6 +20,7 @@ Outputs:
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import logging
 import os
@@ -47,20 +48,34 @@ from app.runtime.registry import AgentRegistry  # noqa: E402
 from app.runtime.router import LLMRouter  # noqa: E402
 from app.runtime.spine import RuntimeSpine  # noqa: E402
 
-from evaluation.harness import EvaluationHarness  # noqa: E402
+from evaluation.harness import EvaluationHarness, ScenarioResult  # noqa: E402
 
 # ── Logging ──────────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
+LOG_DIR = Path(__file__).resolve().parent / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / "agent_factory.log"
+
+_log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+_stream_handler = logging.StreamHandler(sys.stdout)
+_stream_handler.setFormatter(_log_formatter)
+_file_handler = logging.FileHandler(str(LOG_FILE), mode="w", encoding="utf-8")
+_file_handler.setFormatter(_log_formatter)
+
+logging.basicConfig(level=logging.WARNING, handlers=[_stream_handler, _file_handler])
+
 logger = logging.getLogger("evaluation.rq1")
+logger.setLevel(logging.INFO)
+
+# Suppress noisy libraries
+for _noisy in ("httpx", "httpcore", "openai", "azure"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
 
 # ── Scenarios path ──────────────────────────────────────────────────
 SCENARIOS_PATH = Path(__file__).resolve().parent / "scenarios" / "ground_truth.json"
 
-# ── Rate limiting ───────────────────────────────────────────────────
+# ── Rate limiting & timeouts ────────────────────────────────────────
 INTER_SCENARIO_DELAY = float(os.getenv("EVAL_DELAY_SECONDS", "1.0"))
+SCENARIO_TIMEOUT = int(os.getenv("EVAL_SCENARIO_TIMEOUT", "300"))  # 5 min default
 
 
 # ── Load real agents from generated/ ────────────────────────────────
@@ -156,9 +171,10 @@ def build_eval_spine(tmp_dir: Path) -> RuntimeSpine:
     """Create a RuntimeSpine with REAL agents and LLM-based routing.
 
     The real fleet (from factory_spec.json) has three domain_agent instances:
-      - customer_faq_agent_v1  — FAQ / informational queries (ReAct + RAG)
       - refunds_agent_v1       — Refund processing (ReAct + RAG + tools)
       - complaints_agent_v1    — Complaint handling (ReAct + RAG + tools)
+      - accounts_agent_v1      — Account queries + FAQ (ReAct + RAG)
+    FAQ/informational queries are handled by the most relevant domain agent.
 
     All agents use DomainAgentEngine with real LLM calls.
     """
@@ -203,9 +219,10 @@ def run_evaluation(
     # Load scenarios
     scenarios = json.loads(SCENARIOS_PATH.read_text(encoding="utf-8"))
     if scenario_filter:
-        scenarios = [s for s in scenarios if s["id"] == scenario_filter]
+        filter_ids = [f.strip() for f in scenario_filter.split(",")]
+        scenarios = [s for s in scenarios if s["id"] in filter_ids]
         if not scenarios:
-            print(f"[ERROR] No scenario with id={scenario_filter}")
+            print(f"[ERROR] No scenarios matching: {scenario_filter}")
             return {}
     if max_scenarios:
         scenarios = scenarios[:max_scenarios]
@@ -218,23 +235,71 @@ def run_evaluation(
     # Run each scenario — NO mocks, real LLM calls
     all_results = []
     total_start = time.time()
+    passed_count = 0
+    failed_count = 0
+
+    logger.info("=" * 60)
+    logger.info("AGENT FACTORY — Starting %d scenarios", len(scenarios))
+    logger.info("Log file: %s", LOG_FILE.resolve())
+    logger.info("=" * 60)
 
     for i, sc in enumerate(scenarios, 1):
         sc_start = time.time()
-        logger.info("[%d/%d] Running scenario: %s", i, len(scenarios), sc["id"])
+        logger.info(
+            "[%d/%d] ▶ %s (category=%s)",
+            i,
+            len(scenarios),
+            sc["id"],
+            sc["category"],
+        )
 
         harness = EvaluationHarness(spine, SCENARIOS_PATH)
-        result = harness.run_scenario(sc)
+
+        # Run with thread-based timeout to prevent hanging on API calls
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(harness.run_scenario, sc)
+                result = future.result(timeout=SCENARIO_TIMEOUT)
+        except concurrent.futures.TimeoutError:
+            logger.warning(
+                "[%d/%d] ✗ %s TIMEOUT after %ds",
+                i,
+                len(scenarios),
+                sc["id"],
+                SCENARIO_TIMEOUT,
+            )
+            result = ScenarioResult(
+                scenario_id=sc["id"],
+                category=sc.get("category", ""),
+                description=sc.get("description", ""),
+                success=False,
+                outcome_detail=f"timeout:{SCENARIO_TIMEOUT}s",
+                error=f"Timeout after {SCENARIO_TIMEOUT}s",
+            )
+
         all_results.append(result)
 
+        if result.success:
+            passed_count += 1
+        else:
+            failed_count += 1
+
         elapsed = (time.time() - sc_start) * 1000
-        status = "PASS" if result.success else "FAIL"
-        print(
+        elapsed_total = time.time() - total_start
+        avg_per_sc = elapsed_total / i
+        eta = avg_per_sc * (len(scenarios) - i)
+
+        status = "SOFT" if result.soft_pass else ("PASS" if result.success else "FAIL")
+        log_line = (
             f"  [{status}] {sc['id']:20s}  "
             f"pattern={'OK' if result.pattern_correct else 'MISS':4s}  "
             f"agent={'OK' if result.agent_correct else 'MISS':4s}  "
-            f"latency={elapsed:.0f}ms"
+            f"latency={elapsed:.0f}ms  "
+            f"[{passed_count}✓ {failed_count}✗ | "
+            f"ETA {int(eta//60)}m{int(eta%60):02d}s]"
         )
+        logger.info(log_line)
+        sys.stdout.flush()
 
         # Rate limiting between scenarios
         if i < len(scenarios):
@@ -256,6 +321,7 @@ def run_evaluation(
     print(f"  Orchestration Accuracy:  {metrics.get('orchestration_accuracy', 0):.1%}")
     print(f"  Reasoning Accuracy:      {metrics.get('reasoning_accuracy', 0):.1%}")
     print(f"  Agent Accuracy:          {metrics.get('agent_accuracy', 0):.1%}")
+    print(f"  Outcome Accuracy:        {metrics.get('outcome_accuracy', 0):.1%}")
     print(f"  Avg Latency:             {metrics.get('avg_latency_ms', 0):.1f} ms")
 
     solv = metrics.get("solvability_correlation")
