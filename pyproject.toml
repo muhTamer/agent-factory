@@ -2,4 +2,4 @@
 line-length = 88
 
 [tool.ruff]
-extend-exclude = ["*.sh"]
+extend-exclude = ["**/*.sh"]

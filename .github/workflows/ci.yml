@@ -20,9 +20,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Lint (Ruff)
-        run: ruff check .
+        run: |
+          ruff version
+          ruff check . --verbose
       - name: Format check (Black)
-        run: black --check .
+        run: |
+          black --version
+          black --check .
 
   test:
     runs-on: ubuntu-latest
