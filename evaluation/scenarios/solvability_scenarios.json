@@ -2,7 +2,7 @@
   {
     "scenario_id": "S001",
     "subtask": "INFORMATIONAL: refund policy details",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_standard"
   },
@@ -16,7 +16,7 @@
   {
     "scenario_id": "S003",
     "subtask": "INFORMATIONAL: account opening requirements",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_standard"
   },
@@ -30,7 +30,7 @@
   {
     "scenario_id": "S005",
     "subtask": "INFORMATIONAL: what is the cheque clearing time",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_standard"
   },
@@ -51,7 +51,7 @@
   {
     "scenario_id": "S008",
     "subtask": "INFORMATIONAL: Premium Current Account features",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_standard"
   },
@@ -72,7 +72,7 @@
   {
     "scenario_id": "S011",
     "subtask": "INFORMATIONAL: EEFC Account eligibility for SEZ units",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_standard"
   },
@@ -86,7 +86,7 @@
   {
     "scenario_id": "S013",
     "subtask": "INFORMATIONAL: Flexi Account initial deposit amount",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_standard"
   },
@@ -104,11 +104,10 @@
     "lexical_gap": false,
     "category": "refund_standard"
   },
-
   {
     "scenario_id": "S016",
     "subtask": "INFORMATIONAL: how to get my money back",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": true,
     "category": "faq_lexical_gap"
   },
@@ -122,7 +121,7 @@
   {
     "scenario_id": "S018",
     "subtask": "INFORMATIONAL: what happens if I'm unhappy with my purchase",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": true,
     "category": "faq_lexical_gap"
   },
@@ -136,7 +135,7 @@
   {
     "scenario_id": "S020",
     "subtask": "INFORMATIONAL: steps to terminate my membership",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": true,
     "category": "faq_lexical_gap"
   },
@@ -150,7 +149,7 @@
   {
     "scenario_id": "S022",
     "subtask": "INFORMATIONAL: how do I move my account to a different branch",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": true,
     "category": "faq_lexical_gap"
   },
@@ -171,7 +170,7 @@
   {
     "scenario_id": "S025",
     "subtask": "INFORMATIONAL: tell me about the savings options you offer",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": true,
     "category": "faq_lexical_gap"
   },
@@ -192,7 +191,7 @@
   {
     "scenario_id": "S028",
     "subtask": "INFORMATIONAL: what documents do I need to open an account",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": true,
     "category": "faq_lexical_gap"
   },
@@ -210,11 +209,10 @@
     "lexical_gap": true,
     "category": "refund_lexical_gap"
   },
-
   {
     "scenario_id": "S031",
     "subtask": "INFORMATIONAL: can I get a refund on my current account fees",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_ambiguous",
     "notes": "Informational query about refund policy, not an action request"
@@ -230,7 +228,7 @@
   {
     "scenario_id": "S033",
     "subtask": "INFORMATIONAL: what is the process for filing a complaint",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_ambiguous",
     "notes": "Asking about complaint process (FAQ), not actually filing one"
@@ -246,7 +244,7 @@
   {
     "scenario_id": "S035",
     "subtask": "INFORMATIONAL: explain your returns and exchange policy",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_ambiguous",
     "notes": "Asking about policy, not requesting a return"
@@ -261,7 +259,7 @@
   {
     "scenario_id": "S037",
     "subtask": "INFORMATIONAL: how long does an international wire transfer take",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_standard"
   },
@@ -284,7 +282,7 @@
   {
     "scenario_id": "S040",
     "subtask": "INFORMATIONAL: what interest rates do you offer on fixed deposits",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": false,
     "category": "faq_standard"
   },
@@ -306,7 +304,7 @@
   {
     "scenario_id": "S043",
     "subtask": "INFORMATIONAL: do you have a mobile banking app",
-    "correct_agent": "customer_faq_agent_v1",
+    "correct_agent": "accounts_agent_v1",
     "lexical_gap": true,
     "category": "faq_lexical_gap"
   },

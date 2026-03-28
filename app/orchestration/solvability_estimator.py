@@ -198,23 +198,22 @@ class SolvabilityEstimator:
                 #     This ensures correct assignment even when TF-IDF scores are
                 #     near-zero (e.g. "account"≠"accounts" — no stemming).
                 agent_kind = meta.get("agent_kind", "")
-                inferred_kind = self._infer_agent_kind(meta, agent_kind)
                 penalty_applied = False
                 bonus_applied = False
 
                 if self.use_intent_scoring:
                     if subtask_intent == "informational":
-                        if inferred_kind == "action":
+                        if meta.get("requires_user_context"):
                             combined *= self._ACTION_PENALTY
                             penalty_applied = True
-                        if inferred_kind == "knowledge":
+                        if agent_kind == "knowledge_rag":
                             combined += self._INTENT_KIND_BONUS
                             bonus_applied = True
                     elif subtask_intent == "action":
-                        if inferred_kind == "knowledge":
+                        if not meta.get("requires_user_context"):
                             combined *= self._ACTION_PENALTY
                             penalty_applied = True
-                        if inferred_kind == "action":
+                        if agent_kind == "workflow_runner":
                             combined += self._INTENT_KIND_BONUS
                             bonus_applied = True
 

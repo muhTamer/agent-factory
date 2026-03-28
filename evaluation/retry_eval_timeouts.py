@@ -47,6 +47,12 @@ FRAMEWORK_CONFIGS = {
         "summary_file": "langgraph_baseline_summary.json",
         "framework_name": "langgraph_supervisor",
     },
+    "maf": {
+        "results_dir": ROOT / "evaluation" / "results" / "rq1",
+        "results_file": "evaluation_results.json",
+        "summary_file": "evaluation_summary.json",
+        "framework_name": "meta_agent_factory",
+    },
 }
 
 
@@ -119,13 +125,16 @@ def recompute_summary(
 
 def _run_scenario_with_timeout(run_fn: Callable, scenario: Dict, timeout: int) -> Dict:
     """Run a single scenario with thread-based timeout."""
-    with ThreadPoolExecutor(max_workers=1) as pool:
+    pool = ThreadPoolExecutor(max_workers=1)
+    try:
         future = pool.submit(run_fn, scenario)
         try:
             result = future.result(timeout=timeout)
             return result
         except FuturesTimeout:
             raise TimeoutError(f"Timeout after {timeout}s")
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
 
 
 def run_retry_round(
@@ -265,9 +274,36 @@ def _build_langgraph_runner() -> Tuple[Callable[[Dict], Dict], str]:
     return run_fn, "LangGraph supervisor"
 
 
+def _build_maf_runner() -> Tuple[Callable[[Dict], Dict], str]:
+    """Build Meta-Agent Factory runner function. Returns (run_fn, description)."""
+    import tempfile
+    from dataclasses import asdict
+    from evaluation.run_evaluation import build_eval_spine
+    from evaluation.harness import EvaluationHarness
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="maf_retry_"))
+    spine = build_eval_spine(tmp_dir)
+    harness = EvaluationHarness(spine, SCENARIOS_PATH)
+    LOG.info("Built MAF spine with agents: %s", spine.registry.all_ids())
+
+    def run_fn(scenario: Dict) -> Dict:
+        result = harness.run_scenario(scenario)
+        d = asdict(result)
+        # Map fields for compatibility with retry system
+        d.setdefault("first_agent", "")
+        d.setdefault("responding_agent", "")
+        d.setdefault("agents_involved", [])
+        d.setdefault("tools_used", [])
+        d.setdefault("answer_text", "")
+        return d
+
+    return run_fn, f"MAF spine ({len(spine.registry.all_ids())} agents)"
+
+
 RUNNERS = {
     "autogen": _build_autogen_runner,
     "langgraph": _build_langgraph_runner,
+    "maf": _build_maf_runner,
 }
 
 
@@ -438,7 +474,7 @@ if __name__ == "__main__":
         "--framework",
         required=True,
         choices=list(FRAMEWORK_CONFIGS),
-        help="Which baseline to retry (autogen or langgraph)",
+        help="Which framework to retry (autogen, langgraph, or maf)",
     )
     parser.add_argument(
         "--delay",

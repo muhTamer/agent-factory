@@ -93,11 +93,13 @@ def run_ablation(
     output_base.mkdir(parents=True, exist_ok=True)
     comparison = {}
     for mode, m in all_metrics.items():
+        total = m.get("total_scenarios", 0)
+        passed = m.get("passed", 0)
         comparison[mode] = {
-            "passed": m.get("passed", 0),
+            "passed": passed,
             "failed": m.get("failed", 0),
-            "total": m.get("total_scenarios", 0),
-            "orchestration_accuracy": m.get("orchestration_accuracy", 0),
+            "total": total,
+            "task_completion_rate": round(passed / total, 4) if total else 0,
             "agent_accuracy": m.get("agent_accuracy", 0),
             "reasoning_accuracy": m.get("reasoning_accuracy", 0),
             "avg_latency_ms": m.get("avg_latency_ms", 0),
@@ -111,18 +113,20 @@ def run_ablation(
     )
 
     # Print comparison table
+    # Note: orchestration_accuracy (pattern correctness) is excluded because
+    # ablation forces a single pattern — measuring pattern match is meaningless.
     print("\n" + "=" * 70)
     print("  ABLATION STUDY — COMPARISON")
     print("=" * 70)
     print(
-        f"  {'Mode':<15} {'Pass':>6} {'Orch%':>8} {'Agent%':>8} {'Reason%':>8} {'Latency':>10}"
+        f"  {'Mode':<15} {'Pass':>6} {'Compl%':>8} {'Agent%':>8} {'Reason%':>8} {'Latency':>10}"
     )
     print("  " + "-" * 60)
     for mode, m in comparison.items():
         print(
             f"  {mode:<15} "
             f"{m['passed']:>3}/{m['total']:<3} "
-            f"{m['orchestration_accuracy']:>7.1%} "
+            f"{m['task_completion_rate']:>7.1%} "
             f"{m['agent_accuracy']:>7.1%} "
             f"{m['reasoning_accuracy']:>7.1%} "
             f"{m['avg_latency_ms']:>8.0f}ms"

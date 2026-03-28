@@ -1,36 +1,36 @@
 {
   "total_scenarios": 45,
-  "tfidf_accuracy": 0.8,
-  "neural_accuracy": 0.9111,
-  "tfidf_correct": 36,
-  "neural_correct": 41,
-  "agreement_rate": 0.8,
+  "tfidf_accuracy": 0.4667,
+  "neural_accuracy": 0.7111,
+  "tfidf_correct": 21,
+  "neural_correct": 32,
+  "agreement_rate": 0.5111,
   "standard_match": {
     "count": 21,
-    "tfidf_accuracy": 0.8095,
-    "neural_accuracy": 0.9524
+    "tfidf_accuracy": 0.5238,
+    "neural_accuracy": 0.6667
   },
   "lexical_gap": {
     "count": 24,
-    "tfidf_accuracy": 0.7917,
-    "neural_accuracy": 0.875
+    "tfidf_accuracy": 0.4167,
+    "neural_accuracy": 0.75
   },
   "latency": {
-    "avg_tfidf_ms": 1.25,
-    "avg_neural_ms": 131.8,
-    "speedup_factor": 105.1
+    "avg_tfidf_ms": 0.88,
+    "avg_neural_ms": 118.03,
+    "speedup_factor": 133.5
   },
   "mcnemar": {
     "contingency": {
-      "both_correct": 34,
-      "tfidf_only": 2,
-      "neural_only": 7,
-      "both_wrong": 2
+      "both_correct": 18,
+      "tfidf_only": 3,
+      "neural_only": 14,
+      "both_wrong": 10
     },
-    "discordant_pairs": 9,
-    "chi2": 1.7778,
-    "p_value": 0.1824,
-    "significant_at_005": false,
+    "discordant_pairs": 17,
+    "chi2": 5.8824,
+    "p_value": 0.0153,
+    "significant_at_005": true,
     "favours": "neural"
   },
   "by_category": {
@@ -43,104 +43,104 @@
     },
     "complaint_lexical_gap": {
       "count": 7,
-      "tfidf_correct": 2,
-      "tfidf_accuracy": 0.2857,
-      "neural_correct": 5,
-      "neural_accuracy": 0.7143
+      "tfidf_correct": 5,
+      "tfidf_accuracy": 0.7143,
+      "neural_correct": 4,
+      "neural_accuracy": 0.5714
     },
     "complaint_standard": {
       "count": 4,
-      "tfidf_correct": 1,
-      "tfidf_accuracy": 0.25,
-      "neural_correct": 3,
-      "neural_accuracy": 0.75
+      "tfidf_correct": 2,
+      "tfidf_accuracy": 0.5,
+      "neural_correct": 2,
+      "neural_accuracy": 0.5
     },
     "faq_ambiguous": {
       "count": 3,
-      "tfidf_correct": 3,
-      "tfidf_accuracy": 1.0,
-      "neural_correct": 3,
-      "neural_accuracy": 1.0
+      "tfidf_correct": 1,
+      "tfidf_accuracy": 0.3333,
+      "neural_correct": 1,
+      "neural_accuracy": 0.3333
     },
     "faq_lexical_gap": {
       "count": 7,
-      "tfidf_correct": 7,
-      "tfidf_accuracy": 1.0,
-      "neural_correct": 7,
-      "neural_accuracy": 1.0
+      "tfidf_correct": 4,
+      "tfidf_accuracy": 0.5714,
+      "neural_correct": 5,
+      "neural_accuracy": 0.7143
     },
     "faq_standard": {
       "count": 8,
-      "tfidf_correct": 8,
-      "tfidf_accuracy": 1.0,
-      "neural_correct": 8,
-      "neural_accuracy": 1.0
+      "tfidf_correct": 4,
+      "tfidf_accuracy": 0.5,
+      "neural_correct": 5,
+      "neural_accuracy": 0.625
     },
     "refund_ambiguous": {
       "count": 1,
-      "tfidf_correct": 1,
-      "tfidf_accuracy": 1.0,
+      "tfidf_correct": 0,
+      "tfidf_accuracy": 0.0,
       "neural_correct": 1,
       "neural_accuracy": 1.0
     },
     "refund_lexical_gap": {
       "count": 9,
-      "tfidf_correct": 9,
-      "tfidf_accuracy": 1.0,
+      "tfidf_correct": 1,
+      "tfidf_accuracy": 0.1111,
       "neural_correct": 8,
       "neural_accuracy": 0.8889
     },
     "refund_standard": {
       "count": 5,
-      "tfidf_correct": 5,
-      "tfidf_accuracy": 1.0,
+      "tfidf_correct": 4,
+      "tfidf_accuracy": 0.8,
       "neural_correct": 5,
       "neural_accuracy": 1.0
     }
   },
   "confusion_tfidf": {
-    "complaints_agent_v1": {
-      "complaints_agent_v1": 3,
-      "customer_faq_agent_v1": 0,
-      "refunds_agent_v1": 9
+    "accounts_agent_v1": {
+      "accounts_agent_v1": 9,
+      "complaints_agent_v1": 6,
+      "refunds_agent_v1": 3
     },
-    "customer_faq_agent_v1": {
-      "complaints_agent_v1": 0,
-      "customer_faq_agent_v1": 18,
-      "refunds_agent_v1": 0
+    "complaints_agent_v1": {
+      "accounts_agent_v1": 3,
+      "complaints_agent_v1": 7,
+      "refunds_agent_v1": 2
     },
     "refunds_agent_v1": {
-      "complaints_agent_v1": 0,
-      "customer_faq_agent_v1": 0,
-      "refunds_agent_v1": 15
+      "accounts_agent_v1": 3,
+      "complaints_agent_v1": 7,
+      "refunds_agent_v1": 5
     }
   },
   "confusion_neural": {
+    "accounts_agent_v1": {
+      "accounts_agent_v1": 11,
+      "complaints_agent_v1": 1,
+      "refunds_agent_v1": 6
+    },
     "complaints_agent_v1": {
-      "complaints_agent_v1": 9,
-      "customer_faq_agent_v1": 0,
+      "accounts_agent_v1": 2,
+      "complaints_agent_v1": 7,
       "refunds_agent_v1": 3
     },
-    "customer_faq_agent_v1": {
-      "complaints_agent_v1": 0,
-      "customer_faq_agent_v1": 18,
-      "refunds_agent_v1": 0
-    },
     "refunds_agent_v1": {
+      "accounts_agent_v1": 0,
       "complaints_agent_v1": 1,
-      "customer_faq_agent_v1": 0,
       "refunds_agent_v1": 14
     }
   },
-  "wall_time_seconds": 5.99,
+  "wall_time_seconds": 5.35,
   "neural_mlp_trained": true,
   "ablation_raw_tfidf": {
     "total_scenarios": 45,
-    "tfidf_accuracy": 0.5111,
-    "neural_accuracy": 0.6889,
-    "tfidf_correct": 23,
-    "neural_correct": 31,
-    "agreement_rate": 0.5333,
+    "tfidf_accuracy": 0.4667,
+    "neural_accuracy": 0.7111,
+    "tfidf_correct": 21,
+    "neural_correct": 32,
+    "agreement_rate": 0.5111,
     "standard_match": {
       "count": 21,
       "tfidf_accuracy": 0.5238,
@@ -148,25 +148,25 @@
     },
     "lexical_gap": {
       "count": 24,
-      "tfidf_accuracy": 0.5,
-      "neural_accuracy": 0.7083
+      "tfidf_accuracy": 0.4167,
+      "neural_accuracy": 0.75
     },
     "latency": {
-      "avg_tfidf_ms": 1.13,
-      "avg_neural_ms": 117.31,
-      "speedup_factor": 103.4
+      "avg_tfidf_ms": 0.84,
+      "avg_neural_ms": 115.29,
+      "speedup_factor": 137.1
     },
     "mcnemar": {
       "contingency": {
         "both_correct": 18,
-        "tfidf_only": 5,
-        "neural_only": 13,
-        "both_wrong": 9
+        "tfidf_only": 3,
+        "neural_only": 14,
+        "both_wrong": 10
       },
-      "discordant_pairs": 18,
-      "chi2": 2.7222,
-      "p_value": 0.099,
-      "significant_at_005": false,
+      "discordant_pairs": 17,
+      "chi2": 5.8824,
+      "p_value": 0.0153,
+      "significant_at_005": true,
       "favours": "neural"
     },
     "by_category": {
@@ -179,17 +179,17 @@
       },
       "complaint_lexical_gap": {
         "count": 7,
-        "tfidf_correct": 2,
-        "tfidf_accuracy": 0.2857,
-        "neural_correct": 3,
-        "neural_accuracy": 0.4286
+        "tfidf_correct": 5,
+        "tfidf_accuracy": 0.7143,
+        "neural_correct": 4,
+        "neural_accuracy": 0.5714
       },
       "complaint_standard": {
         "count": 4,
-        "tfidf_correct": 1,
-        "tfidf_accuracy": 0.25,
-        "neural_correct": 1,
-        "neural_accuracy": 0.25
+        "tfidf_correct": 2,
+        "tfidf_accuracy": 0.5,
+        "neural_correct": 2,
+        "neural_accuracy": 0.5
       },
       "faq_ambiguous": {
         "count": 3,
@@ -200,29 +200,29 @@
       },
       "faq_lexical_gap": {
         "count": 7,
-        "tfidf_correct": 5,
-        "tfidf_accuracy": 0.7143,
+        "tfidf_correct": 4,
+        "tfidf_accuracy": 0.5714,
         "neural_correct": 5,
         "neural_accuracy": 0.7143
       },
       "faq_standard": {
         "count": 8,
-        "tfidf_correct": 5,
-        "tfidf_accuracy": 0.625,
-        "neural_correct": 6,
-        "neural_accuracy": 0.75
+        "tfidf_correct": 4,
+        "tfidf_accuracy": 0.5,
+        "neural_correct": 5,
+        "neural_accuracy": 0.625
       },
       "refund_ambiguous": {
         "count": 1,
-        "tfidf_correct": 1,
-        "tfidf_accuracy": 1.0,
+        "tfidf_correct": 0,
+        "tfidf_accuracy": 0.0,
         "neural_correct": 1,
         "neural_accuracy": 1.0
       },
       "refund_lexical_gap": {
         "count": 9,
-        "tfidf_correct": 4,
-        "tfidf_accuracy": 0.4444,
+        "tfidf_correct": 1,
+        "tfidf_accuracy": 0.1111,
         "neural_correct": 8,
         "neural_accuracy": 0.8889
       },
@@ -235,36 +235,36 @@
       }
     },
     "confusion_tfidf": {
-      "complaints_agent_v1": {
-        "complaints_agent_v1": 3,
-        "customer_faq_agent_v1": 4,
-        "refunds_agent_v1": 5
+      "accounts_agent_v1": {
+        "accounts_agent_v1": 9,
+        "complaints_agent_v1": 6,
+        "refunds_agent_v1": 3
       },
-      "customer_faq_agent_v1": {
-        "complaints_agent_v1": 2,
-        "customer_faq_agent_v1": 11,
-        "refunds_agent_v1": 5
+      "complaints_agent_v1": {
+        "accounts_agent_v1": 3,
+        "complaints_agent_v1": 7,
+        "refunds_agent_v1": 2
       },
       "refunds_agent_v1": {
-        "complaints_agent_v1": 0,
-        "customer_faq_agent_v1": 6,
-        "refunds_agent_v1": 9
+        "accounts_agent_v1": 3,
+        "complaints_agent_v1": 7,
+        "refunds_agent_v1": 5
       }
     },
     "confusion_neural": {
+      "accounts_agent_v1": {
+        "accounts_agent_v1": 11,
+        "complaints_agent_v1": 1,
+        "refunds_agent_v1": 6
+      },
       "complaints_agent_v1": {
-        "complaints_agent_v1": 5,
-        "customer_faq_agent_v1": 4,
+        "accounts_agent_v1": 2,
+        "complaints_agent_v1": 7,
         "refunds_agent_v1": 3
       },
-      "customer_faq_agent_v1": {
-        "complaints_agent_v1": 2,
-        "customer_faq_agent_v1": 12,
-        "refunds_agent_v1": 4
-      },
       "refunds_agent_v1": {
+        "accounts_agent_v1": 0,
         "complaints_agent_v1": 1,
-        "customer_faq_agent_v1": 0,
         "refunds_agent_v1": 14
       }
     }
