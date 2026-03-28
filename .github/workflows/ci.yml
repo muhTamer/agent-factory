@@ -19,18 +19,33 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Debug env
+      - name: Lint and format check
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python --version
-          pip show ruff black | grep -E '^(Name|Version)'
-          ruff version
-          black --version
-      - name: Lint (Ruff)
-        run: ruff check . 2>&1; echo "RUFF_EXIT=$?"
-      - name: Format check (Black)
-        run: black --check . 2>&1; echo "BLACK_EXIT=$?"
-      - name: Combined check
-        run: ruff check . && black --check .
+          set +e
+          echo "=== Environment ===" > /tmp/lint_output.txt
+          python --version >> /tmp/lint_output.txt 2>&1
+          ruff version >> /tmp/lint_output.txt 2>&1
+          black --version >> /tmp/lint_output.txt 2>&1
+          echo "" >> /tmp/lint_output.txt
+          echo "=== Ruff ===" >> /tmp/lint_output.txt
+          ruff check . >> /tmp/lint_output.txt 2>&1
+          RUFF_EXIT=$?
+          echo "" >> /tmp/lint_output.txt
+          echo "=== Black ===" >> /tmp/lint_output.txt
+          black --check . >> /tmp/lint_output.txt 2>&1
+          BLACK_EXIT=$?
+          echo "" >> /tmp/lint_output.txt
+          echo "Ruff exit: $RUFF_EXIT / Black exit: $BLACK_EXIT" >> /tmp/lint_output.txt
+          cat /tmp/lint_output.txt
+          if [ "$RUFF_EXIT" -ne 0 ] || [ "$BLACK_EXIT" -ne 0 ]; then
+            BODY=$(cat /tmp/lint_output.txt)
+            gh pr comment ${{ github.event.pull_request.number }} --body "\`\`\`
+          $BODY
+          \`\`\`"
+            exit 1
+          fi
 
   test:
     runs-on: ubuntu-latest
