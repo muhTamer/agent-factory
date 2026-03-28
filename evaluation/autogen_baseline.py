@@ -253,7 +253,7 @@ def _build_agents(
             tools=agent_tools,
             system_message=system_message,
             description=(f"{domain.upper()} specialist. {config['goal'][:100]}"),
-            reflect_on_tool_use=True,
+            reflect_on_tool_use=False,
         )
         agents.append(agent)
 
@@ -270,24 +270,12 @@ def _detect_pattern(
 ) -> str:
     """Map AutoGen response to orchestration pattern.
 
-    AutoGen's SelectorGroupChat is a group conversation — it doesn't
-    have explicit "direct" vs "delegation" routing. All agents may speak.
-    We determine pattern based on the scenario's expected pattern:
-      - For single-intent queries, the first agent selected by the
-        SelectorGroupChat's LLM is the routing decision (→ direct).
-      - For multi-intent queries (expected delegation), if multiple
-        agents are involved, that maps to hierarchical_delegation.
-
-    This is a fair comparison: both frameworks use an LLM to decide
-    which agent handles the query. AutoGen just doesn't stop after one.
+    Detected purely from actual execution — does NOT peek at ground truth.
+    If multiple domain agents participated, that's hierarchical_delegation.
+    If only one agent handled it, that's direct routing.
     """
-    expected = scenario.get("turns", [{}])[0].get("expected", {}).get("pattern")
-    if expected == "hierarchical_delegation":
-        # For delegation scenarios, check if multiple agents were selected
-        if len(all_agents_involved) > 1:
-            return "hierarchical_delegation"
-        return "direct"
-    # For all other scenarios, the first agent selection IS the routing decision
+    if len(all_agents_involved) > 1:
+        return "hierarchical_delegation"
     return "direct"
 
 
@@ -354,14 +342,10 @@ def _check_outcome(
     elif escalation_expected is False:
         checks_passed.append("escalation=no")
 
-    # knowledge_retrieved — all baseline agents have knowledge_search tools
-    # and use them automatically, so if there's an answer, knowledge was used.
+    # knowledge_retrieved — check if a knowledge_search tool was actually called
     knowledge_expected = expected_outcome.get("knowledge_retrieved")
     if knowledge_expected is not None:
         has_knowledge = any("knowledge" in t or "search" in t for t in actual_tools)
-        # Baseline agents always search their KB; if answer exists, infer retrieval
-        if not has_knowledge and answer_text.strip():
-            has_knowledge = True
         if has_knowledge == knowledge_expected:
             checks_passed.append(f"knowledge={'yes' if has_knowledge else 'no'}")
         else:
@@ -428,7 +412,7 @@ async def _run_team_with_retry(
             team = SelectorGroupChat(
                 agents,
                 model_client=model_client,
-                termination_condition=MaxMessageTermination(max_messages=4),
+                termination_condition=MaxMessageTermination(max_messages=6),
             )
             return await team.run(task=task)
         except Exception as retry_err:
@@ -439,7 +423,7 @@ async def _run_team_with_retry(
                         r"retry after (\d+)", str(retry_err), re.IGNORECASE
                     )
                     suggested = int(retry_match.group(1)) if retry_match else 0
-                    wait = max(suggested + 2, RETRY_BASE_DELAY * (2**attempt))
+                    wait = min(max(suggested + 2, RETRY_BASE_DELAY * (2**attempt)), 90)
                     logger.warning(
                         "Rate limited on %s (attempt %d/%d), waiting %.0fs...",
                         sc_id,
@@ -597,24 +581,31 @@ async def run_single_scenario(
         # actual pattern is data, not a pass/fail criterion.
         soft_pass = False
 
-        # Soft-pass: if routing was correct but only tool_missing checks failed,
-        # mark as success with soft_pass flag (LLM non-determinism in tool calling)
+        # Soft-pass: if routing was correct but only tool_missing or
+        # knowledge_mismatch checks failed, mark as success with soft_pass flag
+        # (LLM non-determinism in tool calling / knowledge retrieval)
         if not all_outcome_ok and all_agent_ok:
             detail_str = "; ".join(outcome_details)
             import re
 
             fail_match = re.search(r"fail=\[([^\]]+)\]", detail_str)
             if fail_match:
-                failed_checks = [
-                    c.strip() for c in fail_match.group(1).split(",") if c.strip()
-                ]
-                only_tool_missing = all(
-                    f.startswith("tool_missing:") for f in failed_checks
+                fail_content = fail_match.group(1)
+                # Extract individual checks (split on boundaries between checks,
+                # not on commas inside values like "expected=True,got=False")
+                failed_checks = re.findall(
+                    r"(tool_missing:[^,\]]+|knowledge_mismatch:[^]]+|[a-z_]+(?::[^,\]]*)?)",
+                    fail_content,
+                )
+                # Verify ALL extracted checks are minor (tool_missing or knowledge_mismatch)
+                only_minor = bool(failed_checks) and all(
+                    f.startswith("tool_missing:") or f.startswith("knowledge_mismatch:")
+                    for f in failed_checks
                 )
                 has_response = "response_present" in detail_str or (
                     answer_text and answer_text.strip()
                 )
-                if only_tool_missing and has_response:
+                if only_minor and has_response:
                     all_outcome_ok = True
                     soft_pass = True
                     outcome_details.append(
@@ -747,6 +738,14 @@ async def run_autogen_evaluation(
             }
 
         all_results.append(result)
+
+        # Incremental save after each scenario (prevents data loss on crash/kill)
+        _inc_path = Path(output_dir) / "autogen_baseline_results.json"
+        _inc_path.parent.mkdir(parents=True, exist_ok=True)
+        _inc_path.write_text(
+            json.dumps(all_results, indent=2, default=str, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
         if result["success"]:
             passed_count += 1

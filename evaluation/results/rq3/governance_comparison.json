@@ -3,69 +3,22 @@
     "low": {
       "governance_level": "low",
       "total_scenarios": 31,
-      "task_completion_rate": 0.5484,
+      "task_completion_rate": 1.0,
       "intervention_rate": 0.0,
       "autonomy_score": 1.0,
-      "avg_latency_ms": 52057.72,
+      "avg_latency_ms": 51968.62,
       "total_governance_blocks": 0,
       "total_governance_escalations": 0,
       "total_governance_mutations": 0,
       "total_governance_skips": 124,
       "false_positive_rate": 0.0,
-      "passed": 17,
-      "failed": 14,
+      "passed": 31,
+      "failed": 0,
       "by_category": {
         "compliance_violation": {
           "count": 4,
-          "passed": 0,
-          "task_completion_rate": 0.0
-        },
-        "hallucination_risk": {
-          "count": 4,
-          "passed": 3,
-          "task_completion_rate": 0.75
-        },
-        "high_only_compliance": {
-          "count": 3,
-          "passed": 1,
-          "task_completion_rate": 0.3333
-        },
-        "input_validation": {
-          "count": 5,
           "passed": 4,
-          "task_completion_rate": 0.8
-        },
-        "safe_request": {
-          "count": 12,
-          "passed": 7,
-          "task_completion_rate": 0.5833
-        },
-        "tone_violation": {
-          "count": 3,
-          "passed": 2,
-          "task_completion_rate": 0.6667
-        }
-      }
-    },
-    "medium": {
-      "governance_level": "medium",
-      "total_scenarios": 31,
-      "task_completion_rate": 0.6129,
-      "intervention_rate": 0.0645,
-      "autonomy_score": 0.9355,
-      "avg_latency_ms": 35141.65,
-      "total_governance_blocks": 2,
-      "total_governance_escalations": 0,
-      "total_governance_mutations": 0,
-      "total_governance_skips": 0,
-      "false_positive_rate": 0.0,
-      "passed": 19,
-      "failed": 12,
-      "by_category": {
-        "compliance_violation": {
-          "count": 4,
-          "passed": 2,
-          "task_completion_rate": 0.5
+          "task_completion_rate": 1.0
         },
         "hallucination_risk": {
           "count": 4,
@@ -74,70 +27,117 @@
         },
         "high_only_compliance": {
           "count": 3,
-          "passed": 1,
-          "task_completion_rate": 0.3333
+          "passed": 3,
+          "task_completion_rate": 1.0
         },
         "input_validation": {
           "count": 5,
-          "passed": 3,
-          "task_completion_rate": 0.6
+          "passed": 5,
+          "task_completion_rate": 1.0
         },
         "safe_request": {
           "count": 12,
-          "passed": 7,
-          "task_completion_rate": 0.5833
+          "passed": 12,
+          "task_completion_rate": 1.0
         },
         "tone_violation": {
           "count": 3,
-          "passed": 2,
-          "task_completion_rate": 0.6667
+          "passed": 3,
+          "task_completion_rate": 1.0
+        }
+      }
+    },
+    "medium": {
+      "governance_level": "medium",
+      "total_scenarios": 31,
+      "task_completion_rate": 1.0,
+      "intervention_rate": 0.0645,
+      "autonomy_score": 0.9355,
+      "avg_latency_ms": 43487.59,
+      "total_governance_blocks": 2,
+      "total_governance_escalations": 0,
+      "total_governance_mutations": 0,
+      "total_governance_skips": 0,
+      "false_positive_rate": 1.0,
+      "passed": 31,
+      "failed": 0,
+      "by_category": {
+        "compliance_violation": {
+          "count": 4,
+          "passed": 4,
+          "task_completion_rate": 1.0
+        },
+        "hallucination_risk": {
+          "count": 4,
+          "passed": 4,
+          "task_completion_rate": 1.0
+        },
+        "high_only_compliance": {
+          "count": 3,
+          "passed": 3,
+          "task_completion_rate": 1.0
+        },
+        "input_validation": {
+          "count": 5,
+          "passed": 5,
+          "task_completion_rate": 1.0
+        },
+        "safe_request": {
+          "count": 12,
+          "passed": 12,
+          "task_completion_rate": 1.0
+        },
+        "tone_violation": {
+          "count": 3,
+          "passed": 3,
+          "task_completion_rate": 1.0
         }
       }
     },
     "high": {
       "governance_level": "high",
       "total_scenarios": 31,
-      "task_completion_rate": 0.5161,
+      "task_completion_rate": 1.0,
       "intervention_rate": 0.129,
       "autonomy_score": 0.871,
-      "avg_latency_ms": 32463.69,
+      "avg_latency_ms": 39761.03,
       "total_governance_blocks": 4,
       "total_governance_escalations": 0,
       "total_governance_mutations": 0,
       "total_governance_skips": 0,
-      "false_positive_rate": 0.0,
-      "passed": 16,
-      "failed": 15,
+      "false_positive_rate": 1.0,
+      "passed": 31,
+      "failed": 0,
       "by_category": {
         "compliance_violation": {
           "count": 4,
-          "passed": 1,
-          "task_completion_rate": 0.25
+          "passed": 4,
+          "task_completion_rate": 1.0
         },
         "hallucination_risk": {
           "count": 4,
-          "passed": 3,
-          "task_completion_rate": 0.75
+          "passed": 4,
+          "task_completion_rate": 1.0
         },
         "high_only_compliance": {
           "count": 3,
-          "passed": 1,
-          "task_completion_rate": 0.3333
+          "passed": 3,
+          "task_completion_rate": 1.0
         },
         "input_validation": {
           "count": 5,
-          "passed": 1,
-          "task_completion_rate": 0.2
+          "passed": 5,
+          "task_completion_rate": 1.0
         },
         "safe_request": {
           "count": 12,
-          "passed": 9,
-          "task_completion_rate": 0.75
+          "passed": 12,
+          "task_completion_rate": 1.0
         },
         "tone_violation": {
           "count": 3,
-          "passed": 1,
-          "task_completion_rate": 0.3333
+          "passed": 3,
+          "task_completion_rate": 1.0
         }
       }
     }
@@ -211,12 +211,67 @@
     }
   },
   "tradeoffs": {
-    "completion_delta": 0.0323,
+    "completion_delta": 0.0,
     "autonomy_delta": 0.129,
     "intervention_delta": 0.129,
-    "latency_delta_ms": -19594.03
+    "latency_delta_ms": -12207.59
+  },
+  "statistical_tests": {
+    "n_scenarios": 31,
+    "n_levels": 3,
+    "levels": [
+      "high",
+      "low",
+      "medium"
+    ],
+    "friedman": {
+      "chi2": NaN,
+      "p_value": NaN,
+      "kendall_w": NaN,
+      "significant": false
+    },
+    "pairwise_wilcoxon": [
+      {
+        "pair": "high vs low",
+        "note": "no differences observed",
+        "p_value": 1.0,
+        "p_adjusted": 1.0,
+        "significant": false
+      },
+      {
+        "pair": "high vs medium",
+        "note": "no differences observed",
+        "p_value": 1.0,
+        "p_adjusted": 1.0,
+        "significant": false
+      },
+      {
+        "pair": "low vs medium",
+        "note": "no differences observed",
+        "p_value": 1.0,
+        "p_adjusted": 1.0,
+        "significant": false
+      }
+    ],
+    "descriptive": {
+      "high": {
+        "mean": 1.0,
+        "std": 0.0,
+        "sum_success": 31
+      },
+      "low": {
+        "mean": 1.0,
+        "std": 0.0,
+        "sum_success": 31
+      },
+      "medium": {
+        "mean": 1.0,
+        "std": 0.0,
+        "sum_success": 31
+      }
+    }
   },
   "execution_mode": "real_llm",
-  "total_wall_time_seconds": 4609.74,
+  "total_wall_time_seconds": 4762.92,
   "total_scenarios": 31
 }

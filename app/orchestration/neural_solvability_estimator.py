@@ -216,28 +216,21 @@ class NeuralSolvabilityEstimator:
                 # Intent-aware scoring (same logic as TF-IDF estimator)
                 modifiers = ""
                 if self.use_intent_scoring:
-                    from app.orchestration.solvability_estimator import (
-                        SolvabilityEstimator,
-                    )
-
                     meta = agent_catalog[aid]
                     agent_kind = meta.get("agent_kind", "")
-                    inferred_kind = SolvabilityEstimator._infer_agent_kind(
-                        meta, agent_kind
-                    )
 
                     if subtask_intent == "informational":
-                        if inferred_kind == "action":
+                        if meta.get("requires_user_context"):
                             combined *= self._ACTION_PENALTY
                             modifiers += " [penalty: info->action_agent]"
-                        if inferred_kind == "knowledge":
+                        if agent_kind == "knowledge_rag":
                             combined += self._INTENT_KIND_BONUS
                             modifiers += " [bonus: info->knowledge]"
                     elif subtask_intent == "action":
-                        if inferred_kind == "knowledge":
+                        if not meta.get("requires_user_context"):
                             combined *= self._ACTION_PENALTY
                             modifiers += " [penalty: action->knowledge_agent]"
-                        if inferred_kind == "action":
+                        if agent_kind == "workflow_runner":
                             combined += self._INTENT_KIND_BONUS
                             modifiers += " [bonus: action->workflow]"
 

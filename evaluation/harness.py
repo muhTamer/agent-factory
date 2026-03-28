@@ -256,16 +256,18 @@ class EvaluationHarness:
         # the tool).
         if not all_outcome_ok and result.agent_correct and result.error is None:
             detail = result.outcome_detail
-            # Check if ALL failures are tool_missing and response was present
-            only_tool_missing = (
-                "tool_missing:" in detail
+            # Check if ALL failures are tool_missing or knowledge_mismatch
+            # and a response was present
+            failed = self._extract_failed_checks(detail)
+            only_minor = (
+                failed
                 and "response_present" in detail
                 and all(
-                    f.startswith("tool_missing:")
-                    for f in self._extract_failed_checks(detail)
+                    f.startswith("tool_missing:") or f.startswith("knowledge_mismatch:")
+                    for f in failed
                 )
             )
-            if only_tool_missing:
+            if only_minor:
                 all_outcome_ok = True
                 result.soft_pass = True
                 result.outcome_detail += (

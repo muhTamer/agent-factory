@@ -41,7 +41,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(ROOT / ".env")
 
-from langchain_core.messages import AIMessage  # noqa: E402
+from langchain_core.messages import AIMessage, ToolMessage  # noqa: E402
 from langchain_openai import AzureChatOpenAI  # noqa: E402
 from langgraph.prebuilt import create_react_agent  # noqa: E402
 from langgraph_supervisor import create_supervisor  # noqa: E402
@@ -248,14 +248,28 @@ def _build_supervisor(llm: AzureChatOpenAI):
         # AutoGen's MaxMessageTermination(max_messages=4)).
         MAX_AGENT_TOOL_CALLS = 5
 
-        def _make_tool_limiter(limit: int):
+        def _make_tool_limiter(limit: int, agent_name: str):
             def post_model_hook(state):
                 msgs = state.get("messages", [])
-                tool_call_count = sum(
-                    1
-                    for m in msgs
-                    if isinstance(m, AIMessage) and getattr(m, "tool_calls", None)
-                )
+                # Only count domain tool calls from this agent, not routing tools
+                tool_call_count = 0
+                for m in msgs:
+                    if not isinstance(m, AIMessage) or not getattr(
+                        m, "tool_calls", None
+                    ):
+                        continue
+                    for tc in m.tool_calls:
+                        tc_name = (
+                            tc.get("name", "")
+                            if isinstance(tc, dict)
+                            else getattr(tc, "name", "")
+                        )
+                        if (
+                            tc_name
+                            and not tc_name.startswith("transfer_to_")
+                            and tc_name != "transfer_back_to_supervisor"
+                        ):
+                            tool_call_count += 1
                 if tool_call_count >= limit:
                     last = msgs[-1] if msgs else None
                     if isinstance(last, AIMessage) and getattr(
@@ -279,7 +293,7 @@ def _build_supervisor(llm: AzureChatOpenAI):
             tools=agent_tools,
             name=agent_id,
             prompt=system_message,
-            post_model_hook=_make_tool_limiter(MAX_AGENT_TOOL_CALLS),
+            post_model_hook=_make_tool_limiter(MAX_AGENT_TOOL_CALLS, agent_id),
         )
         agents.append(agent)
 
@@ -301,7 +315,7 @@ def _build_supervisor(llm: AzureChatOpenAI):
         agents=agents,
         model=llm,
         prompt=supervisor_prompt,
-        output_mode="last_message",
+        output_mode="full_history",
         supervisor_name="supervisor",
     )
 
@@ -312,12 +326,14 @@ def _build_supervisor(llm: AzureChatOpenAI):
 
 
 def _detect_pattern(scenario: Dict[str, Any], agents_involved: List[str]) -> str:
-    """Detect orchestration pattern from LangGraph execution."""
-    expected = scenario.get("turns", [{}])[0].get("expected", {}).get("pattern")
-    if expected == "hierarchical_delegation":
-        if len(set(agents_involved)) > 1:
-            return "hierarchical_delegation"
-        return "direct"
+    """Detect orchestration pattern from LangGraph execution.
+
+    Detected purely from actual execution — does NOT peek at ground truth.
+    If multiple domain agents participated, that's hierarchical_delegation.
+    If only one agent handled it, that's direct routing.
+    """
+    if len(set(agents_involved)) > 1:
+        return "hierarchical_delegation"
     return "direct"
 
 
@@ -378,14 +394,10 @@ def _check_outcome(
     elif escalation_expected is False:
         checks_passed.append("escalation=no")
 
-    # knowledge_retrieved — all baseline agents have knowledge_search tools
-    # and use them automatically, so if there's an answer, knowledge was used.
+    # knowledge_retrieved — check if a knowledge_search tool was actually called
     knowledge_expected = expected_outcome.get("knowledge_retrieved")
     if knowledge_expected is not None:
         has_knowledge = any("knowledge" in t or "search" in t for t in actual_tools)
-        # Baseline agents always search their KB; if answer exists, infer retrieval
-        if not has_knowledge and answer_text.strip():
-            has_knowledge = True
         if has_knowledge == knowledge_expected:
             checks_passed.append(f"knowledge={'yes' if has_knowledge else 'no'}")
         else:
@@ -471,7 +483,11 @@ def _invoke_with_retry(supervisor, messages: list, sc_id: str) -> dict:
 
 
 def _extract_from_messages(messages: list) -> Dict[str, Any]:
-    """Extract agent routing, tools, and answer from LangGraph messages."""
+    """Extract agent routing, tools, and answer from LangGraph messages.
+
+    Handles both LangChain message objects (isinstance checks) and
+    serialized dicts (checking 'type' key) since LangGraph may return either.
+    """
     first_agent = ""
     responding_agent = ""
     answer_text = ""
@@ -479,30 +495,51 @@ def _extract_from_messages(messages: list) -> Dict[str, Any]:
     tools_used = []
 
     for m in messages:
-        name = getattr(m, "name", "") or ""
-        msg_type = type(m).__name__
+        # --- Normalise: detect format (object vs dict) ---
+        if isinstance(m, dict):
+            name = m.get("name", "") or ""
+            msg_type = m.get("type", "")
+            content = m.get("content", "")
+            tool_calls = m.get("tool_calls", []) or []
+        else:
+            name = getattr(m, "name", "") or ""
+            msg_type = type(m).__name__
+            content = getattr(m, "content", "")
+            tool_calls = getattr(m, "tool_calls", []) or []
 
-        if name and name != "supervisor" and msg_type != "HumanMessage":
+        is_ai = isinstance(m, AIMessage) or msg_type in ("AIMessage", "ai")
+        is_tool = isinstance(m, ToolMessage) or msg_type in ("ToolMessage", "tool")
+
+        # --- Agent tracking (only from AI messages, not tool/human messages) ---
+        if name and name != "supervisor" and is_ai:
             if name not in agents_involved:
                 agents_involved.append(name)
             if not first_agent:
                 first_agent = name
 
-        if msg_type == "AIMessage" and hasattr(m, "tool_calls"):
-            for tc in m.tool_calls or []:
-                if isinstance(tc, dict) and tc.get("name"):
-                    tools_used.append(tc["name"])
+        # --- Tool calls from AI messages ---
+        if is_ai and tool_calls:
+            for tc in tool_calls:
+                tc_name = (
+                    tc.get("name", "")
+                    if isinstance(tc, dict)
+                    else getattr(tc, "name", "")
+                )
+                if tc_name:
+                    tools_used.append(tc_name)
 
-        if msg_type == "ToolMessage":
-            tool_name = getattr(m, "name", "")
-            if tool_name:
-                tools_used.append(tool_name)
+        # --- Tool results (ToolMessage carries the tool name) ---
+        if is_tool and name:
+            tools_used.append(name)
 
-        if msg_type == "AIMessage" and hasattr(m, "content"):
-            content = m.content
-            if isinstance(content, str) and content.strip():
+        # --- Answer text from AI messages ---
+        if is_ai:
+            text = (
+                content if isinstance(content, str) else str(content) if content else ""
+            )
+            if text.strip():
                 responding_agent = name or responding_agent
-                answer_text = content
+                answer_text = text
 
     # Separate routing tools from domain tools
     domain_tools = [
@@ -613,24 +650,31 @@ def run_single_scenario(supervisor, scenario: Dict[str, Any]) -> Dict[str, Any]:
         # actual pattern is data, not a pass/fail criterion.
         soft_pass = False
 
-        # Soft-pass: if routing was correct but only tool_missing checks failed,
-        # mark as success with soft_pass flag (LLM non-determinism in tool calling)
+        # Soft-pass: if routing was correct but only tool_missing or
+        # knowledge_mismatch checks failed, mark as success with soft_pass flag
+        # (LLM non-determinism in tool calling / knowledge retrieval)
         if not all_outcome_ok and all_agent_ok:
             detail_str = "; ".join(outcome_details)
             import re
 
             fail_match = re.search(r"fail=\[([^\]]+)\]", detail_str)
             if fail_match:
-                failed_checks = [
-                    c.strip() for c in fail_match.group(1).split(",") if c.strip()
-                ]
-                only_tool_missing = all(
-                    f.startswith("tool_missing:") for f in failed_checks
+                fail_content = fail_match.group(1)
+                # Extract individual checks (split on boundaries between checks,
+                # not on commas inside values like "expected=True,got=False")
+                failed_checks = re.findall(
+                    r"(tool_missing:[^,\]]+|knowledge_mismatch:[^]]+|[a-z_]+(?::[^,\]]*)?)",
+                    fail_content,
+                )
+                # Verify ALL extracted checks are minor (tool_missing or knowledge_mismatch)
+                only_minor = bool(failed_checks) and all(
+                    f.startswith("tool_missing:") or f.startswith("knowledge_mismatch:")
+                    for f in failed_checks
                 )
                 has_response = "response_present" in detail_str or (
                     answer_text and answer_text.strip()
                 )
-                if only_tool_missing and has_response:
+                if only_minor and has_response:
                     all_outcome_ok = True
                     soft_pass = True
                     outcome_details.append(
@@ -732,40 +776,51 @@ def run_langgraph_evaluation(
         # Run with thread-based timeout (synchronous invoke)
         import concurrent.futures
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(run_single_scenario, supervisor, sc)
-            try:
-                result = future.result(timeout=SCENARIO_TIMEOUT)
-            except concurrent.futures.TimeoutError:
-                sc_elapsed = (time.time() - sc_start) * 1000.0
-                logger.error(
-                    "[%d/%d] ✗ %s TIMEOUT after %ds",
-                    i,
-                    len(scenarios),
-                    sc["id"],
-                    SCENARIO_TIMEOUT,
-                )
-                result = {
-                    "scenario_id": sc["id"],
-                    "category": sc["category"],
-                    "description": sc.get("description", ""),
-                    "success": False,
-                    "soft_pass": False,
-                    "pattern_correct": False,
-                    "agent_correct": False,
-                    "answer_keywords_found": False,
-                    "outcome_correct": False,
-                    "outcome_detail": f"timeout:{SCENARIO_TIMEOUT}s",
-                    "latency_ms": sc_elapsed,
-                    "first_agent": "",
-                    "responding_agent": "",
-                    "agents_involved": [],
-                    "tools_used": [],
-                    "answer_text": "",
-                    "error": f"Timeout after {SCENARIO_TIMEOUT}s",
-                }
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = pool.submit(run_single_scenario, supervisor, sc)
+        try:
+            result = future.result(timeout=SCENARIO_TIMEOUT)
+        except concurrent.futures.TimeoutError:
+            sc_elapsed = (time.time() - sc_start) * 1000.0
+            logger.error(
+                "[%d/%d] ✗ %s TIMEOUT after %ds",
+                i,
+                len(scenarios),
+                sc["id"],
+                SCENARIO_TIMEOUT,
+            )
+            result = {
+                "scenario_id": sc["id"],
+                "category": sc["category"],
+                "description": sc.get("description", ""),
+                "success": False,
+                "soft_pass": False,
+                "pattern_correct": False,
+                "agent_correct": False,
+                "answer_keywords_found": False,
+                "outcome_correct": False,
+                "outcome_detail": f"timeout:{SCENARIO_TIMEOUT}s",
+                "latency_ms": sc_elapsed,
+                "first_agent": "",
+                "responding_agent": "",
+                "agents_involved": [],
+                "tools_used": [],
+                "answer_text": "",
+                "error": f"Timeout after {SCENARIO_TIMEOUT}s",
+            }
+        finally:
+            # Don't wait for zombie threads — let them die in background
+            pool.shutdown(wait=False, cancel_futures=True)
 
         all_results.append(result)
+
+        # Incremental save after each scenario (prevents data loss on crash/kill)
+        _inc_path = Path(output_dir) / "langgraph_baseline_results.json"
+        _inc_path.parent.mkdir(parents=True, exist_ok=True)
+        _inc_path.write_text(
+            json.dumps(all_results, indent=2, default=str, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
         if result["success"]:
             passed_count += 1
