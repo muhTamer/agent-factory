@@ -9,6 +9,9 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -16,52 +19,43 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install deps
+        id: deps
+        continue-on-error: true
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Lint and format check
-        id: lint
+      - name: Ruff check
+        id: ruff
         continue-on-error: true
-        run: |
-          set +e
-          {
-            echo "=== Environment ==="
-            python --version
-            ruff version
-            black --version
-            echo ""
-            echo "=== Ruff ==="
-            ruff check .
-            echo "RUFF_EXIT=$?"
-            echo ""
-            echo "=== Black ==="
-            black --check .
-            echo "BLACK_EXIT=$?"
-          } 2>&1 | tee /tmp/lint_output.txt
-          # Extract exit codes from output
-          RUFF_EXIT=$(grep "^RUFF_EXIT=" /tmp/lint_output.txt | cut -d= -f2)
-          BLACK_EXIT=$(grep "^BLACK_EXIT=" /tmp/lint_output.txt | cut -d= -f2)
-          if [ "$RUFF_EXIT" != "0" ] || [ "$BLACK_EXIT" != "0" ]; then
-            exit 1
-          fi
-      - name: Post lint results to PR
-        if: steps.lint.outcome == 'failure'
+        run: ruff check .
+      - name: Black check
+        id: black
+        continue-on-error: true
+        run: black --check .
+      - name: Post debug info
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            const output = fs.readFileSync('/tmp/lint_output.txt', 'utf8');
+            const body = [
+              '### CI Lint Debug',
+              '| Step | Result |',
+              '|------|--------|',
+              `| deps | ${{ steps.deps.outcome }} |`,
+              `| ruff | ${{ steps.ruff.outcome }} |`,
+              `| black | ${{ steps.black.outcome }} |`,
+            ].join('\n');
             const prNumber = context.payload.pull_request?.number;
             if (prNumber) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: prNumber,
-                body: `### Lint failure output\n\`\`\`\n${output}\n\`\`\``
+                body: body
               });
             }
-      - name: Fail if lint failed
-        if: steps.lint.outcome == 'failure'
+      - name: Fail on error
+        if: steps.deps.outcome == 'failure' || steps.ruff.outcome == 'failure' || steps.black.outcome == 'failure'
         run: exit 1
 
   test:
