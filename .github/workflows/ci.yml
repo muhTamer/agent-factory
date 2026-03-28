@@ -31,19 +31,32 @@ jobs:
       - name: Black check
         id: black
         continue-on-error: true
-        run: black --check .
+        run: |
+          black --version > /tmp/black_output.txt 2>&1
+          black --check --diff . >> /tmp/black_output.txt 2>&1
+          RC=$?
+          echo "BLACK_RC=$RC" >> /tmp/black_output.txt
+          exit $RC
       - name: Post debug info
         if: always()
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
+            let blackOutput = '';
+            try { blackOutput = fs.readFileSync('/tmp/black_output.txt', 'utf8'); } catch(e) {}
             const body = [
               '### CI Lint Debug',
-              '| Step | Result |',
-              '|------|--------|',
+              `| Step | Result |`,
+              `|------|--------|`,
               `| deps | ${{ steps.deps.outcome }} |`,
               `| ruff | ${{ steps.ruff.outcome }} |`,
               `| black | ${{ steps.black.outcome }} |`,
+              '',
+              '### Black output',
+              '```',
+              blackOutput.slice(0, 3000),
+              '```',
             ].join('\n');
             const prNumber = context.payload.pull_request?.number;
             if (prNumber) {
