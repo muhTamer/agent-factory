@@ -20,32 +20,49 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Lint and format check
-        env:
-          GH_TOKEN: ${{ github.token }}
+        id: lint
+        continue-on-error: true
         run: |
           set +e
-          echo "=== Environment ===" > /tmp/lint_output.txt
-          python --version >> /tmp/lint_output.txt 2>&1
-          ruff version >> /tmp/lint_output.txt 2>&1
-          black --version >> /tmp/lint_output.txt 2>&1
-          echo "" >> /tmp/lint_output.txt
-          echo "=== Ruff ===" >> /tmp/lint_output.txt
-          ruff check . >> /tmp/lint_output.txt 2>&1
-          RUFF_EXIT=$?
-          echo "" >> /tmp/lint_output.txt
-          echo "=== Black ===" >> /tmp/lint_output.txt
-          black --check . >> /tmp/lint_output.txt 2>&1
-          BLACK_EXIT=$?
-          echo "" >> /tmp/lint_output.txt
-          echo "Ruff exit: $RUFF_EXIT / Black exit: $BLACK_EXIT" >> /tmp/lint_output.txt
-          cat /tmp/lint_output.txt
-          if [ "$RUFF_EXIT" -ne 0 ] || [ "$BLACK_EXIT" -ne 0 ]; then
-            BODY=$(cat /tmp/lint_output.txt)
-            gh pr comment ${{ github.event.pull_request.number }} --body "\`\`\`
-          $BODY
-          \`\`\`"
+          {
+            echo "=== Environment ==="
+            python --version
+            ruff version
+            black --version
+            echo ""
+            echo "=== Ruff ==="
+            ruff check .
+            echo "RUFF_EXIT=$?"
+            echo ""
+            echo "=== Black ==="
+            black --check .
+            echo "BLACK_EXIT=$?"
+          } 2>&1 | tee /tmp/lint_output.txt
+          # Extract exit codes from output
+          RUFF_EXIT=$(grep "^RUFF_EXIT=" /tmp/lint_output.txt | cut -d= -f2)
+          BLACK_EXIT=$(grep "^BLACK_EXIT=" /tmp/lint_output.txt | cut -d= -f2)
+          if [ "$RUFF_EXIT" != "0" ] || [ "$BLACK_EXIT" != "0" ]; then
             exit 1
           fi
+      - name: Post lint results to PR
+        if: steps.lint.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('/tmp/lint_output.txt', 'utf8');
+            const prNumber = context.payload.pull_request?.number;
+            if (prNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `### Lint failure output\n\`\`\`\n${output}\n\`\`\``
+              });
+            }
+      - name: Fail if lint failed
+        if: steps.lint.outcome == 'failure'
+        run: exit 1
 
   test:
     runs-on: ubuntu-latest
