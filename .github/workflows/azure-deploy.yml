@@ -1,0 +1,77 @@
+name: Build & Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: agent-factory-rg
+  AZURE_LOCATION: eastus
+  ACR_NAME: agentfactoryacr
+  BACKEND_APP: agent-factory-backend
+  FRONTEND_APP: agent-factory-frontend
+  CONTAINER_ENV: agent-factory-env
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      # ── Build & push backend image ──
+      - name: Build and push backend image
+        run: |
+          docker build -f backend.Dockerfile \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_APP }}:${{ github.sha }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_APP }}:latest \
+            .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_APP }} --all-tags
+
+      # ── Build & push frontend image ──
+      - name: Build and push frontend image
+        run: |
+          docker build -f frontend.Dockerfile \
+            --build-arg NEXT_PUBLIC_API_BASE=https://${{ env.BACKEND_APP }}.${{ env.AZURE_LOCATION }}.azurecontainerapps.io \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_APP }}:${{ github.sha }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_APP }}:latest \
+            .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_APP }} --all-tags
+
+      # ── Deploy backend to Azure Container Apps ──
+      - name: Deploy backend
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          containerAppName: ${{ env.BACKEND_APP }}
+          containerAppEnvironment: ${{ env.CONTAINER_ENV }}
+          imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_APP }}:${{ github.sha }}
+          targetPort: 8080
+          ingress: external
+          environmentVariables: >-
+            AZURE_OPENAI_ENDPOINT=secretref:azure-openai-endpoint
+            AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key
+            AZURE_OPENAI_DEPLOYMENT=secretref:azure-openai-deployment
+            AZURE_OPENAI_API_VERSION=2024-02-01
+
+      # ── Deploy frontend to Azure Container Apps ──
+      - name: Deploy frontend
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          containerAppName: ${{ env.FRONTEND_APP }}
+          containerAppEnvironment: ${{ env.CONTAINER_ENV }}
+          imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_APP }}:${{ github.sha }}
+          targetPort: 3000
+          ingress: external
+          environmentVariables: >-
+            NEXT_PUBLIC_API_BASE=https://${{ env.BACKEND_APP }}.${{ env.AZURE_LOCATION }}.azurecontainerapps.io
