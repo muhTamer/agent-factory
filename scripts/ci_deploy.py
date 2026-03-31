@@ -34,6 +34,12 @@ FINTECH_DATA_FILES = [
     DATA_DIR / "complaints_policy.yaml",
 ]
 
+RETAIL_DATA_FILES = [
+    DATA_DIR / "RetailFAQs.csv",
+    DATA_DIR / "retail_refunds_policy.yaml",
+    DATA_DIR / "retail_complaints_policy.yaml",
+]
+
 
 def main() -> int:
     import app.llm_client as llm_client

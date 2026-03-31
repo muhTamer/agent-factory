@@ -47,6 +47,19 @@ export async function quickstartFintech(
   return res.json();
 }
 
+export async function quickstartRetail(
+  useLlm = true,
+  model = "gpt-5-mini"
+): Promise<AnalysisResponse> {
+  const res = await fetch(`${CONCIERGE_API}/concierge/quickstart-retail`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ use_llm: useLlm, model }),
+  });
+  if (!res.ok) throw new Error(`Quickstart failed: ${res.status}`);
+  return res.json();
+}
+
 export async function analyzeDocuments(
   useLlm = true,
   model = "gpt-5-mini"

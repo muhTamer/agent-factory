@@ -33,6 +33,12 @@ FINTECH_DATA_FILES = [
     DATA_DIR / "refunds_policy.yaml",
 ]
 
+RETAIL_DATA_FILES = [
+    DATA_DIR / "RetailFAQs.csv",
+    DATA_DIR / "retail_refunds_policy.yaml",
+    DATA_DIR / "retail_complaints_policy.yaml",
+]
+
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
@@ -143,6 +149,26 @@ def quickstart_fintech(req: QuickstartRequest):
         shutil.copy2(src, WORKSPACE / src.name)
 
     agent = _get_or_create_agent(vertical="fintech", model=req.model)
+    result = agent.handle_event(
+        {
+            "type": "upload_docs",
+            "use_llm": req.use_llm,
+            "model": req.model,
+        }
+    )
+    return result
+
+
+@app.post("/concierge/quickstart-retail")
+def quickstart_retail(req: QuickstartRequest):
+    WORKSPACE.mkdir(exist_ok=True)
+    # Copy preset files
+    for src in RETAIL_DATA_FILES:
+        if not src.exists():
+            return {"error": f"Preset file not found: {src}"}
+        shutil.copy2(src, WORKSPACE / src.name)
+
+    agent = _get_or_create_agent(vertical="retail", model=req.model)
     result = agent.handle_event(
         {
             "type": "upload_docs",

@@ -18,6 +18,7 @@ data/*
 !data/*.yaml
 !data/*.yml
 !data/BankFAQs.csv
+!data/RetailFAQs.csv
 *.parquet
 
 # Node

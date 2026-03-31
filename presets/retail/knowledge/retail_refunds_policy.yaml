@@ -1,0 +1,39 @@
+policy:
+  name: Retail Returns & Refunds Policy
+  version: 1.0
+  owner: Customer Operations Team
+
+returns:
+  unopened_items:
+    refundable_within_days: 365
+    conditions:
+      - proof_of_purchase_required
+      - original_condition_with_packaging
+
+  opened_items:
+    refundable_within_days: 180
+    conditions:
+      - proof_of_purchase_required
+      - clean_and_undamaged
+      - complete_with_all_parts
+
+  mattresses:
+    exchangeable_within_days: 90
+    exchange_only: true
+    conditions:
+      - clean_and_stain_free
+      - proof_of_purchase_required
+
+  non_returnable:
+    - plants
+    - cut_fabric
+    - custom_countertops
+    - as_is_products
+
+refunds:
+  method: original_payment_method
+  fallback: store_credit
+  timeline:
+    in_store: "3-10 business days"
+    online: "approximately 2 weeks"
+  large_item_pickup_fee: 49

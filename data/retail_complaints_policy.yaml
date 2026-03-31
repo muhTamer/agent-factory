@@ -1,0 +1,347 @@
+# ============================================================
+# Retail Customer Complaints & Resolution Policy
+# Organization: IKEA-Style Retail Store
+# Version: 1.0
+# Last Updated: 2026-03-01
+# Owner: Head of Customer Experience
+# Domain: retail
+# ============================================================
+
+metadata:
+  policy_id: retail_complaints_policy
+  jurisdiction: US
+  regulatory_framework:
+    - FTC Consumer Protection Guidelines
+    - State Consumer Protection Laws
+  internal_references:
+    - Customer Experience Charter v1.0
+    - Escalation Matrix 2026
+
+overview: >
+  This policy defines the eligibility criteria, resolution workflow,
+  compensation rules, escalation triggers, and execution standards
+  for handling customer complaints across all retail channels.
+  Covers product quality issues, delivery problems, missing/damaged
+  items, wrong items received, service complaints, and warranty claims.
+
+scope:
+  channels:
+    - in_store
+    - online
+    - phone
+    - chat
+  complaint_categories:
+    - damaged_product
+    - missing_parts
+    - wrong_item
+    - delivery_issue
+    - product_quality
+    - warranty_claim
+    - service_complaint
+    - billing_dispute
+  exclusions:
+    - complaints about third-party resellers
+    - complaints about products not purchased from our stores
+
+# ============================================================
+# SECTION 1 — ELIGIBILITY RULES
+# ============================================================
+
+eligibility:
+
+  - id: valid_purchase_required
+    description: >
+      Complaints may only be processed for products purchased directly
+      from our stores (in-store or online). Proof of purchase is
+      required for all complaint types.
+    conditions:
+      - has_proof_of_purchase == true
+      - purchased_from_authorized_channel == true
+    outcome: eligible
+
+  - id: warranty_claim_window
+    description: >
+      Warranty claims must be submitted within the product's warranty
+      period. The product must be accompanied by proof of purchase
+      and is subject to inspection. Warranty does not cover products
+      stored or assembled incorrectly, used inappropriately, abused,
+      misused, altered, or cleaned with incorrect methods.
+    conditions:
+      - complaint_category == "warranty_claim"
+      - within_warranty_period == true
+      - has_proof_of_purchase == true
+    outcome: eligible
+
+  - id: damaged_delivery_window
+    description: >
+      Complaints about damaged or missing items from delivery must
+      be reported within 14 days of delivery receipt.
+    conditions:
+      - complaint_category in ["damaged_product", "missing_parts", "wrong_item"]
+      - complaint_age_days <= 14
+    outcome: eligible_priority
+
+  - id: delivery_complaint_window
+    description: >
+      Complaints about delivery service (late, missed window, no-show)
+      must be reported within 30 days of the scheduled delivery date.
+    conditions:
+      - complaint_category == "delivery_issue"
+      - complaint_age_days <= 30
+    outcome: eligible
+
+  - id: general_complaint_window
+    description: >
+      General service complaints and billing disputes must be filed
+      within 90 days of the incident.
+    conditions:
+      - complaint_category in ["service_complaint", "billing_dispute"]
+      - complaint_age_days <= 90
+    outcome: eligible
+
+  - id: expired_complaint_block
+    description: >
+      Complaints submitted beyond the applicable filing window are
+      not eligible for resolution through this process.
+    conditions:
+      - complaint_age_days > applicable_window
+    outcome: ineligible
+    rationale: Complaint exceeds the allowed filing window.
+
+  - id: third_party_reseller_block
+    description: >
+      Complaints about products purchased from unauthorized third-party
+      resellers (Amazon, eBay, etc.) cannot be processed. We do not
+      sell products through third-party sites.
+    conditions:
+      - purchased_from_authorized_channel == false
+    outcome: ineligible
+    rationale: Product was not purchased from an authorized channel.
+
+# ============================================================
+# SECTION 2 — COMPENSATION AMOUNT RULES
+# ============================================================
+
+amount_rules:
+
+  - id: replacement_parts_free
+    description: >
+      Missing hardware (screws, drawer slides, etc.) can be ordered
+      free of charge and shipped to the customer, pending availability.
+      Hardware with a 6-digit part number can be ordered via the
+      self-service spare part portal.
+    conditions:
+      - complaint_category == "missing_parts"
+      - part_type == "hardware"
+    compensation: free_replacement_part
+    approval: auto
+
+  - id: larger_parts_at_discretion
+    description: >
+      Missing larger parts (drawers, tabletops, etc.) are provided
+      at the store's discretion and fees may apply.
+    conditions:
+      - complaint_category == "missing_parts"
+      - part_type == "large_component"
+    compensation: store_discretion
+    approval: store_manager
+
+  - id: max_auto_compensation_limit
+    description: >
+      Compensation (refund, credit, or replacement) up to and including
+      $200 may be auto-approved by the system if eligibility conditions
+      are met.
+    threshold: 200
+    currency: USD
+    approval: auto
+
+  - id: manager_approval_required
+    description: >
+      Compensation exceeding $200 requires manager approval before
+      it can be issued to the customer.
+    threshold: 200
+    currency: USD
+    approval: manager_required
+
+  - id: delivery_fee_waiver
+    description: >
+      Delivery fees may be waived or refunded when the complaint is
+      about a store error (wrong item sent) or damaged delivery.
+    conditions:
+      - complaint_category in ["wrong_item", "damaged_product"]
+      - delivery_was_paid == true
+    compensation: delivery_fee_refund
+    approval: auto
+
+# ============================================================
+# SECTION 3 — RISK CONTROLS
+# ============================================================
+
+risk_controls:
+
+  - id: complaint_velocity_check
+    description: >
+      Customers submitting more than 5 complaints within a rolling
+      30-day window must be flagged for potential abuse review.
+    condition:
+      - complaints_last_30_days > 5
+    action: escalate_abuse_review
+
+  - id: high_value_complaint_flag
+    description: >
+      Complaints involving products valued over $1,000 or requesting
+      compensation above $500 must be reviewed by a senior manager.
+    condition:
+      - product_value > 1000 or requested_compensation > 500
+    action: escalate_senior_manager
+
+# ============================================================
+# SECTION 4 — EXECUTION RULES
+# ============================================================
+
+execution:
+
+  - id: damaged_product_resolution
+    description: >
+      For damaged products, offer the customer a choice between
+      replacement, exchange, or refund based on return policy eligibility.
+      If only one part is damaged, offer replacement part shipment first.
+    rules:
+      - if single_part_damaged == true:
+          action: offer_replacement_part
+      - if full_product_damaged == true:
+          action: offer_replacement_or_refund
+
+  - id: wrong_item_resolution
+    description: >
+      For wrong items received, arrange for pickup of the incorrect
+      item and ship the correct item at no cost to the customer.
+      If the correct item is out of stock, offer full refund.
+    rules:
+      - if correct_item_in_stock == true:
+          action: ship_correct_item_and_arrange_pickup
+      - else:
+          action: process_full_refund
+
+  - id: resolution_sla
+    description: >
+      Standard complaint resolution target is 3 business days.
+      Complex complaints (warranty inspections, multi-item issues)
+      may take up to 10 business days.
+    sla:
+      standard: "3 business days"
+      complex: "10 business days"
+
+  - id: appliance_warranty_redirect
+    description: >
+      For appliance issues outside of the 365-day return window,
+      redirect the customer to the appliance manufacturer's support
+      line (e.g., Whirlpool at (866) 664-2449 for IKEA appliances).
+    conditions:
+      - product_category == "appliance"
+      - return_age_days > 365
+    action: redirect_to_manufacturer
+
+# ============================================================
+# SECTION 5 — PRIVACY & DATA PROTECTION
+# ============================================================
+
+privacy:
+
+  - id: redact_pii
+    description: >
+      Personally identifiable information must not be exposed in
+      customer-facing communications or internal escalation notes.
+    action: redact_before_output
+
+  - id: complaint_logging
+    description: >
+      All complaint decisions must be logged with decision rationale
+      and policy reference for audit purposes and quality improvement.
+
+# ============================================================
+# SECTION 6 — ESCALATION CONDITIONS
+# ============================================================
+
+escalation:
+
+  - id: regulatory_or_legal_mention
+    description: >
+      Any complaint mentioning legal action, regulatory bodies,
+      or consumer protection agencies must be immediately escalated
+      to the legal/compliance team.
+
+  - id: repeated_complaint
+    description: >
+      If the customer has filed 3 or more complaints about the same
+      issue or order, escalate to a senior customer service manager
+      for root cause analysis.
+
+  - id: resolution_failure
+    description: >
+      If automated resolution fails more than once, create a
+      support ticket and notify the operations team.
+
+  - id: social_media_escalation
+    description: >
+      Complaints that reference intent to post on social media or
+      contact media outlets should be escalated to the PR/communications
+      team for coordinated response.
+
+# ============================================================
+# AGENT INSTRUCTIONS
+# ============================================================
+
+agent_instructions:
+  role: >
+    You are a Complaint Agent for a retail store. Your job is to help
+    customers resolve complaints about products, deliveries, and services
+    by following this policy.
+
+  workflow:
+    - step: 1
+      action: >
+        Greet the customer empathetically and ask for their order number
+        or customer ID to look up the purchase.
+    - step: 2
+      action: >
+        Use the lookup_order tool to retrieve order details. Ask the
+        customer to describe the issue and identify the complaint category.
+    - step: 3
+      action: >
+        Use the create_complaint_record tool to formally log the complaint
+        with the appropriate category and severity.
+    - step: 4
+      action: >
+        Verify complaint eligibility based on the filing window and
+        purchase channel. Check if warranty applies.
+    - step: 5
+      action: >
+        Apply the appropriate resolution based on complaint type:
+        - Damaged products: offer replacement part or full replacement/refund
+        - Missing parts: order replacement via spare parts system
+        - Wrong item: arrange pickup and reship correct item
+        - Delivery issues: reschedule or offer compensation
+        - Warranty claims: verify warranty period and arrange inspection
+    - step: 6
+      action: >
+        Use apply_triage_rules to determine if escalation is needed.
+        If compensation is required, use compute_compensation to calculate
+        the appropriate amount.
+    - step: 7
+      action: >
+        Inform the customer of the resolution and expected timeline.
+        If escalation is required, explain the next steps.
+
+  guardrails:
+    - Always show empathy and acknowledge the customer's frustration.
+    - Never dismiss a customer's complaint without proper investigation.
+    - Never promise compensation before verifying eligibility.
+    - Do not share internal policy IDs or system details with customers.
+    - For appliance issues past 365 days, always redirect to the manufacturer.
+    - If in doubt, escalate to a human agent rather than guessing.
+    - Keep the customer informed of progress and expected timelines.
+
+# ============================================================
+# END OF POLICY
+# ============================================================

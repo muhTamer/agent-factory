@@ -1,7 +1,7 @@
 "use client";
 
 import { useSetupStore } from "@/store/setupStore";
-import { quickstartFintech, deployFactory } from "@/lib/concierge-api";
+import { quickstartFintech, quickstartRetail, deployFactory } from "@/lib/concierge-api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,14 +63,17 @@ export function WelcomeStep() {
   const [quickLoading, setQuickLoading] = useState(false);
   const [quickStatus, setQuickStatus] = useState("");
 
-  async function handleQuickstart() {
+  async function handleQuickstart(variant: "fintech" | "retail") {
     setQuickLoading(true);
     setError(null);
     try {
       // Step 1: Analyze
       setQuickStatus("Analyzing preset documents...");
-      const res = await quickstartFintech();
-      setVertical("fintech");
+      const res =
+        variant === "fintech"
+          ? await quickstartFintech()
+          : await quickstartRetail();
+      setVertical(variant);
       setQuickstart(true);
       setPlan(res.plan);
       setAnalysisSummaryText(res.text);
@@ -148,45 +151,82 @@ export function WelcomeStep() {
       </div>
 
       {/* Quickstart */}
-      <Card className="border-amber-200 bg-amber-50/50">
-        <CardContent className="flex items-center justify-between gap-4 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
-              <Zap size={20} />
+      <div className="space-y-3">
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardContent className="flex items-center justify-between gap-4 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
+                <Zap size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">
+                  Quickstart: Fintech
+                </p>
+                <p className="text-xs text-slate-500">
+                  Load preset bank FAQs & refund policy, analyze & deploy in one
+                  click
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">
-                Quickstart: Fintech
-              </p>
-              <p className="text-xs text-slate-500">
-                Load preset bank FAQs & refund policy, analyze & deploy in one
-                click
-              </p>
+            <Button
+              size="sm"
+              onClick={() => handleQuickstart("fintech")}
+              disabled={quickLoading}
+              className="shrink-0"
+            >
+              {quickLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <Zap size={14} />
+                  Launch
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardContent className="flex items-center justify-between gap-4 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white">
+                <ShoppingBag size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">
+                  Quickstart: Retail
+                </p>
+                <p className="text-xs text-slate-500">
+                  Load preset retail FAQs, refund & complaint policies, analyze
+                  & deploy in one click
+                </p>
+              </div>
             </div>
-          </div>
-          <Button
-            size="sm"
-            onClick={handleQuickstart}
-            disabled={quickLoading}
-            className="shrink-0"
-          >
-            {quickLoading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <>
-                <Zap size={14} />
-                Launch
-              </>
-            )}
-          </Button>
-        </CardContent>
+            <Button
+              size="sm"
+              onClick={() => handleQuickstart("retail")}
+              disabled={quickLoading}
+              className="shrink-0"
+            >
+              {quickLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <ShoppingBag size={14} />
+                  Launch
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
         {quickLoading && quickStatus && (
-          <div className="flex items-center gap-2 border-t border-amber-200 px-4 py-2 text-sm text-amber-700">
+          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
             <Loader2 size={14} className="animate-spin" />
             {quickStatus}
           </div>
         )}
-      </Card>
+      </div>
 
       {/* Continue */}
       <div className="flex justify-end">
