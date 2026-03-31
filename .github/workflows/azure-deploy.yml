@@ -62,6 +62,11 @@ jobs:
             AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key
             AZURE_OPENAI_DEPLOYMENT=secretref:azure-openai-deployment
             AZURE_OPENAI_API_VERSION=2024-02-01
+            RATE_LIMIT_REQUESTS=30
+            RATE_LIMIT_WINDOW_SECONDS=60
+            SESSION_MAX_LLM_CALLS=50
+            DAILY_MAX_LLM_CALLS=5000
+            BOT_BLOCK_ENABLED=true
 
       # ── Deploy frontend to Azure Container Apps ──
       - name: Deploy frontend

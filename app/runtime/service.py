@@ -6,7 +6,7 @@ import os
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -24,6 +24,12 @@ from app.runtime.tools.registry import ToolRegistry
 from app.orchestration.performance_store import PerformanceStore
 from app.orchestration.aop_coordinator import AOPCoordinator
 from app.runtime.memory import ConversationMemory
+from app.runtime.rate_limiter import (
+    RateLimitMiddleware,
+    record_llm_call,
+    get_session_usage,
+    get_daily_usage,
+)
 
 router: LLMRouter | None = None
 spine: RuntimeSpine | None = None
@@ -42,6 +48,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitMiddleware)
 
 THREAD_CTX: dict[str, dict] = {}
 
@@ -294,7 +301,7 @@ def switch_estimator(req: EstimatorSwitchRequest):
 
 
 @app.post("/chat")
-def chat(req: ChatRequest):
+def chat(req: ChatRequest, request: Request):
     q = req.query.strip()
     if not q:
         raise HTTPException(status_code=400, detail="Query text required.")
@@ -302,6 +309,11 @@ def chat(req: ChatRequest):
         raise HTTPException(status_code=500, detail="Runtime spine not initialized.")
 
     thread_id = req.thread_id or str(uuid.uuid4())
+    session_id = f"thread:{thread_id}"
+
+    # ── Enforce LLM usage limits before calling the model ───
+    usage = record_llm_call(session_id)
+
     ctx = THREAD_CTX.get(thread_id, {})
     ctx.update(req.context or {})
     ctx["thread_id"] = thread_id
@@ -310,4 +322,20 @@ def chat(req: ChatRequest):
 
     THREAD_CTX[thread_id] = ctx
     resp["thread_id"] = thread_id
+    resp["usage"] = usage
     return resp
+
+
+# ---------- Usage monitoring endpoints ----------
+
+
+@app.get("/usage/session/{thread_id}", tags=["Usage"])
+def session_usage(thread_id: str):
+    """Return LLM usage stats for a specific session."""
+    return get_session_usage(f"thread:{thread_id}")
+
+
+@app.get("/usage/daily", tags=["Usage"])
+def daily_usage():
+    """Return global daily LLM usage stats (for monitoring/alerting)."""
+    return get_daily_usage()

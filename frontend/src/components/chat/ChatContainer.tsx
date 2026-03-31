@@ -10,6 +10,7 @@ import { ChatInput } from "./ChatInput";
 import { QuickReplies } from "./QuickReplies";
 import { ConversationSidebar } from "./ConversationSidebar";
 import { ExplainabilityPanel } from "./ExplainabilityPanel";
+import { UsageBadge } from "./UsageBadge";
 import { useRouter } from "next/navigation";
 import { useSetupStore } from "@/store/setupStore";
 import {
@@ -103,7 +104,8 @@ export function ChatContainer() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <UsageBadge />
             {/* New chat button — mobile only (desktop has it in sidebar) */}
             <button
               onClick={() => {
