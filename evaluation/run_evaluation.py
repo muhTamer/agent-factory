@@ -167,13 +167,13 @@ def _verify_api_keys() -> None:
 # ── Build spine with REAL agents ─────────────────────────────────────
 
 
-def build_eval_spine(tmp_dir: Path) -> RuntimeSpine:
+def build_eval_spine(tmp_dir: Path, estimator_kind: str = "llm") -> RuntimeSpine:
     """Create a RuntimeSpine with REAL agents and LLM-based routing.
 
     The real fleet (from factory_spec.json) has three domain_agent instances:
-      - refunds_agent_v1       — Refund processing (ReAct + RAG + tools)
-      - complaints_agent_v1    — Complaint handling (ReAct + RAG + tools)
-      - accounts_agent_v1      — Account queries + FAQ (ReAct + RAG)
+      - refunds_agent       — Refund processing (ReAct + RAG + tools)
+      - complaints_agent    — Complaint handling (ReAct + RAG + tools)
+      - faq_agent           — Multi-category FAQ (ReAct + RAG)
     FAQ/informational queries are handled by the most relevant domain agent.
 
     All agents use DomainAgentEngine with real LLM calls.
@@ -186,6 +186,10 @@ def build_eval_spine(tmp_dir: Path) -> RuntimeSpine:
 
     # AOP coordinator (uses real LLM for decomposition)
     aop = AOPCoordinator(registry=registry, performance_store=perf_store)
+
+    # Swap solvability estimator (AOPCoordinator defaults to TF-IDF internally)
+    aop.swap_estimator(estimator_kind)
+    logger.info("Solvability estimator: %s", aop.active_estimator_kind)
 
     # LLM-based router (uses real LLM for intent classification + agent scoring)
     router = LLMRouter(registry)
@@ -207,6 +211,7 @@ def run_evaluation(
     output_dir: Path,
     scenario_filter: Optional[str] = None,
     max_scenarios: Optional[int] = None,
+    estimator_kind: str = "llm",
 ) -> Dict[str, Any]:
     """Execute all scenarios with REAL LLM calls and write results."""
     import tempfile
@@ -214,7 +219,7 @@ def run_evaluation(
     _verify_api_keys()
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="eval_"))
-    spine = build_eval_spine(tmp_dir)
+    spine = build_eval_spine(tmp_dir, estimator_kind=estimator_kind)
 
     # Load scenarios
     scenarios = json.loads(SCENARIOS_PATH.read_text(encoding="utf-8"))
@@ -408,11 +413,18 @@ if __name__ == "__main__":
         action="store_true",
         help="Run only 3 scenarios for verification",
     )
+    parser.add_argument(
+        "--estimator",
+        type=str,
+        default="llm",
+        choices=["neural", "tfidf", "llm"],
+        help="Solvability estimator to use (default: llm)",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
     print("AGENT FACTORY ORCHESTRATION — EVALUATION HARNESS")
-    print("DSRM Stage 5 | REAL LLM MODE")
+    print(f"DSRM Stage 5 | REAL LLM MODE | Estimator: {args.estimator}")
     print("=" * 60 + "\n")
 
     max_sc = 3 if args.dry_run else None
@@ -420,4 +432,5 @@ if __name__ == "__main__":
         Path(args.output),
         scenario_filter=args.scenario,
         max_scenarios=max_sc,
+        estimator_kind=args.estimator,
     )
