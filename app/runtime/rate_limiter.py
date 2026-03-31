@@ -21,6 +21,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 
+# ── Environment mode ─────────────────────────────────────────────
+# Set AF_ENV=development to disable all rate limiting & usage caps locally.
+AF_ENV = os.getenv("AF_ENV", "production").lower()
+_LIMITS_DISABLED = AF_ENV in ("development", "dev", "test")
+
 # ── Configuration (env-overridable) ─────────────────────────────
 
 # IP rate limiting
@@ -152,6 +157,16 @@ def record_llm_call(session_id: str) -> dict:
     Returns a status dict with remaining quota info.
     Raises HTTPException if limits exceeded.
     """
+    if _LIMITS_DISABLED:
+        return {
+            "session_llm_calls": 0,
+            "session_llm_limit": SESSION_MAX_LLM_CALLS,
+            "session_remaining": SESSION_MAX_LLM_CALLS,
+            "daily_llm_calls": 0,
+            "daily_llm_limit": DAILY_MAX_LLM_CALLS,
+            "daily_warning": False,
+        }
+
     # Session limit
     session = _sessions.get(session_id)
     if session is None:
@@ -237,6 +252,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
+        # In development/test mode, skip all protection
+        if _LIMITS_DISABLED:
+            return await call_next(request)
+
         path = request.url.path
 
         # Skip rate limiting for health/meta endpoints
