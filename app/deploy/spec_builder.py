@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 from app.concierge.blueprint_creator import BlueprintCreatorAgent
+from app.infer_capabilities import InferCapabilities
 
 
 # ------------------------------------------------------------
@@ -66,38 +67,6 @@ def _is_internal(filename: str, doc_visibility: Optional[Dict[str, str]]) -> boo
     return False
 
 
-# Signals in an agent's description/capabilities that indicate it's an
-# internal agent (compliance, guardrails, auditing) — NOT customer-facing.
-_INTERNAL_AGENT_SIGNALS = {
-    "compliance",
-    "guardrails",
-    "internal",
-    "validation",
-    "audit",
-    "blocking",
-}
-
-
-def _is_customer_facing_agent(bp: Dict[str, Any]) -> bool:
-    """Determine if an agent is customer-facing (vs internal).
-
-    knowledge_rag and domain_agent agents can be customer-facing.
-    Agents whose description or capabilities mention compliance/guardrails/audit
-    are classified as internal — they need access to policy docs.
-
-    NOTE: The LLM-provided ``customer_facing`` flag is intentionally ignored.
-    LLMs frequently misclassify this; the description-based heuristic is
-    more reliable.
-    """
-    if bp.get("agent_kind") not in ("knowledge_rag", "domain_agent"):
-        return False
-    # Always use description-based heuristic (LLM flag is unreliable)
-    desc = (bp.get("description") or "").lower()
-    caps = " ".join(str(c).lower() for c in (bp.get("capabilities") or []))
-    combined = desc + " " + caps
-    return not any(sig in combined for sig in _INTERNAL_AGENT_SIGNALS)
-
-
 def _inputs_from_blueprint(
     bp: Dict[str, Any], data_dir: Path, doc_visibility: Optional[Dict[str, str]] = None
 ) -> Dict[str, Any]:
@@ -155,11 +124,6 @@ def _inputs_from_blueprint(
             if Path(rp).exists():
                 resolved_policies.append(_abs(rp))
 
-    # Determine if this specific agent is customer-facing.
-    # Not all knowledge_rag agents are — e.g. compliance/guardrails RAG agents
-    # are internal and need access to policy docs.
-    _is_customer_facing = _is_customer_facing_agent(bp)
-
     # If blueprint didn't explicitly set docs, use resolved docs for RAG
     if agent_kind == "knowledge_rag":
         if "docs" not in inputs or not inputs.get("docs"):
@@ -174,25 +138,12 @@ def _inputs_from_blueprint(
                 ]
                 inputs["docs"] = [_abs(f) for f in candidates] if candidates else []
 
-        # Strip internal documents from customer-facing agents.
-        # Uses the user-provided visibility map when available; falls back to
-        # extension-based defaults (YAML/YML → internal).
-        if _is_customer_facing:
-            for _doc_key in ("docs", "policies", "procedures"):
-                if _doc_key in inputs and isinstance(inputs[_doc_key], list):
-                    inputs[_doc_key] = [
-                        d
-                        for d in inputs[_doc_key]
-                        if not _is_internal(Path(d).name, doc_visibility)
-                    ]
-        else:
-            # Internal knowledge_rag agents (policy enforcement, compliance):
-            # ensure they have policy docs so they can enforce rules.
-            if resolved_policies:
-                existing = set(inputs.get("policies") or [])
-                for rp in resolved_policies:
-                    if rp not in existing:
-                        inputs.setdefault("policies", []).append(rp)
+        # Ensure policy docs are available (needed as agent instructions)
+        if resolved_policies:
+            existing = set(inputs.get("policies") or [])
+            for rp in resolved_policies:
+                if rp not in existing:
+                    inputs.setdefault("policies", []).append(rp)
 
     # For workflow_runner, always pass workflow_spec through (already LLM-generated dict)
     # plus attach docs/policies if available (useful for future checks)
@@ -212,11 +163,32 @@ def _inputs_from_blueprint(
         inputs.setdefault("domain", bp.get("domain") or bp.get("id", "general"))
         inputs.setdefault("goal", bp.get("goal") or bp.get("description", ""))
 
-        # knowledge_sources: merge resolved docs + policy docs for the RAG corpus
+        # Resolve any <UPLOAD:...> placeholders in existing knowledge_sources
+        if inputs.get("knowledge_sources"):
+            _resolved_ks: List[str] = []
+            for ks_entry in inputs["knowledge_sources"]:
+                if isinstance(ks_entry, str):
+                    rp = _resolve_placeholder(ks_entry)
+                    if rp and Path(rp).exists():
+                        _resolved_ks.append(rp)
+                    elif Path(ks_entry).exists():
+                        _resolved_ks.append(_abs(ks_entry))
+                    else:
+                        # Try relative to data_dir
+                        candidate = data_dir / Path(ks_entry).name
+                        if candidate.exists():
+                            _resolved_ks.append(_abs(candidate))
+            if _resolved_ks:
+                inputs["knowledge_sources"] = _resolved_ks
+
+        # knowledge_sources: merge resolved docs + policy docs for the RAG corpus.
+        # ALL documents are included — both customer-facing and internal.
+        # Internal docs serve as agent instructions; customer-facing docs
+        # provide content the agent can share with customers.
+        # The doc_visibility_map (below) tells the agent which is which.
         if "knowledge_sources" not in inputs or not inputs.get("knowledge_sources"):
             ks = list(resolved_docs)
-            if not _is_customer_facing:
-                ks.extend(resolved_policies)
+            ks.extend(resolved_policies)
             if not ks:
                 # Fallback: use any csv/md/txt files
                 candidates = [
@@ -227,18 +199,22 @@ def _inputs_from_blueprint(
                 ks = [_abs(f) for f in candidates]
             inputs["knowledge_sources"] = ks
 
-        # Strip internal documents from customer-facing domain agents.
-        # The LLM blueprint may include documents the user marked as
-        # internal — filter them out so the agent only retrieves from
-        # documents the user classified as customer-facing.
-        if _is_customer_facing:
-            for _doc_key in ("knowledge_sources", "docs", "policies", "procedures"):
-                if _doc_key in inputs and isinstance(inputs[_doc_key], list):
-                    inputs[_doc_key] = [
-                        d
-                        for d in inputs[_doc_key]
-                        if not _is_internal(Path(d).name, doc_visibility)
-                    ]
+        # Build per-document visibility map so the agent knows which docs
+        # are internal (instructions only) vs customer-facing (shareable).
+        # Only include actual file paths (knowledge_sources, docs), not
+        # natural-language policy strings.
+        _vis_map: Dict[str, str] = {}
+        for _doc_key in ("knowledge_sources", "docs"):
+            if _doc_key in inputs and isinstance(inputs[_doc_key], list):
+                for d in inputs[_doc_key]:
+                    dname = Path(d).name
+                    _vis_map[dname] = (
+                        "internal"
+                        if _is_internal(dname, doc_visibility)
+                        else "customer_facing"
+                    )
+        if _vis_map:
+            inputs["doc_visibility_map"] = _vis_map
 
         # available_tools: from blueprint inputs or bp["tools"]
         if "available_tools" not in inputs or not inputs.get("available_tools"):
@@ -554,6 +530,74 @@ def _compile_policy_files(base_dir: Path, factory_dir: Path) -> None:
 
 
 # ------------------------------------------------------------
+# 📄 Document content metadata for agents
+# ------------------------------------------------------------
+def _derive_doc_content_meta(
+    agent_inputs: Dict[str, Any],
+    doc_metadata: List[Dict[str, Any]],
+    doc_visibility: Optional[Dict[str, str]] = None,
+) -> Dict[str, Any]:
+    """Derive document content metadata for an agent from its assigned docs.
+
+    Uses the persisted .doc_metadata.json for content analysis (categories,
+    topics) and the user-provided doc_visibility map for visibility
+    (customer_facing vs internal).
+
+    Fields produced:
+    - has_customer_facing_docs: agent has at least one customer-facing document
+    - has_internal_policy: agent has at least one internal policy document
+    - document_categories: aggregated content categories from customer-facing docs
+    - coverage_topics: aggregated topic headers from all docs
+
+    These fields are stored in blueprint_meta and used by the solvability
+    estimator for intent-aware routing.
+    """
+    # Build lookup by filename
+    meta_by_name: Dict[str, Dict[str, Any]] = {
+        d["name"]: d for d in doc_metadata if isinstance(d, dict) and "name" in d
+    }
+
+    # Collect the agent's assigned docs
+    ks = agent_inputs.get("knowledge_sources") or []
+    if not isinstance(ks, list):
+        ks = []
+
+    has_customer_facing = False
+    has_internal = False
+    categories: List[str] = []
+    topics: List[str] = []
+
+    for doc_path in ks:
+        doc_name = Path(doc_path).name
+        dm = meta_by_name.get(doc_name, {})
+
+        # Visibility comes from the user-provided doc_visibility map
+        # (set during onboarding). Documents not in the map default to
+        # customer-facing (same convention as _is_internal()).
+        is_internal = _is_internal(doc_name, doc_visibility)
+
+        if is_internal:
+            has_internal = True
+        else:
+            has_customer_facing = True
+            # Only aggregate categories from customer-facing docs
+            categories.extend(dm.get("content_categories", []))
+
+        topics.extend(dm.get("content_topics", []))
+
+    # Deduplicate
+    categories = sorted(set(categories))
+    topics = sorted(set(topics))
+
+    return {
+        "has_customer_facing_docs": has_customer_facing,
+        "has_internal_policy": has_internal,
+        "document_categories": categories,
+        "coverage_topics": topics,
+    }
+
+
+# ------------------------------------------------------------
 # 🧰 Spec Builder (NEW: uses LLM-generated AgentBlueprints, not per-capability hardcoding)
 # ------------------------------------------------------------
 def build_factory_spec(
@@ -578,6 +622,9 @@ def build_factory_spec(
     factory_dir = base_dir / ".factory"
     factory_dir.mkdir(parents=True, exist_ok=True)
     spec_path = factory_dir / "factory_spec.json"
+
+    # Load persisted document content metadata (categories, visibility, topics)
+    doc_metadata = InferCapabilities.load_doc_metadata(base_dir)
 
     # Compile policy YAML files into .factory/compiled_policies/ so that
     # workflow agents can load the policy bridge for auto-event resolution.
@@ -626,11 +673,22 @@ def build_factory_spec(
             continue
 
         agent_kind = str(bp.get("agent_kind", "")).strip()
+        # Only generate domain_agent types; skip legacy/tool types
+        if agent_kind != "domain_agent":
+            print(f"[SPEC] Skipping non-domain_agent: {agent_id} ({agent_kind})")
+            continue
         blueprint_id = kind_to_blueprint.get(agent_kind)
         if not blueprint_id:
             raise ValueError(
                 f"Unsupported agent_kind '{agent_kind}' for blueprint id='{agent_id}'"
             )
+
+        agent_inputs = _inputs_from_blueprint(bp, base_dir, doc_visibility)
+
+        # Derive document content metadata for intent-aware routing
+        doc_content_meta = _derive_doc_content_meta(
+            agent_inputs, doc_metadata, doc_visibility
+        )
 
         agents_block.append(
             {
@@ -638,7 +696,7 @@ def build_factory_spec(
                 "type": "autogen",
                 "blueprint": blueprint_id,
                 "status": "ready",  # this is plan-level; can be refined later
-                "inputs": _inputs_from_blueprint(bp, base_dir, doc_visibility),
+                "inputs": agent_inputs,
                 "blueprint_meta": {
                     # keep the whole declarative blueprint for routing + explainability
                     "agent_kind": agent_kind,
@@ -652,13 +710,18 @@ def build_factory_spec(
                     # Add new action agent kinds here as the platform grows.
                     "requires_user_context": agent_kind
                     in {"workflow_runner", "domain_agent"},
-                    "customer_facing": _is_customer_facing_agent(bp),
+                    # customer_facing is now derived from doc_content_meta
+                    # (has_customer_facing_docs / has_internal_policy)
+                    # based on user-provided doc_visibility, not heuristics.
                     # Declarative AOP eligibility: set by the planning LLMs
                     # (infer_capabilities → blueprint_creator).  AOPCoordinator
                     # uses this to decide which agents can receive user-facing
                     # subtasks.  When absent (legacy specs), AOP falls back to
                     # a description-based heuristic.
                     "aop_eligible": bp.get("aop_eligible"),
+                    # Document content metadata for intent-aware routing.
+                    # Derived from persisted .doc_metadata.json content analysis.
+                    **doc_content_meta,
                 },
             }
         )

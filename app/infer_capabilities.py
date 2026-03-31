@@ -1,10 +1,14 @@
 # app/infer_capabilities.py
 from __future__ import annotations
 
+import csv
+import io
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
+
+import yaml as _yaml
 
 from app.llm_client import chat_json
 
@@ -69,6 +73,9 @@ class InferCapabilities:
 
         documents = self._classify_documents(files, vertical=vertical)
 
+        # Persist document metadata for downstream components
+        self._save_doc_metadata(base_dir, documents)
+
         # LLM proposes agents + uses documents (by name) as inputs
         llm_plan = self._propose_agents_llm(
             vertical=vertical,
@@ -102,6 +109,39 @@ class InferCapabilities:
             "agents": out.agents,
             "notes": out.notes,
         }
+
+    # -----------------------------
+    # Document metadata persistence
+    # -----------------------------
+    _DOC_META_FILE = ".doc_metadata.json"
+
+    def _save_doc_metadata(
+        self, base_dir: Path, documents: List[Dict[str, Any]]
+    ) -> None:
+        """Persist document content metadata so downstream components can use it."""
+        meta_path = base_dir / self._DOC_META_FILE
+        try:
+            meta_path.write_text(
+                json.dumps(documents, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            print(f"[INFER] Document metadata saved to {meta_path}")
+        except Exception as e:
+            print(f"[WARN] Could not save document metadata: {e}")
+
+    @staticmethod
+    def load_doc_metadata(data_dir: str | Path) -> List[Dict[str, Any]]:
+        """Load persisted document metadata (used by spec_builder, estimators).
+
+        Returns empty list if no metadata file exists yet.
+        """
+        meta_path = Path(data_dir).resolve() / InferCapabilities._DOC_META_FILE
+        if not meta_path.exists():
+            return []
+        try:
+            return json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            return []
 
     # -----------------------------
     # File enumeration
@@ -181,6 +221,9 @@ class InferCapabilities:
             if not isinstance(fit_reason, str):
                 fit_reason = ""
 
+            # Deep content analysis: categories, topics
+            content_analysis = self._analyze_document_content(p)
+
             docs.append(
                 {
                     "name": p.name,
@@ -188,11 +231,16 @@ class InferCapabilities:
                     "doc_type": doc_type,
                     "confidence": confidence,
                     "reason": reason[:300],
-                    # ✅ NEW fields
+                    # Vertical fit fields
                     "vertical_fit": fit_score,
                     "vertical_guess": vertical_guess[:60],
                     "vertical_fit_reason": fit_reason[:240],
                     "off_vertical": bool(fit_score < 0.5),
+                    # Content analysis fields
+                    "content_categories": content_analysis.get(
+                        "content_categories", []
+                    ),
+                    "content_topics": content_analysis.get("content_topics", []),
                 }
             )
         return docs
@@ -254,6 +302,164 @@ class InferCapabilities:
             return "\n".join(lines[:5])
         return "\n".join(lines[:40])
 
+    # -----------------------------
+    # Document content analysis
+    # -----------------------------
+    def _analyze_document_content(self, p: Path) -> Dict[str, Any]:
+        """Deep content analysis: extract categories and topics from document.
+
+        For CSV files: detect category/class columns and extract unique values.
+        For YAML files: extract top-level and second-level headers.
+
+        NOTE: Visibility (customer_facing vs internal) is NOT determined here.
+        It is a user-provided setting from the onboarding wizard, passed via
+        the doc_visibility map to spec_builder.
+
+        Returns dict with:
+          - content_categories: list of category values (from CSV Class column)
+          - content_topics: list of topic/header strings (from YAML structure)
+        """
+        ext = p.suffix.lower()
+        content_categories: List[str] = []
+        content_topics: List[str] = []
+
+        try:
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            return {"content_categories": [], "content_topics": []}
+
+        if ext in {".csv", ".tsv"}:
+            content_categories, _ = self._extract_csv_categories(text, ext)
+        elif ext in {".yaml", ".yml"}:
+            content_topics, _ = self._extract_yaml_headers(text)
+        elif ext in {".md", ".txt"}:
+            content_topics, _ = self._extract_text_headers(text)
+
+        return {
+            "content_categories": content_categories,
+            "content_topics": content_topics,
+        }
+
+    def _extract_csv_categories(self, text: str, ext: str) -> tuple[List[str], str]:
+        """Extract unique category values from CSV category/class columns.
+
+        Detects columns named: Class, Category, Type, Topic, Department, etc.
+        Returns (categories_list, structure_summary_string).
+        """
+        delimiter = "\t" if ext == ".tsv" else ","
+        try:
+            reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
+            if reader.fieldnames is None:
+                return [], ""
+
+            # Find category-like columns
+            _CAT_HINTS = {
+                "class",
+                "category",
+                "type",
+                "topic",
+                "department",
+                "group",
+                "section",
+            }
+            cat_col = None
+            for col in reader.fieldnames:
+                if col.strip().lower() in _CAT_HINTS:
+                    cat_col = col
+                    break
+
+            # Also detect Q/A columns for structure summary
+            q_col = None
+            a_col = None
+            _Q_HINTS = {"question", "q", "prompt", "query", "faq_question", "title"}
+            _A_HINTS = {"answer", "a", "response", "reply", "content", "text"}
+            for col in reader.fieldnames:
+                cl = col.strip().lower()
+                if cl in _Q_HINTS and not q_col:
+                    q_col = col
+                if cl in _A_HINTS and not a_col:
+                    a_col = col
+
+            categories: set[str] = set()
+            row_count = 0
+            sample_rows: List[str] = []
+            for row in reader:
+                row_count += 1
+                if cat_col and row.get(cat_col):
+                    categories.add(row[cat_col].strip().lower())
+                if row_count <= 3 and q_col:
+                    q_text = (row.get(q_col) or "")[:100]
+                    sample_rows.append(q_text)
+
+            cat_list = sorted(categories)
+
+            # Build structure summary for LLM visibility classification
+            summary_parts = [
+                f"CSV file with {row_count} rows.",
+                f"Columns: {', '.join(reader.fieldnames)}.",
+            ]
+            if q_col and a_col:
+                summary_parts.append(
+                    f"Has Q&A structure (question column: '{q_col}', answer column: '{a_col}')."
+                )
+            if cat_list:
+                summary_parts.append(
+                    f"Categories found in '{cat_col}' column: {', '.join(cat_list)}."
+                )
+            if sample_rows:
+                summary_parts.append(f"Sample questions: {'; '.join(sample_rows[:3])}")
+
+            return cat_list, " ".join(summary_parts)
+
+        except Exception:
+            return [], ""
+
+    def _extract_yaml_headers(self, text: str) -> tuple[List[str], str]:
+        """Extract top-level and second-level headers from YAML policy docs.
+
+        Returns (topics_list, structure_summary_string).
+        """
+        try:
+            data = _yaml.safe_load(text)
+            if not isinstance(data, dict):
+                return [], ""
+
+            topics: List[str] = []
+            summary_parts = ["YAML document with sections:"]
+
+            for key in data:
+                key_str = str(key)
+                topics.append(key_str.lower())
+                sub_keys: List[str] = []
+                if isinstance(data[key], dict):
+                    sub_keys = [str(k) for k in list(data[key].keys())[:10]]
+                    topics.extend(sk.lower() for sk in sub_keys)
+
+                if sub_keys:
+                    summary_parts.append(f"  {key_str}: {', '.join(sub_keys)}")
+                else:
+                    val_preview = str(data[key])[:80] if data[key] else ""
+                    summary_parts.append(f"  {key_str}: {val_preview}")
+
+            return topics, "\n".join(summary_parts)
+
+        except Exception:
+            return [], ""
+
+    def _extract_text_headers(self, text: str) -> tuple[List[str], str]:
+        """Extract markdown-style headers from .md/.txt files."""
+        topics: List[str] = []
+        for line in text.splitlines()[:200]:
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                header = stripped.lstrip("#").strip().lower()
+                if header:
+                    topics.append(header)
+        summary = (
+            f"Text document with headers: {', '.join(topics[:20])}" if topics else ""
+        )
+        return topics, summary
+
     def _classify_doc_llm(
         self, *, filename: str, prior: str, snippet: str
     ) -> Dict[str, Any]:
@@ -277,7 +483,7 @@ class InferCapabilities:
                 {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
             ],
             model=self.model,
-            temperature=1.0,
+            temperature=0.2,
             timeout=120,
         )
 
@@ -325,6 +531,20 @@ class InferCapabilities:
             "  reasoning (eligibility rules, refund thresholds, KYC requirements).\n"
             "  They become 'policies_text' constraints in the agent's ReAct prompt.\n"
             "- Knowledge_base documents (FAQs, help articles) become the agent's retrieval corpus.\n"
+            "DOCUMENT CONTENT METADATA:\n"
+            "- Documents may have 'content_categories' (e.g., ['accounts','loans','insurance'])\n"
+            "  showing the topics they cover. Use this to assign docs to the right agents.\n"
+            "- Documents may have 'content_topics' showing structural headers/sections.\n"
+            "- The SAME document MUST NOT be assigned to multiple agents (non-redundancy principle).\n"
+            "  The orchestrator handles cross-domain routing.\n"
+            "AGENT NAMING:\n"
+            "- Agent IDs MUST follow the pattern: {domain}_agent (lowercase, underscores).\n"
+            "- The 'domain' part should reflect what the agent DOES, not just one document it uses.\n"
+            "- If a knowledge_base document covers MULTIPLE categories (e.g. accounts, loans, insurance, cards),\n"
+            "  name the agent after its primary FUNCTION, not a single category.\n"
+            "  Example: an agent using a multi-category FAQ file → 'faq_agent' (not 'accounts_agent').\n"
+            "- If an agent handles a specific policy domain → name it after that domain.\n"
+            "  Example: refunds policy → 'refunds_agent', complaints policy → 'complaints_agent'.\n\n"
             "AOP ELIGIBILITY — aop_eligible field:\n"
             "Each agent MUST include an 'aop_eligible' boolean field.\n"
             "aop_eligible=true means the agent can be assigned user-facing subtasks by the orchestrator.\n"
@@ -361,12 +581,15 @@ class InferCapabilities:
                 "doc_type": d["doc_type"],
                 "confidence": d.get("confidence", 0.0),
                 "reason": d.get("reason", ""),
-                # ✅ NEW: vertical fit signals for planning
+                # Vertical fit signals
                 "vertical_fit": d.get("vertical_fit", 0.6),
                 "vertical_guess": d.get("vertical_guess", ""),
                 "off_vertical": bool(d.get("off_vertical", False)),
                 "vertical_fit_reason": d.get("vertical_fit_reason", ""),
                 "snippet": self._doc_snippet_for_planning(d, max_chars=600),
+                # Content analysis signals
+                "content_categories": d.get("content_categories", []),
+                "content_topics": d.get("content_topics", []),
             }
             for d in documents
         ]
@@ -384,7 +607,7 @@ class InferCapabilities:
                 {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
             ],
             model=self.model,
-            temperature=1.0,
+            temperature=0.2,
             timeout=120,
         )
 
@@ -723,6 +946,6 @@ class InferCapabilities:
                 {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
             ],
             model=self.model,
-            temperature=1.0,
+            temperature=0.2,
             timeout=120,
         )
