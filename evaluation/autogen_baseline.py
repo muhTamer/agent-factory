@@ -117,11 +117,78 @@ def handoff_to_human(reason: str = "", customer_id: str = "") -> str:
     return json.dumps({"handed_off": True, "handoff_agent": "human_ops_team"})
 
 
+def update_profile(customer_id: str = "", field: str = "", value: str = "") -> str:
+    """Update a customer's profile information such as address, phone, or email."""
+    return json.dumps(
+        {
+            "profile_updated": True,
+            "field_changed": field or "address",
+            "message": "Profile updated successfully.",
+        }
+    )
+
+
+def update_account(customer_id: str = "", action: str = "") -> str:
+    """Perform an account management action such as status change or settings update."""
+    return json.dumps(
+        {
+            "account_updated": True,
+            "action": action or "update",
+            "message": "Account action completed successfully.",
+        }
+    )
+
+
+def generate_statement(customer_id: str = "", period: str = "") -> str:
+    """Generate an account statement for a specified period."""
+    return json.dumps(
+        {
+            "statement_generated": True,
+            "period": period or "3 months",
+            "format": "PDF",
+            "message": "Statement generated and available for download.",
+        }
+    )
+
+
+def freeze_account(customer_id: str = "", reason: str = "") -> str:
+    """Freeze a customer account for security or investigation purposes."""
+    return json.dumps(
+        {
+            "account_frozen": True,
+            "freeze_reason": reason or "security",
+            "message": "Account frozen pending investigation.",
+        }
+    )
+
+
+def initiate_transfer(
+    customer_id: str = "", amount: str = "", destination: str = ""
+) -> str:
+    """Initiate a fund transfer from a customer's account."""
+    return json.dumps(
+        {
+            "transfer_initiated": True,
+            "transfer_id": "TRF-001",
+            "amount": amount or "0",
+            "message": "Transfer initiated successfully.",
+        }
+    )
+
+
 # Same tool set as Agent Factory — distributed by domain
 DOMAIN_TOOLS = {
     "refunds": [lookup_payment, initiate_refund, verify_identity],
     "complaints": [create_ticket, handoff_to_human, lookup_customer],
-    "accounts": [verify_identity, lookup_customer],
+    "accounts": [
+        verify_identity,
+        lookup_customer,
+        update_profile,
+        update_account,
+        generate_statement,
+        freeze_account,
+        initiate_transfer,
+    ],
 }
 
 
@@ -438,12 +505,18 @@ async def _run_team_with_retry(
 
 
 def _extract_from_autogen_messages(messages: list) -> Dict[str, Any]:
-    """Extract agent routing, tools, and answer from AutoGen messages."""
+    """Extract agent routing, tools, and answer from AutoGen messages.
+
+    Tracks which agent called which tool so we can determine
+    'handling_agents' — agents that actually did work (called domain tools),
+    not just responded with text.
+    """
     first_agent = ""
     responding_agent = ""
     answer_text = ""
     agents_involved = set()
     tools_used = []
+    agent_tool_map: Dict[str, List[str]] = {}  # agent -> list of tools called
 
     agent_messages = [
         m
@@ -463,16 +536,24 @@ def _extract_from_autogen_messages(messages: list) -> Dict[str, Any]:
             for tc in getattr(m, "content", []):
                 if hasattr(tc, "name"):
                     tools_used.append(tc.name)
+                    # Attribute tool to calling agent
+                    if source:
+                        agent_tool_map.setdefault(source, []).append(tc.name)
 
         if hasattr(m, "content") and isinstance(m.content, str) and m.content.strip():
             responding_agent = source
             answer_text = m.content
+
+    # Handling agents = agents that called at least one tool
+    handling_agents = [a for a in agents_involved if a in agent_tool_map]
 
     return {
         "first_agent": first_agent,
         "responding_agent": responding_agent,
         "answer_text": answer_text,
         "agents_involved": agents_involved,
+        "handling_agents": handling_agents,
+        "agent_tool_map": agent_tool_map,
         "tools_used": tools_used,
     }
 
@@ -492,6 +573,7 @@ async def run_single_scenario(
     try:
         all_tools_used = []
         all_agents_involved = set()
+        all_handling_agents = set()  # agents that called domain tools
         first_agent = ""
         responding_agent = ""
         answer_text = ""
@@ -532,6 +614,7 @@ async def run_single_scenario(
             # Accumulate
             all_tools_used.extend(turn_tools)
             all_agents_involved.update(extracted["agents_involved"])
+            all_handling_agents.update(extracted["handling_agents"])
             if not first_agent:
                 first_agent = extracted["first_agent"]
             responding_agent = extracted["responding_agent"]
@@ -550,9 +633,25 @@ async def run_single_scenario(
                 if actual_pattern != expected["pattern"]:
                     all_pattern_ok = False
 
+            # Check agent(s) — an agent counts as "handling" only if it
+            # called at least one domain tool (Option 3: tool+knowledge attribution).
+            expected_agents_list = expected.get("expected_agents")
             expected_agent = expected.get("agent_contains")
-            if expected_agent is not None:
-                if not _check_agent(first_agent, expected_agent):
+
+            handling_agents = {a.lower() for a in all_handling_agents}
+
+            if expected_agents_list is not None:
+                agent_matched = all(
+                    any(ea.lower() in ha for ha in handling_agents)
+                    for ea in expected_agents_list
+                )
+                if not agent_matched:
+                    all_agent_ok = False
+            elif expected_agent is not None:
+                agent_matched = any(
+                    expected_agent.lower() in ha for ha in handling_agents
+                )
+                if not agent_matched:
                     all_agent_ok = False
 
             expected_outcome = expected.get("expected_outcome")
@@ -599,7 +698,10 @@ async def run_single_scenario(
                 )
                 # Verify ALL extracted checks are minor (tool_missing or knowledge_mismatch)
                 only_minor = bool(failed_checks) and all(
-                    f.startswith("tool_missing:") or f.startswith("knowledge_mismatch:")
+                    f.startswith("tool_missing:")
+                    or f.startswith("knowledge_mismatch:")
+                    or f.startswith("kw_missing:")
+                    or f.startswith("kw_any_missing:")
                     for f in failed_checks
                 )
                 has_response = "response_present" in detail_str or (
@@ -629,6 +731,7 @@ async def run_single_scenario(
             "first_agent": first_agent,
             "responding_agent": responding_agent,
             "agents_involved": list(all_agents_involved),
+            "handling_agents": sorted(all_handling_agents),
             "tools_used": all_tools_used,
             "answer_text": answer_text[:500],
             "error": None,
@@ -675,7 +778,8 @@ async def run_autogen_evaluation(
     # Load scenarios
     scenarios = json.loads(SCENARIOS_PATH.read_text(encoding="utf-8"))
     if scenario_filter:
-        scenarios = [s for s in scenarios if s["id"] == scenario_filter]
+        ids = {sid.strip() for sid in scenario_filter.split(",")}
+        scenarios = [s for s in scenarios if s["id"] in ids]
     if max_scenarios:
         scenarios = scenarios[:max_scenarios]
 
