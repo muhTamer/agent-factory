@@ -32,6 +32,7 @@ def run_solvability_comparison(
     detailed: bool = False,
 ) -> dict:
     """Execute the TF-IDF vs Neural solvability comparison."""
+    from app.orchestration.llm_solvability_estimator import LLMSolvabilityEstimator
     from app.orchestration.neural_solvability_estimator import (
         NeuralSolvabilityEstimator,
     )
@@ -75,6 +76,7 @@ def run_solvability_comparison(
         model_path=Path("models/reward_mlp.pt"),
         use_intent_scoring=False,
     )
+    llm = LLMSolvabilityEstimator(clean_store)
 
     print(f"Neural MLP trained: {neural.is_trained}")
     print(f"Agents in registry: {registry.all_ids()}")
@@ -82,11 +84,12 @@ def run_solvability_comparison(
     print(f"Scenarios: {len(scenarios)}")
     print()
 
-    # ── Run 1: TF-IDF (with intent scoring) vs Neural (with intent scoring) ──
+    # ── Run 1: TF-IDF vs Neural vs LLM (with intent scoring) ──
     comparison = SolvabilityComparison(
         tfidf_estimator=tfidf,
         neural_estimator=neural,
         registry=registry,
+        llm_estimator=llm,
     )
 
     t0 = time.time()

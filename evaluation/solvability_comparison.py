@@ -38,8 +38,13 @@ class ComparisonResult:
     neural_correct: bool
     neural_latency_ms: float
 
-    agreement: bool  # same agent chosen?
-    lexical_gap: bool  # word mismatch case?
+    llm_agent: str = ""
+    llm_score: float = 0.0
+    llm_correct: bool = False
+    llm_latency_ms: float = 0.0
+
+    agreement: bool = False  # same agent chosen by tfidf+neural?
+    lexical_gap: bool = False  # word mismatch case?
 
 
 # ── McNemar's test ──────────────────────────────────────────────────
@@ -157,11 +162,12 @@ def confusion_matrix(
 
 
 class SolvabilityComparison:
-    """Compare TF-IDF and Neural solvability estimators."""
+    """Compare TF-IDF, Neural, and optionally LLM solvability estimators."""
 
-    def __init__(self, tfidf_estimator, neural_estimator, registry):
+    def __init__(self, tfidf_estimator, neural_estimator, registry, llm_estimator=None):
         self.tfidf = tfidf_estimator
         self.neural = neural_estimator
+        self.llm = llm_estimator
         self.registry = registry
 
     def compare_on_scenarios(
@@ -195,6 +201,15 @@ class SolvabilityComparison:
             neural_agent = neural_result.assignments.get(subtask, "")
             neural_score = neural_result.assignment_scores.get(subtask, 0.0)
 
+            # Run LLM estimator (optional)
+            llm_agent, llm_score, llm_ms = "", 0.0, 0.0
+            if self.llm is not None:
+                t0 = time.perf_counter()
+                llm_result = self.llm.estimate([subtask], agent_catalog)
+                llm_ms = (time.perf_counter() - t0) * 1000
+                llm_agent = llm_result.assignments.get(subtask, "")
+                llm_score = llm_result.assignment_scores.get(subtask, 0.0)
+
             result = ComparisonResult(
                 scenario_id=scenario_id,
                 subtask=subtask,
@@ -208,6 +223,10 @@ class SolvabilityComparison:
                 neural_score=neural_score,
                 neural_correct=(neural_agent == correct_agent),
                 neural_latency_ms=round(neural_ms, 2),
+                llm_agent=llm_agent,
+                llm_score=llm_score,
+                llm_correct=(llm_agent == correct_agent) if self.llm else False,
+                llm_latency_ms=round(llm_ms, 2),
                 agreement=(tfidf_agent == neural_agent),
                 lexical_gap=is_lexical_gap,
             )
@@ -223,7 +242,9 @@ class SolvabilityComparison:
 
         tfidf_correct = sum(1 for r in results if r.tfidf_correct)
         neural_correct = sum(1 for r in results if r.neural_correct)
+        llm_correct = sum(1 for r in results if r.llm_correct)
         agreements = sum(1 for r in results if r.agreement)
+        has_llm = any(r.llm_agent for r in results)
 
         # Lexical gap subset
         lex_cases = [r for r in results if r.lexical_gap]
@@ -232,8 +253,9 @@ class SolvabilityComparison:
         # Latency
         avg_tfidf_ms = sum(r.tfidf_latency_ms for r in results) / total
         avg_neural_ms = sum(r.neural_latency_ms for r in results) / total
+        avg_llm_ms = sum(r.llm_latency_ms for r in results) / total if has_llm else 0.0
 
-        return {
+        summary = {
             "total_scenarios": total,
             "tfidf_accuracy": round(tfidf_correct / total, 4),
             "neural_accuracy": round(neural_correct / total, 4),
@@ -276,6 +298,17 @@ class SolvabilityComparison:
             "confusion_tfidf": confusion_matrix(results, "tfidf"),
             "confusion_neural": confusion_matrix(results, "neural"),
         }
+        if has_llm:
+            summary["llm_accuracy"] = round(llm_correct / total, 4)
+            summary["llm_correct"] = llm_correct
+            summary["latency"]["avg_llm_ms"] = round(avg_llm_ms, 2)
+            summary["standard_match"]["llm_accuracy"] = round(
+                sum(1 for r in std_cases if r.llm_correct) / max(1, len(std_cases)), 4
+            )
+            summary["lexical_gap"]["llm_accuracy"] = round(
+                sum(1 for r in lex_cases if r.llm_correct) / max(1, len(lex_cases)), 4
+            )
+        return summary
 
     def print_summary(self, results: List[ComparisonResult]) -> str:
         """Print and return a formatted comparison summary."""
@@ -286,29 +319,43 @@ class SolvabilityComparison:
             return msg
 
         total = summary["total_scenarios"]
+        has_llm = "llm_accuracy" in summary
+        title = (
+            "SOLVABILITY ESTIMATOR COMPARISON: TF-IDF vs Neural vs LLM"
+            if has_llm
+            else "SOLVABILITY ESTIMATOR COMPARISON: TF-IDF vs Neural"
+        )
         lines = [
             "=" * 70,
-            "SOLVABILITY ESTIMATOR COMPARISON: TF-IDF vs Neural",
+            title,
             "=" * 70,
             f"Total subtasks evaluated: {total}",
             "",
             "OVERALL ACCURACY:",
             f"  TF-IDF:  {summary['tfidf_correct']}/{total} ({100*summary['tfidf_accuracy']:.1f}%)",
             f"  Neural:  {summary['neural_correct']}/{total} ({100*summary['neural_accuracy']:.1f}%)",
-            f"  Agreement: {100*summary['agreement_rate']:.1f}%",
         ]
+        if has_llm:
+            lines.append(
+                f"  LLM:     {summary['llm_correct']}/{total} ({100*summary['llm_accuracy']:.1f}%)"
+            )
+        lines.append(
+            f"  Agreement (TF-IDF/Neural): {100*summary['agreement_rate']:.1f}%"
+        )
 
         std = summary["standard_match"]
         lex = summary["lexical_gap"]
+        std_llm = f"\n  LLM:    {100*std['llm_accuracy']:.1f}%" if has_llm else ""
+        lex_llm = f"\n  LLM:    {100*lex['llm_accuracy']:.1f}%" if has_llm else ""
         lines += [
             "",
             f"STANDARD MATCH ({std['count']} cases):",
             f"  TF-IDF: {100*std['tfidf_accuracy']:.1f}%",
-            f"  Neural: {100*std['neural_accuracy']:.1f}%",
+            f"  Neural: {100*std['neural_accuracy']:.1f}%" + std_llm,
             "",
             f"LEXICAL GAP ({lex['count']} cases):",
             f"  TF-IDF: {100*lex['tfidf_accuracy']:.1f}%",
-            f"  Neural: {100*lex['neural_accuracy']:.1f}%",
+            f"  Neural: {100*lex['neural_accuracy']:.1f}%" + lex_llm,
         ]
 
         lat = summary["latency"]
