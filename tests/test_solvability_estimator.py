@@ -222,6 +222,8 @@ def _catalog_with_intent():
             "description": "Handles refund requests and processes returns",
             "capabilities": ["refund_processing", "return_handling"],
             "requires_user_context": True,
+            "has_customer_facing_docs": False,
+            "has_internal_policy": True,
         },
         "faq_agent": {
             "id": "faq_agent",
@@ -229,6 +231,8 @@ def _catalog_with_intent():
             "description": "Answers customer FAQs about refund policies and products",
             "capabilities": ["faq_answering", "policy_lookup", "refund_info"],
             "requires_user_context": False,
+            "has_customer_facing_docs": True,
+            "has_internal_policy": False,
         },
     }
 

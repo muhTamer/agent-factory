@@ -162,7 +162,7 @@ class TestBuildAgent:
         build_agent("default_agent", inputs, gen_dir)
 
         cfg = json.loads((gen_dir / "config.json").read_text(encoding="utf-8"))
-        assert cfg["max_steps"] == 5
+        assert cfg["max_steps"] == 10
         assert cfg["model"] == "gpt-5-mini"
         assert cfg["available_tools"] == []
         assert cfg["policies"] == []
