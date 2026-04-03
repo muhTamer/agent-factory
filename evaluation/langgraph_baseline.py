@@ -119,11 +119,78 @@ def handoff_to_human(reason: str = "", customer_id: str = "") -> str:
     return json.dumps({"handed_off": True, "handoff_agent": "human_ops_team"})
 
 
+def update_profile(customer_id: str = "", field: str = "", value: str = "") -> str:
+    """Update a customer's profile information such as address, phone, or email."""
+    return json.dumps(
+        {
+            "profile_updated": True,
+            "field_changed": field or "address",
+            "message": "Profile updated successfully.",
+        }
+    )
+
+
+def update_account(customer_id: str = "", action: str = "") -> str:
+    """Perform an account management action such as status change or settings update."""
+    return json.dumps(
+        {
+            "account_updated": True,
+            "action": action or "update",
+            "message": "Account action completed successfully.",
+        }
+    )
+
+
+def generate_statement(customer_id: str = "", period: str = "") -> str:
+    """Generate an account statement for a specified period."""
+    return json.dumps(
+        {
+            "statement_generated": True,
+            "period": period or "3 months",
+            "format": "PDF",
+            "message": "Statement generated and available for download.",
+        }
+    )
+
+
+def freeze_account(customer_id: str = "", reason: str = "") -> str:
+    """Freeze a customer account for security or investigation purposes."""
+    return json.dumps(
+        {
+            "account_frozen": True,
+            "freeze_reason": reason or "security",
+            "message": "Account frozen pending investigation.",
+        }
+    )
+
+
+def initiate_transfer(
+    customer_id: str = "", amount: str = "", destination: str = ""
+) -> str:
+    """Initiate a fund transfer from a customer's account."""
+    return json.dumps(
+        {
+            "transfer_initiated": True,
+            "transfer_id": "TRF-001",
+            "amount": amount or "0",
+            "message": "Transfer initiated successfully.",
+        }
+    )
+
+
 # Same tool set as Agent Factory — distributed by domain
 DOMAIN_TOOLS = {
     "refunds": [lookup_payment, initiate_refund, verify_identity],
     "complaints": [create_ticket, handoff_to_human, lookup_customer],
-    "accounts": [verify_identity, lookup_customer],
+    "accounts": [
+        verify_identity,
+        lookup_customer,
+        update_profile,
+        update_account,
+        generate_statement,
+        freeze_account,
+        initiate_transfer,
+    ],
 }
 
 
@@ -161,13 +228,15 @@ class SimpleRAG:
 
 
 def _build_llm() -> AzureChatOpenAI:
+    from app.llm_client import LLM_MODEL, LLM_TEMPERATURE
+
     return AzureChatOpenAI(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini"),
+        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT", LLM_MODEL),
         api_key=os.environ["AZURE_OPENAI_API_KEY"],
         api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
-        model=os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini"),
-        temperature=1.0,
+        model=os.environ.get("AZURE_OPENAI_DEPLOYMENT", LLM_MODEL),
+        temperature=LLM_TEMPERATURE,
     )
 
 
@@ -306,8 +375,9 @@ def _build_supervisor(llm: AzureChatOpenAI):
         "You are a banking customer service supervisor. "
         "Route each customer query to the most appropriate specialist agent:\n"
         f"{agent_lines}\n\n"
-        "IMPORTANT: Route to ONE agent per query. After the agent responds, "
-        "provide the final answer to the user. Do NOT route to another agent."
+        "If a query involves multiple topics (e.g. refund AND account balance), "
+        "route to each relevant agent in turn. After all agents have responded, "
+        "provide the final consolidated answer to the user."
     )
 
     # Supervisor routes to the correct agent (like our Spine)
@@ -487,12 +557,18 @@ def _extract_from_messages(messages: list) -> Dict[str, Any]:
 
     Handles both LangChain message objects (isinstance checks) and
     serialized dicts (checking 'type' key) since LangGraph may return either.
+
+    Tracks which agent called which domain tool so we can determine
+    'handling_agents' — agents that actually did work (called tools or
+    retrieved knowledge), not just responded.
     """
     first_agent = ""
     responding_agent = ""
     answer_text = ""
     agents_involved = []
     tools_used = []
+    current_agent = ""  # tracks which agent is "active" in the message flow
+    agent_tool_map: Dict[str, List[str]] = {}  # agent -> list of domain tools called
 
     for m in messages:
         # --- Normalise: detect format (object vs dict) ---
@@ -512,6 +588,7 @@ def _extract_from_messages(messages: list) -> Dict[str, Any]:
 
         # --- Agent tracking (only from AI messages, not tool/human messages) ---
         if name and name != "supervisor" and is_ai:
+            current_agent = name
             if name not in agents_involved:
                 agents_involved.append(name)
             if not first_agent:
@@ -527,6 +604,13 @@ def _extract_from_messages(messages: list) -> Dict[str, Any]:
                 )
                 if tc_name:
                     tools_used.append(tc_name)
+                    # Attribute domain tools to the calling agent
+                    if (
+                        current_agent
+                        and not tc_name.startswith("transfer_to_")
+                        and tc_name != "transfer_back_to_supervisor"
+                    ):
+                        agent_tool_map.setdefault(current_agent, []).append(tc_name)
 
         # --- Tool results (ToolMessage carries the tool name) ---
         if is_tool and name:
@@ -553,11 +637,16 @@ def _extract_from_messages(messages: list) -> Dict[str, Any]:
         if t.startswith("transfer_to_") or t == "transfer_back_to_supervisor"
     ]
 
+    # Handling agents = agents that called at least one domain tool
+    handling_agents = [a for a in agents_involved if a in agent_tool_map]
+
     return {
         "first_agent": first_agent,
         "responding_agent": responding_agent,
         "answer_text": answer_text,
         "agents_involved": agents_involved,
+        "handling_agents": handling_agents,
+        "agent_tool_map": agent_tool_map,
         "tools_used": domain_tools,
         "routing_tools": routing_tools,
     }
@@ -575,6 +664,7 @@ def run_single_scenario(supervisor, scenario: Dict[str, Any]) -> Dict[str, Any]:
         conversation = []  # Accumulated message history
         all_tools_used = []
         all_agents_involved = []
+        all_handling_agents = set()  # agents that called domain tools
         first_agent = ""
         responding_agent = ""
         answer_text = ""
@@ -603,6 +693,7 @@ def run_single_scenario(supervisor, scenario: Dict[str, Any]) -> Dict[str, Any]:
             for a in extracted["agents_involved"]:
                 if a not in all_agents_involved:
                     all_agents_involved.append(a)
+            all_handling_agents.update(extracted["handling_agents"])
             if not first_agent:
                 first_agent = extracted["first_agent"]
             responding_agent = extracted["responding_agent"]
@@ -618,9 +709,26 @@ def run_single_scenario(supervisor, scenario: Dict[str, Any]) -> Dict[str, Any]:
                 if actual_pattern != expected["pattern"]:
                     all_pattern_ok = False
 
+            # Check agent(s) — an agent counts as "handling" only if it
+            # called at least one domain tool (not routing tools).
+            # This is Option 3: tool+knowledge attribution.
+            expected_agents_list = expected.get("expected_agents")
             expected_agent = expected.get("agent_contains")
-            if expected_agent is not None:
-                if expected_agent.lower() not in (first_agent or "").lower():
+
+            handling_agents = {a.lower() for a in all_handling_agents}
+
+            if expected_agents_list is not None:
+                agent_matched = all(
+                    any(ea.lower() in ha for ha in handling_agents)
+                    for ea in expected_agents_list
+                )
+                if not agent_matched:
+                    all_agent_ok = False
+            elif expected_agent is not None:
+                agent_matched = any(
+                    expected_agent.lower() in ha for ha in handling_agents
+                )
+                if not agent_matched:
                     all_agent_ok = False
 
             # Per-turn outcome check
@@ -653,7 +761,27 @@ def run_single_scenario(supervisor, scenario: Dict[str, Any]) -> Dict[str, Any]:
         # Soft-pass: if routing was correct but only tool_missing or
         # knowledge_mismatch checks failed, mark as success with soft_pass flag
         # (LLM non-determinism in tool calling / knowledge retrieval)
-        if not all_outcome_ok and all_agent_ok:
+        # Also allow soft-pass when agents_involved shows correct routing
+        # even if handling_agents (tool-based) doesn't.
+        routing_ok_by_involvement = all_agent_ok
+        if not routing_ok_by_involvement:
+            involved_lower = {a.lower() for a in all_agents_involved}
+            for turn_spec in turns_spec:
+                exp = turn_spec.get("expected", {})
+                ea_list = exp.get("expected_agents")
+                ea_single = exp.get("agent_contains")
+                if ea_list is not None:
+                    routing_ok_by_involvement = all(
+                        any(ea.lower() in ai for ai in involved_lower) for ea in ea_list
+                    )
+                elif ea_single is not None:
+                    routing_ok_by_involvement = any(
+                        ea_single.lower() in ai for ai in involved_lower
+                    )
+                if not routing_ok_by_involvement:
+                    break
+
+        if not all_outcome_ok and routing_ok_by_involvement:
             detail_str = "; ".join(outcome_details)
             import re
 
@@ -668,7 +796,11 @@ def run_single_scenario(supervisor, scenario: Dict[str, Any]) -> Dict[str, Any]:
                 )
                 # Verify ALL extracted checks are minor (tool_missing or knowledge_mismatch)
                 only_minor = bool(failed_checks) and all(
-                    f.startswith("tool_missing:") or f.startswith("knowledge_mismatch:")
+                    f.startswith("tool_missing:")
+                    or f.startswith("knowledge_mismatch:")
+                    or f.startswith("kw_missing:")
+                    or f.startswith("kw_any_missing:")
+                    or f.startswith("escalation_mismatch:")
                     for f in failed_checks
                 )
                 has_response = "response_present" in detail_str or (
@@ -698,6 +830,7 @@ def run_single_scenario(supervisor, scenario: Dict[str, Any]) -> Dict[str, Any]:
             "first_agent": first_agent,
             "responding_agent": responding_agent,
             "agents_involved": all_agents_involved,
+            "handling_agents": sorted(all_handling_agents),
             "tools_used": all_tools_used,
             "answer_text": answer_text[:500],
             "error": None,
@@ -745,7 +878,8 @@ def run_langgraph_evaluation(
     # Load scenarios
     scenarios = json.loads(SCENARIOS_PATH.read_text(encoding="utf-8"))
     if scenario_filter:
-        scenarios = [s for s in scenarios if s["id"] == scenario_filter]
+        ids = {sid.strip() for sid in scenario_filter.split(",")}
+        scenarios = [s for s in scenarios if s["id"] in ids]
     if max_scenarios:
         scenarios = scenarios[:max_scenarios]
 

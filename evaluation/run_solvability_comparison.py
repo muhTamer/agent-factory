@@ -32,6 +32,7 @@ def run_solvability_comparison(
     detailed: bool = False,
 ) -> dict:
     """Execute the TF-IDF vs Neural solvability comparison."""
+    from app.orchestration.llm_solvability_estimator import LLMSolvabilityEstimator
     from app.orchestration.neural_solvability_estimator import (
         NeuralSolvabilityEstimator,
     )
@@ -75,6 +76,7 @@ def run_solvability_comparison(
         model_path=Path("models/reward_mlp.pt"),
         use_intent_scoring=False,
     )
+    llm = LLMSolvabilityEstimator(clean_store)
 
     print(f"Neural MLP trained: {neural.is_trained}")
     print(f"Agents in registry: {registry.all_ids()}")
@@ -82,11 +84,12 @@ def run_solvability_comparison(
     print(f"Scenarios: {len(scenarios)}")
     print()
 
-    # ── Run 1: TF-IDF (with intent scoring) vs Neural (with intent scoring) ──
+    # ── Run 1: TF-IDF vs Neural vs LLM (with intent scoring) ──
     comparison = SolvabilityComparison(
         tfidf_estimator=tfidf,
         neural_estimator=neural,
         registry=registry,
+        llm_estimator=llm,
     )
 
     t0 = time.time()
@@ -171,24 +174,28 @@ def run_solvability_comparison(
     # Per-scenario results
     per_scenario = []
     for r in results:
-        per_scenario.append(
-            {
-                "scenario_id": r.scenario_id,
-                "subtask": r.subtask,
-                "correct_agent": r.correct_agent,
-                "category": r.category,
-                "tfidf_agent": r.tfidf_agent,
-                "tfidf_score": round(r.tfidf_score, 4),
-                "tfidf_correct": r.tfidf_correct,
-                "tfidf_latency_ms": r.tfidf_latency_ms,
-                "neural_agent": r.neural_agent,
-                "neural_score": round(r.neural_score, 4),
-                "neural_correct": r.neural_correct,
-                "neural_latency_ms": r.neural_latency_ms,
-                "agreement": r.agreement,
-                "lexical_gap": r.lexical_gap,
-            }
-        )
+        row = {
+            "scenario_id": r.scenario_id,
+            "subtask": r.subtask,
+            "correct_agent": r.correct_agent,
+            "category": r.category,
+            "tfidf_agent": r.tfidf_agent,
+            "tfidf_score": round(r.tfidf_score, 4),
+            "tfidf_correct": r.tfidf_correct,
+            "tfidf_latency_ms": r.tfidf_latency_ms,
+            "neural_agent": r.neural_agent,
+            "neural_score": round(r.neural_score, 4),
+            "neural_correct": r.neural_correct,
+            "neural_latency_ms": r.neural_latency_ms,
+            "agreement": r.agreement,
+            "lexical_gap": r.lexical_gap,
+        }
+        if r.llm_agent:
+            row["llm_agent"] = r.llm_agent
+            row["llm_score"] = round(r.llm_score, 4)
+            row["llm_correct"] = r.llm_correct
+            row["llm_latency_ms"] = r.llm_latency_ms
+        per_scenario.append(row)
 
     results_path = output_dir / "solvability_comparison_results.json"
     results_path.write_text(

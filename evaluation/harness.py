@@ -16,12 +16,15 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.runtime.spine import RuntimeSpine
+
+logger = logging.getLogger("evaluation.harness")
 
 # ── Result dataclasses ──────────────────────────────────────────────
 
@@ -139,12 +142,167 @@ class EvaluationHarness:
             last_response = resp or {}
             all_responses.append(last_response)
 
-            # Count agent calls
-            subtask_results = last_response.get("subtask_results")
-            if isinstance(subtask_results, list):
-                total_agent_calls += len(subtask_results)
-            else:
-                total_agent_calls += 1
+            # ── AOP auto-walk: if response is a task menu, execute all
+            # subtasks sequentially so we verify actual agent execution ──
+            executed_agents: List[str] = []
+            accumulated_answer_parts: List[str] = []
+            accumulated_tools: List[str] = []
+            agent_tool_map: Dict[str, List[str]] = {}  # agent -> tools called
+            if last_response.get("orchestration_pattern") == "aop_task_menu":
+                task_menu = last_response.get("task_menu", [])
+                num_subtasks = len(task_menu)
+                logger.info(
+                    "  [AOP-WALK] Task menu with %d subtasks — auto-executing all",
+                    num_subtasks,
+                )
+                for step in range(num_subtasks):
+                    step_t0 = time.perf_counter()
+                    try:
+                        step_resp = self.spine.handle_chat(
+                            "1",  # always select first remaining
+                            request_id=f"{sc_id}_turn{i}_aop{step}",
+                            context={"thread_id": thread_id},
+                        )
+                    except Exception as e:
+                        logger.warning("  [AOP-WALK] Step %d error: %s", step, e)
+                        break
+                    step_latency = (time.perf_counter() - step_t0) * 1000.0
+                    total_latency += step_latency
+                    step_resp = step_resp or {}
+                    all_responses.append(step_resp)
+
+                    # Extract executed agent
+                    exec_sub = step_resp.get("executed_subtask", {})
+                    exec_agent = exec_sub.get("agent_id", "")
+                    if exec_agent:
+                        executed_agents.append(exec_agent)
+                    # Also check top-level agent_id (set by spine in some paths)
+                    top_agent = step_resp.get("agent_id", "")
+                    if top_agent and top_agent not in executed_agents:
+                        executed_agents.append(top_agent)
+
+                    # Accumulate answer text
+                    step_answer = self._extract_answer(step_resp)
+                    if step_answer.strip():
+                        accumulated_answer_parts.append(step_answer)
+
+                    # Accumulate tools from all possible locations
+                    # and attribute each tool to the executing agent
+                    step_tools: List[str] = []
+                    for _tkey in ("tools_called", "tools_used"):
+                        _tlist = step_resp.get(_tkey, [])
+                        if isinstance(_tlist, list):
+                            for t in _tlist:
+                                if isinstance(t, str) and t not in accumulated_tools:
+                                    accumulated_tools.append(t)
+                                    step_tools.append(t)
+                    # Check react_trace for tool calls
+                    _rtrace = step_resp.get("react_trace", [])
+                    if isinstance(_rtrace, list):
+                        for _step in _rtrace:
+                            if (
+                                isinstance(_step, dict)
+                                and _step.get("action") == "call_tool"
+                            ):
+                                _ai = _step.get("action_input", {})
+                                if isinstance(_ai, dict) and _ai.get("tool"):
+                                    t = _ai["tool"]
+                                    if t not in accumulated_tools:
+                                        accumulated_tools.append(t)
+                                        step_tools.append(t)
+                    # Check executed_subtask.result for tool calls
+                    exec_result = exec_sub.get("result", {})
+                    if isinstance(exec_result, dict):
+                        for _tkey2 in ("tools_called", "tools_used"):
+                            for t in exec_result.get(_tkey2, []):
+                                if isinstance(t, str) and t not in accumulated_tools:
+                                    accumulated_tools.append(t)
+                                    step_tools.append(t)
+                        _rt2 = exec_result.get("react_trace", [])
+                        if isinstance(_rt2, list):
+                            for _s2 in _rt2:
+                                if (
+                                    isinstance(_s2, dict)
+                                    and _s2.get("action") == "call_tool"
+                                ):
+                                    _ai2 = _s2.get("action_input", {})
+                                    if isinstance(_ai2, dict) and _ai2.get("tool"):
+                                        t = _ai2["tool"]
+                                        if t not in accumulated_tools:
+                                            accumulated_tools.append(t)
+                                            step_tools.append(t)
+                    # Check if agent retrieved knowledge (also counts as handling)
+                    agent_did_knowledge = False
+                    if isinstance(exec_result, dict) and exec_result.get(
+                        "knowledge_retrieved"
+                    ):
+                        agent_did_knowledge = True
+                    # Also check react_trace for retrieve_knowledge action
+                    for _rt_src in (
+                        _rtrace,
+                        (
+                            exec_result.get("react_trace", [])
+                            if isinstance(exec_result, dict)
+                            else []
+                        ),
+                    ):
+                        if isinstance(_rt_src, list):
+                            for _s in _rt_src:
+                                if (
+                                    isinstance(_s, dict)
+                                    and _s.get("action") == "retrieve_knowledge"
+                                ):
+                                    agent_did_knowledge = True
+                                    break
+
+                    # Attribute tools/knowledge to executing agent
+                    if exec_agent and (step_tools or agent_did_knowledge):
+                        agent_tool_map.setdefault(exec_agent, []).extend(step_tools)
+                        if (
+                            agent_did_knowledge
+                            and "retrieve_knowledge"
+                            not in agent_tool_map.get(exec_agent, [])
+                        ):
+                            agent_tool_map[exec_agent].append("retrieve_knowledge")
+
+                    total_agent_calls += 1
+                    logger.info(
+                        "  [AOP-WALK] Step %d: agent=%s tools=%s latency=%.0fms",
+                        step,
+                        exec_agent,
+                        step_tools,
+                        step_latency,
+                    )
+
+                # Handling agents = executed agents that called at least one tool
+                handling_agents = [a for a in executed_agents if a in agent_tool_map]
+                logger.info(
+                    "  [AOP-WALK] executed=%s handling=%s tool_map=%s",
+                    executed_agents,
+                    handling_agents,
+                    dict(agent_tool_map),
+                )
+
+                # Build a synthetic merged response for downstream checks
+                last_response = {
+                    **last_response,
+                    "agent_id": executed_agents[0] if executed_agents else "",
+                    "_aop_executed_agents": executed_agents,
+                    "_aop_handling_agents": handling_agents,
+                    "_aop_agent_tool_map": agent_tool_map,
+                    "text": "\n\n".join(accumulated_answer_parts),
+                    "answer": "\n\n".join(accumulated_answer_parts),
+                    "tools_called": accumulated_tools,
+                    "tools_used": accumulated_tools,
+                }
+
+            # Count agent calls (for non-AOP responses)
+            if not executed_agents:
+                subtask_results = last_response.get("subtask_results")
+                if isinstance(subtask_results, list):
+                    total_agent_calls += len(subtask_results)
+                else:
+                    total_agent_calls += 1
 
             # Check pattern
             actual_pattern = self._detect_pattern(last_response)
@@ -153,12 +311,40 @@ class EvaluationHarness:
                 actual_pattern == expected_pattern
             )
 
-            # Check agent
+            # Check agent(s) — collect all agents that participated.
+            # Sources (merged — all contribute):
+            #   - delegated_agents: set by spine task menu for AOP delegation
+            #   - _aop_executed_agents: set by auto-walk merge (all executed)
+            #   - _aop_handling_agents: set by auto-walk merge (called tools)
+            #   - agent_id: set for direct routing (single agent)
+            actual_agents_lower = set()
+            for _src_key in (
+                "delegated_agents",
+                "_aop_executed_agents",
+                "_aop_handling_agents",
+            ):
+                for a in last_response.get(_src_key, []):
+                    if a:
+                        actual_agents_lower.add(a.lower())
             actual_agent = last_response.get("agent_id", "")
+            if actual_agent:
+                actual_agents_lower.add(actual_agent.lower())
+
+            # expected_agents (list) — ALL must be present among actual agents
+            expected_agents_list = expected.get("expected_agents")
+            # Legacy: agent_contains (single string)
             expected_agent_contains = expected.get("agent_contains")
-            agent_ok = (expected_agent_contains is None) or (
-                expected_agent_contains.lower() in (actual_agent or "").lower()
-            )
+
+            if expected_agents_list is not None:
+                agent_ok = all(
+                    any(ea.lower() in aa for aa in actual_agents_lower)
+                    for ea in expected_agents_list
+                )
+            elif expected_agent_contains is not None:
+                _needle = expected_agent_contains.lower()
+                agent_ok = any(_needle in aa for aa in actual_agents_lower)
+            else:
+                agent_ok = True
 
             # Check answer keywords (legacy — still computed for backward compat)
             answer_text = self._extract_answer(last_response)
@@ -263,7 +449,11 @@ class EvaluationHarness:
                 failed
                 and "response_present" in detail
                 and all(
-                    f.startswith("tool_missing:") or f.startswith("knowledge_mismatch:")
+                    f.startswith("tool_missing:")
+                    or f.startswith("knowledge_mismatch:")
+                    or f.startswith("kw_missing:")
+                    or f.startswith("kw_any_missing:")
+                    or f.startswith("escalation_mismatch:")
                     for f in failed
                 )
             )
@@ -762,13 +952,34 @@ class EvaluationHarness:
 
         Detail format: '... fail=[tool_missing:initiate_refund,response_empty]'
         Returns e.g. ['tool_missing:initiate_refund', 'response_empty']
+
+        Handles comma-in-value like 'knowledge_mismatch:expected=True,got=False'
+        by splitting on check-name boundaries rather than naively on commas.
         """
         import re
 
         m = re.search(r"fail=\[([^\]]+)\]", outcome_detail)
         if not m:
             return []
-        return [c.strip() for c in m.group(1).split(",") if c.strip()]
+        fail_content = m.group(1)
+        # Known check prefixes that start a new check entry
+        _PREFIXES = (
+            "tool_missing:",
+            "knowledge_mismatch:",
+            "kw_missing:",
+            "kw_any_missing:",
+            "escalation_mismatch:",
+            "response_empty",
+            "no_response",
+            "forbidden_tool:",
+            "leak_detected:",
+            "clarification_",
+        )
+        # Split by inserting a sentinel before each known prefix
+        normalized = fail_content
+        for pfx in _PREFIXES:
+            normalized = normalized.replace(f",{pfx}", f"\x00{pfx}")
+        return [c.strip() for c in normalized.split("\x00") if c.strip()]
 
     @staticmethod
     def _load_scenarios(path: str | Path) -> List[Dict[str, Any]]:

@@ -69,7 +69,7 @@ class CompletenessDetector:
         messages = self._build_check_prompt(query, subtasks, assignments)
 
         try:
-            raw = chat_json(messages=messages, model=self.model, temperature=1.0)
+            raw = chat_json(messages=messages, model=self.model)
         except Exception as e:
             return CompletenessResult(
                 complete=True,  # Fail-open: assume complete if LLM unavailable

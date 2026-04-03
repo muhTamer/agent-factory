@@ -94,6 +94,9 @@ class NeuralSolvabilityEstimator:
     Neural reward model: estimates solvability using sentence embeddings
     and a trained MLP, combined with historical performance.
 
+    Intent-aware scoring uses document content metadata
+    (has_customer_facing_docs, has_internal_policy) instead of agent_kind.
+
     Interface-compatible with SolvabilityEstimator (TF-IDF baseline).
     """
 
@@ -213,26 +216,27 @@ class NeuralSolvabilityEstimator:
                 # Combined score (same formula as TF-IDF estimator)
                 combined = self.alpha * neural_sim + self.beta * hist_perf
 
-                # Intent-aware scoring (same logic as TF-IDF estimator)
+                # Intent-aware scoring using document content metadata
                 modifiers = ""
                 if self.use_intent_scoring:
                     meta = agent_catalog[aid]
-                    agent_kind = meta.get("agent_kind", "")
+                    has_cf_docs = meta.get("has_customer_facing_docs", False)
+                    has_int_policy = meta.get("has_internal_policy", False)
 
                     if subtask_intent == "informational":
-                        if meta.get("requires_user_context"):
+                        if not has_cf_docs:
                             combined *= self._ACTION_PENALTY
-                            modifiers += " [penalty: info->action_agent]"
-                        if agent_kind == "knowledge_rag":
+                            modifiers += " [penalty: info->no_cf_docs]"
+                        else:
                             combined += self._INTENT_KIND_BONUS
-                            modifiers += " [bonus: info->knowledge]"
+                            modifiers += " [bonus: info->has_cf_docs]"
                     elif subtask_intent == "action":
-                        if not meta.get("requires_user_context"):
+                        if has_cf_docs and not has_int_policy:
                             combined *= self._ACTION_PENALTY
-                            modifiers += " [penalty: action->knowledge_agent]"
-                        if agent_kind == "workflow_runner":
+                            modifiers += " [penalty: action->cf_only]"
+                        if has_int_policy:
                             combined += self._INTENT_KIND_BONUS
-                            modifiers += " [bonus: action->workflow]"
+                            modifiers += " [bonus: action->has_policy]"
 
                 reasoning = (
                     f"neural={neural_sim:.3f} (a={self.alpha}), "
@@ -271,6 +275,9 @@ class NeuralSolvabilityEstimator:
 
         MUST match SolvabilityEstimator._build_agent_text() exactly
         to ensure apples-to-apples comparison.
+
+        Includes document_categories and coverage_topics so that the
+        similarity captures what the agent's documents actually cover.
         """
         parts = []
         desc = agent_meta.get("description", "")
@@ -282,9 +289,14 @@ class NeuralSolvabilityEstimator:
         atype = agent_meta.get("type", "")
         if atype:
             parts.append(str(atype))
-        akind = agent_meta.get("agent_kind", "")
-        if akind and akind != atype:
-            parts.append(str(akind))
+        # Include document categories (e.g. from FAQ Class column)
+        doc_cats = agent_meta.get("document_categories", [])
+        if isinstance(doc_cats, list) and doc_cats:
+            parts.append(" ".join(str(c) for c in doc_cats))
+        # Include coverage topics (e.g. from YAML headers)
+        topics = agent_meta.get("coverage_topics", [])
+        if isinstance(topics, list) and topics:
+            parts.append(" ".join(str(t) for t in topics))
         return " ".join(parts)
 
     @property

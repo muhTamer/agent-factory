@@ -60,6 +60,52 @@ def _lookup_customer(slots: Dict[str, Any], context: Dict[str, Any]) -> Dict[str
     }
 
 
+def _update_profile(slots: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "profile_updated": True,
+        "field_changed": slots.get("field", "address"),
+        "message": "[DEMO] Profile updated successfully.",
+    }
+
+
+def _update_account(slots: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "account_updated": True,
+        "action": slots.get("action", "update"),
+        "message": "[DEMO] Account action completed successfully.",
+    }
+
+
+def _generate_statement(
+    slots: Dict[str, Any], context: Dict[str, Any]
+) -> Dict[str, Any]:
+    return {
+        "statement_generated": True,
+        "period": slots.get("period", "3 months"),
+        "format": "PDF",
+        "message": "[DEMO] Statement generated and available for download.",
+    }
+
+
+def _freeze_account(slots: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "account_frozen": True,
+        "freeze_reason": slots.get("reason", "security"),
+        "message": "[DEMO] Account frozen pending investigation.",
+    }
+
+
+def _initiate_transfer(
+    slots: Dict[str, Any], context: Dict[str, Any]
+) -> Dict[str, Any]:
+    return {
+        "transfer_initiated": True,
+        "transfer_id": "DEMO-TRF-001",
+        "amount": slots.get("amount", 0),
+        "message": "[DEMO] Transfer initiated successfully.",
+    }
+
+
 # Callable stubs passed to GenericWorkflowEngine(tools=STUB_TOOLS)
 # Keyed by the tool name used in FSM actions: call:<tool_name>
 STUB_TOOLS: Dict[str, Any] = {
@@ -69,6 +115,11 @@ STUB_TOOLS: Dict[str, Any] = {
     "create_ticket": _create_ticket,
     "handoff_to_human": _handoff_to_human,
     "lookup_customer": _lookup_customer,
+    "update_profile": _update_profile,
+    "update_account": _update_account,
+    "generate_statement": _generate_statement,
+    "freeze_account": _freeze_account,
+    "initiate_transfer": _initiate_transfer,
 }
 
 # Map abstract API-style names from factory_spec.json to concrete
@@ -83,6 +134,10 @@ TOOL_ALIASES: Dict[str, str] = {
     "AuditLogger": "create_ticket",
     "ConversationLogger": "create_ticket",
     "RAG_Retriever": "",  # handled internally by the engine, not a callable tool
+    "AccountManagementAPI": "update_account",
+    "ProfileAPI": "update_profile",
+    "StatementAPI": "generate_statement",
+    "TransferAPI": "initiate_transfer",
 }
 
 # Agent-level responses returned by tool_operator agents when called as standalone agents
@@ -121,5 +176,31 @@ STUB_RESPONSES: Dict[str, Dict[str, Any]] = {
         "account_status": "active",
         "kyc_status": "verified",
         "message": "[DEMO] Customer record found.",
+    },
+    "update_profile": {
+        "status": "success",
+        "profile_updated": True,
+        "message": "[DEMO] Profile updated successfully.",
+    },
+    "update_account": {
+        "status": "success",
+        "account_updated": True,
+        "message": "[DEMO] Account action completed successfully.",
+    },
+    "generate_statement": {
+        "status": "success",
+        "statement_generated": True,
+        "message": "[DEMO] Statement generated and available for download.",
+    },
+    "freeze_account": {
+        "status": "success",
+        "account_frozen": True,
+        "message": "[DEMO] Account frozen pending investigation.",
+    },
+    "initiate_transfer": {
+        "status": "success",
+        "transfer_initiated": True,
+        "transfer_id": "DEMO-TRF-001",
+        "message": "[DEMO] Transfer initiated successfully.",
     },
 }

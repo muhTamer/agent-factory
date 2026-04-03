@@ -531,7 +531,7 @@ class AOPCoordinator:
         """Hot-swap the solvability estimator at runtime.
 
         Args:
-            kind: ``"neural"`` or ``"tfidf"``.
+            kind: ``"neural"``, ``"tfidf"``, or ``"llm"``.
 
         Returns:
             The estimator kind now active.
@@ -542,15 +542,25 @@ class AOPCoordinator:
             )
 
             self.estimator = NeuralSolvabilityEstimator(self.store)
+        elif kind == "llm":
+            from app.orchestration.llm_solvability_estimator import (
+                LLMSolvabilityEstimator,
+            )
+
+            self.estimator = LLMSolvabilityEstimator(self.store)
         else:
             self.estimator = SolvabilityEstimator(self.store)
         return self.active_estimator_kind
 
     @property
     def active_estimator_kind(self) -> str:
-        """Return ``'neural'`` or ``'tfidf'`` depending on which estimator is loaded."""
+        """Return ``'neural'``, ``'tfidf'``, or ``'llm'`` depending on which estimator is loaded."""
         cls_name = type(self.estimator).__name__
-        return "neural" if "Neural" in cls_name else "tfidf"
+        if "Neural" in cls_name:
+            return "neural"
+        if "LLM" in cls_name:
+            return "llm"
+        return "tfidf"
 
     # ── Step 1: Task Decomposition ──────────────────────────────────
 
@@ -649,7 +659,7 @@ class AOPCoordinator:
         ]
 
         try:
-            raw = chat_json(messages=messages, model=self.model, temperature=1.0)
+            raw = chat_json(messages=messages, model=self.model)
             subtasks = raw.get("subtasks", [])
             if isinstance(subtasks, list):
                 cleaned = [self._clean_subtask(str(s), agent_catalog) for s in subtasks]
@@ -705,7 +715,7 @@ class AOPCoordinator:
         ]
 
         try:
-            raw = chat_json(messages=messages, model=self.model, temperature=1.0)
+            raw = chat_json(messages=messages, model=self.model)
             subtasks = raw.get("subtasks", [])
             if isinstance(subtasks, list):
                 result = [str(s).strip() for s in subtasks if str(s).strip()]
@@ -840,8 +850,9 @@ class AOPCoordinator:
         meta = self.registry.all_meta().get(agent_id, {})
         if not meta.get("requires_user_context"):
             return False
-        # Customer-facing agents handle informational queries safely
-        if meta.get("customer_facing"):
+        # Agents with customer-facing docs can handle informational queries
+        # safely without requiring user-provided transaction details.
+        if meta.get("has_customer_facing_docs"):
             return False
         return True
 

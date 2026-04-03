@@ -2,7 +2,7 @@
 """
 Unified LLM client for Azure OpenAI or OpenAI API.
 Usage:
-    from app.llm_client import get_client, chat_json
+    from app.llm_client import get_client, chat_json, LLM_MODEL, LLM_TEMPERATURE
 """
 
 import os
@@ -12,6 +12,11 @@ from dotenv import load_dotenv
 
 # Load .env automatically
 load_dotenv()
+
+# ── Global LLM configuration ─────────────────────────────────────────
+# All components should import these instead of hardcoding values.
+LLM_MODEL: str = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini")
+LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 
 
 def get_client():
@@ -36,16 +41,20 @@ def get_client():
         raise RuntimeError("No OpenAI or Azure OpenAI credentials found.")
 
 
-def chat_json(messages, model=None, temperature=1.0, timeout=None):
+def chat_json(messages, model=None, temperature=None, timeout=None):
     """
     Send a chat completion request and expect JSON response.
     Returns a Python dict.
 
+    ``model`` defaults to :data:`LLM_MODEL`.
+    ``temperature`` defaults to :data:`LLM_TEMPERATURE` (0.2).
     ``timeout`` overrides the client-level default for this single call
     (useful for heavy generation steps like blueprint planning).
     """
     client = get_client()
-    deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT") or model or "gpt-5-mini"
+    deployment = model or LLM_MODEL
+    if temperature is None:
+        temperature = LLM_TEMPERATURE
 
     create_kwargs = dict(
         model=deployment,

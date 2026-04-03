@@ -288,13 +288,27 @@ class DomainAgentEngine:
                         expanded.append(corpus_item)
                         seen_texts.add(corpus_item.text)
 
-        # Build passages: expanded first, then direct hits
+        # Build passages: expanded first, then direct hits.
+        # Tag each passage with its visibility so the agent knows which
+        # content it can share with customers vs use as internal instructions.
         all_sources: set = small_sources | {h.source for h in direct_hits}
         passages: List[str] = []
         for item in expanded:
-            passages.append(item.text[:1500])
+            vis = (item.meta or {}).get("visibility", "customer_facing")
+            tag = (
+                "[INTERNAL — instructions only]"
+                if vis == "internal"
+                else "[CUSTOMER-FACING]"
+            )
+            passages.append(f"{tag}\n{item.text[:1500]}")
         for item in direct_hits:
-            passages.append(item.text[:1500])
+            vis = (item.meta or {}).get("visibility", "customer_facing")
+            tag = (
+                "[INTERNAL — instructions only]"
+                if vis == "internal"
+                else "[CUSTOMER-FACING]"
+            )
+            passages.append(f"{tag}\n{item.text[:1500]}")
 
         return (
             f"Retrieved from source(s): "
@@ -554,9 +568,12 @@ class DomainAgentEngine:
             "- NEVER make up facts, figures, timelines, or procedures that are "
             "not in the retrieved passages. If it's not in the knowledge base, "
             "you don't know it.\n\n"
-            "CRITICAL — Internal information must NEVER be shared with the user:\n"
-            "- Policy documents you retrieve are INTERNAL INSTRUCTIONS for you.\n"
-            "  They tell YOU how to act. They are NOT for the customer to see.\n"
+            "CRITICAL — Document visibility:\n"
+            "- Retrieved passages are tagged [INTERNAL — instructions only] or "
+            "[CUSTOMER-FACING].\n"
+            "- [CUSTOMER-FACING] content can be shared with the customer.\n"
+            "- [INTERNAL — instructions only] content tells YOU how to act. "
+            "It is NOT for the customer to see.\n"
             "- NEVER mention: policy names, policy IDs, version numbers, "
             "regulatory codes (PSD2, AMLD5, GDPR, PCI-DSS, etc.), "
             "compliance framework names, internal process names, "
