@@ -61,19 +61,30 @@ def build_agent(
     if isinstance(policies, str):
         policies = [policies]
 
+    # Document visibility map: {filename: "internal"|"customer_facing"}
+    # Set by user during onboarding. Internal docs are agent instructions
+    # only; customer-facing docs can be shared with customers.
+    doc_vis_map: Dict[str, str] = inputs.get("doc_visibility_map") or {}
+
     # ---- Build corpus from knowledge sources ----
     # Reuses app.shared.rag.load_corpus which handles CSV, MD, TXT, YAML
     corpus_items: List[CorpusItem] = []
     if knowledge_sources:
         corpus_items = load_corpus(knowledge_sources)
 
-    # Serialize corpus for runtime loading
+    # Serialize corpus for runtime loading, tagging each chunk with
+    # its document visibility so the agent knows what it can share.
     corpus_data = [
         {
             "text": item.text,
             "source": item.source,
             "kind": item.kind,
-            "meta": item.meta,
+            "meta": {
+                **(item.meta or {}),
+                "visibility": doc_vis_map.get(
+                    Path(item.source).name, "customer_facing"
+                ),
+            },
         }
         for item in corpus_items
     ]

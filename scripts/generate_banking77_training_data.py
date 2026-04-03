@@ -3,14 +3,14 @@
 Generate contrastive training data for the Neural Solvability Estimator
 using the BANKING77 dataset (Casanueva et al., 2020).
 
-Maps 77 banking intents → 3 agents (customer_faq_agent_v1, refunds_agent_v1,
-complaints_agent_v1), then creates contrastive (subtask, agent_desc, score)
-triples where:
+Maps 77 banking intents → 4 agents (faq_agent, refunds_agent,
+complaints_agent, accounts_agent), then creates contrastive
+(subtask, agent_desc, score) triples where:
   - correct agent pairing → score 1.0
   - wrong agent pairing  → score 0.0
 
-This produces ~30K training pairs (10K utterances × 3 agents) with strong
-discriminative signal, replacing the original 42-example single-pairing dataset.
+This produces ~40K training pairs (10K utterances × 4 agents) with strong
+discriminative signal.
 
 Usage:
     PYTHONPATH=. python scripts/generate_banking77_training_data.py
@@ -30,97 +30,101 @@ from typing import Dict, List
 
 # ── BANKING77 intent → agent mapping ──────────────────────────────
 #
-# Each of the 77 intents is mapped to one of three agents based on
+# Each of the 77 intents is mapped to one of four agents based on
 # the intent's semantic category:
 #
-# customer_faq_agent_v1  — informational queries about products, accounts,
-#                          cards, transfers, identity, policies
-# refunds_agent_v1       — refund requests, reversals, chargebacks,
-#                          unrecognised charges, wrong amounts
-# complaints_agent_v1    — complaints, disputes, service quality issues,
-#                          escalations, unresolved problems
+# faq_agent        — informational queries about products, policies,
+#                    how things work, limits, supported features
+# accounts_agent   — account actions: profile changes, card management,
+#                    transfers, top-ups, identity verification, account
+#                    opening/closing
+# refunds_agent    — refund requests, reversals, chargebacks,
+#                    unrecognised charges, wrong amounts
+# complaints_agent — complaints, disputes, service quality issues,
+#                    escalations, unresolved problems
 
 INTENT_TO_AGENT: Dict[str, str] = {
-    # ── FAQ / Informational intents → customer_faq_agent_v1 ──────
-    "activate_my_card": "customer_faq_agent_v1",
-    "age_limit": "customer_faq_agent_v1",
-    "apple_pay_or_google_pay": "customer_faq_agent_v1",
-    "atm_support": "customer_faq_agent_v1",
-    "automatic_top_up": "customer_faq_agent_v1",
-    "beneficiary_not_allowed": "customer_faq_agent_v1",
-    "card_about_to_expire": "customer_faq_agent_v1",
-    "card_acceptance": "customer_faq_agent_v1",
-    "card_arrival": "customer_faq_agent_v1",
-    "card_delivery_estimate": "customer_faq_agent_v1",
-    "card_linking": "customer_faq_agent_v1",
-    "change_pin": "customer_faq_agent_v1",
-    "contactless_not_working": "customer_faq_agent_v1",
-    "country_support": "customer_faq_agent_v1",
-    "disposable_card_limits": "customer_faq_agent_v1",
-    "edit_personal_details": "customer_faq_agent_v1",
-    "exchange_charge": "customer_faq_agent_v1",
-    "exchange_rate": "customer_faq_agent_v1",
-    "exchange_via_app": "customer_faq_agent_v1",
-    "fiat_currency_support": "customer_faq_agent_v1",
-    "get_disposable_virtual_card": "customer_faq_agent_v1",
-    "get_physical_card": "customer_faq_agent_v1",
-    "getting_spare_card": "customer_faq_agent_v1",
-    "getting_virtual_card": "customer_faq_agent_v1",
-    "lost_or_stolen_phone": "customer_faq_agent_v1",
-    "order_physical_card": "customer_faq_agent_v1",
-    "passcode_forgotten": "customer_faq_agent_v1",
-    "pending_card_payment": "customer_faq_agent_v1",
-    "pending_cash_withdrawal": "customer_faq_agent_v1",
-    "pending_top_up": "customer_faq_agent_v1",
-    "pending_transfer": "customer_faq_agent_v1",
-    "pin_blocked": "customer_faq_agent_v1",
-    "receiving_money": "customer_faq_agent_v1",
-    "supported_cards_and_currencies": "customer_faq_agent_v1",
-    "terminate_account": "customer_faq_agent_v1",
-    "top_up_by_bank_transfer_charge": "customer_faq_agent_v1",
-    "top_up_by_card_charge": "customer_faq_agent_v1",
-    "top_up_by_cash_or_cheque": "customer_faq_agent_v1",
-    "top_up_failed": "customer_faq_agent_v1",
-    "top_up_limits": "customer_faq_agent_v1",
-    "topping_up_by_card": "customer_faq_agent_v1",
-    "transfer_fee_charged": "customer_faq_agent_v1",
-    "transfer_into_account": "customer_faq_agent_v1",
-    "transfer_timing": "customer_faq_agent_v1",
-    "unable_to_verify_identity": "customer_faq_agent_v1",
-    "verify_my_identity": "customer_faq_agent_v1",
-    "verify_source_of_funds": "customer_faq_agent_v1",
-    "verify_top_up": "customer_faq_agent_v1",
-    "virtual_card_not_working": "customer_faq_agent_v1",
-    "visa_or_mastercard": "customer_faq_agent_v1",
-    "why_verify_identity": "customer_faq_agent_v1",
-    # ── Refund / Reversal intents → refunds_agent_v1 ─────────────
-    "Refund_not_showing_up": "refunds_agent_v1",
-    "balance_not_updated_after_bank_transfer": "refunds_agent_v1",
-    "balance_not_updated_after_cheque_or_cash_deposit": "refunds_agent_v1",
-    "cancel_transfer": "refunds_agent_v1",
-    "card_payment_fee_charged": "refunds_agent_v1",
-    "card_payment_not_recognised": "refunds_agent_v1",
-    "card_payment_wrong_exchange_rate": "refunds_agent_v1",
-    "cash_withdrawal_charge": "refunds_agent_v1",
-    "cash_withdrawal_not_recognised": "refunds_agent_v1",
-    "direct_debit_payment_not_recognised": "refunds_agent_v1",
-    "extra_charge_on_statement": "refunds_agent_v1",
-    "failed_transfer": "refunds_agent_v1",
-    "request_refund": "refunds_agent_v1",
-    "reverted_card_payment?": "refunds_agent_v1",
-    "top_up_reverted": "refunds_agent_v1",
-    "transaction_charged_twice": "refunds_agent_v1",
-    "transfer_not_received_by_recipient": "refunds_agent_v1",
-    "wrong_amount_of_cash_received": "refunds_agent_v1",
-    "wrong_exchange_rate_for_cash_withdrawal": "refunds_agent_v1",
-    # ── Complaint / Dispute intents → complaints_agent_v1 ────────
-    "card_not_working": "complaints_agent_v1",
-    "card_swallowed": "complaints_agent_v1",
-    "compromised_card": "complaints_agent_v1",
-    "declined_card_payment": "complaints_agent_v1",
-    "declined_cash_withdrawal": "complaints_agent_v1",
-    "declined_transfer": "complaints_agent_v1",
-    "lost_or_stolen_card": "complaints_agent_v1",
+    # ── FAQ / Informational intents → faq_agent ────────────────
+    "age_limit": "faq_agent",
+    "apple_pay_or_google_pay": "faq_agent",
+    "atm_support": "faq_agent",
+    "card_acceptance": "faq_agent",
+    "card_delivery_estimate": "faq_agent",
+    "contactless_not_working": "faq_agent",
+    "country_support": "faq_agent",
+    "disposable_card_limits": "faq_agent",
+    "exchange_charge": "faq_agent",
+    "exchange_rate": "faq_agent",
+    "exchange_via_app": "faq_agent",
+    "fiat_currency_support": "faq_agent",
+    "pending_card_payment": "faq_agent",
+    "pending_cash_withdrawal": "faq_agent",
+    "pending_top_up": "faq_agent",
+    "pending_transfer": "faq_agent",
+    "receiving_money": "faq_agent",
+    "supported_cards_and_currencies": "faq_agent",
+    "top_up_by_bank_transfer_charge": "faq_agent",
+    "top_up_by_card_charge": "faq_agent",
+    "top_up_by_cash_or_cheque": "faq_agent",
+    "top_up_limits": "faq_agent",
+    "transfer_fee_charged": "faq_agent",
+    "transfer_timing": "faq_agent",
+    "visa_or_mastercard": "faq_agent",
+    "why_verify_identity": "faq_agent",
+    # ── Account actions → accounts_agent ───────────────────────
+    "activate_my_card": "accounts_agent",
+    "automatic_top_up": "accounts_agent",
+    "beneficiary_not_allowed": "accounts_agent",
+    "card_about_to_expire": "accounts_agent",
+    "card_arrival": "accounts_agent",
+    "card_linking": "accounts_agent",
+    "change_pin": "accounts_agent",
+    "edit_personal_details": "accounts_agent",
+    "get_disposable_virtual_card": "accounts_agent",
+    "get_physical_card": "accounts_agent",
+    "getting_spare_card": "accounts_agent",
+    "getting_virtual_card": "accounts_agent",
+    "lost_or_stolen_phone": "accounts_agent",
+    "order_physical_card": "accounts_agent",
+    "passcode_forgotten": "accounts_agent",
+    "pin_blocked": "accounts_agent",
+    "terminate_account": "accounts_agent",
+    "top_up_failed": "accounts_agent",
+    "topping_up_by_card": "accounts_agent",
+    "transfer_into_account": "accounts_agent",
+    "unable_to_verify_identity": "accounts_agent",
+    "verify_my_identity": "accounts_agent",
+    "verify_source_of_funds": "accounts_agent",
+    "verify_top_up": "accounts_agent",
+    "virtual_card_not_working": "accounts_agent",
+    # ── Refund / Reversal intents → refunds_agent ──────────────
+    "Refund_not_showing_up": "refunds_agent",
+    "balance_not_updated_after_bank_transfer": "refunds_agent",
+    "balance_not_updated_after_cheque_or_cash_deposit": "refunds_agent",
+    "cancel_transfer": "refunds_agent",
+    "card_payment_fee_charged": "refunds_agent",
+    "card_payment_not_recognised": "refunds_agent",
+    "card_payment_wrong_exchange_rate": "refunds_agent",
+    "cash_withdrawal_charge": "refunds_agent",
+    "cash_withdrawal_not_recognised": "refunds_agent",
+    "direct_debit_payment_not_recognised": "refunds_agent",
+    "extra_charge_on_statement": "refunds_agent",
+    "failed_transfer": "refunds_agent",
+    "request_refund": "refunds_agent",
+    "reverted_card_payment?": "refunds_agent",
+    "top_up_reverted": "refunds_agent",
+    "transaction_charged_twice": "refunds_agent",
+    "transfer_not_received_by_recipient": "refunds_agent",
+    "wrong_amount_of_cash_received": "refunds_agent",
+    "wrong_exchange_rate_for_cash_withdrawal": "refunds_agent",
+    # ── Complaint / Dispute intents → complaints_agent ─────────
+    "card_not_working": "complaints_agent",
+    "card_swallowed": "complaints_agent",
+    "compromised_card": "complaints_agent",
+    "declined_card_payment": "complaints_agent",
+    "declined_cash_withdrawal": "complaints_agent",
+    "declined_transfer": "complaints_agent",
+    "lost_or_stolen_card": "complaints_agent",
 }
 
 # Verify all 77 intents are mapped

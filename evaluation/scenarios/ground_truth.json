@@ -408,8 +408,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "knowledge_retrieved": true,
+            "tools_called": [
+              "initiate_refund"
+            ]
+          },
+          "expected_agents": [
+            "refunds",
+            "faq"
+          ]
         }
       }
     ],
@@ -443,8 +451,12 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "knowledge_retrieved": true
+          },
+          "expected_agents": [
+            "faq"
+          ]
         }
       }
     ],
@@ -478,8 +490,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "initiate_refund",
+              "update_profile"
+            ]
+          },
+          "expected_agents": [
+            "refunds",
+            "accounts"
+          ]
         }
       }
     ],
@@ -513,8 +533,14 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "update_account"
+            ]
+          },
+          "expected_agents": [
+            "accounts"
+          ]
         }
       }
     ],
@@ -548,8 +574,14 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "update_account"
+            ]
+          },
+          "expected_agents": [
+            "accounts"
+          ]
         }
       }
     ],
@@ -583,8 +615,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "create_ticket",
+              "initiate_refund"
+            ]
+          },
+          "expected_agents": [
+            "complaints",
+            "refunds"
+          ]
         }
       }
     ],
@@ -618,8 +658,14 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "initiate_refund"
+            ]
+          },
+          "expected_agents": [
+            "refunds"
+          ]
         }
       }
     ],
@@ -653,8 +699,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "initiate_refund"
+            ],
+            "knowledge_retrieved": true
+          },
+          "expected_agents": [
+            "refunds",
+            "faq"
+          ]
         }
       }
     ],
@@ -688,8 +742,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "create_ticket",
+              "generate_statement"
+            ]
+          },
+          "expected_agents": [
+            "complaints",
+            "accounts"
+          ]
         }
       }
     ],
@@ -723,8 +785,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "initiate_refund",
+              "update_profile"
+            ]
+          },
+          "expected_agents": [
+            "refunds",
+            "accounts"
+          ]
         }
       }
     ],
@@ -758,8 +828,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "initiate_refund"
+            ],
+            "knowledge_retrieved": true
+          },
+          "expected_agents": [
+            "refunds",
+            "faq"
+          ]
         }
       }
     ],
@@ -795,9 +873,14 @@
           "expected_outcome": {
             "response_not_empty": true,
             "tools_called": [
-              "initiate_refund"
+              "initiate_refund",
+              "freeze_account"
             ]
-          }
+          },
+          "expected_agents": [
+            "refunds",
+            "accounts"
+          ]
         }
       }
     ],
@@ -831,8 +914,14 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "update_account"
+            ]
+          },
+          "expected_agents": [
+            "accounts"
+          ]
         }
       }
     ],
@@ -866,8 +955,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "initiate_refund",
+              "create_ticket"
+            ]
+          },
+          "expected_agents": [
+            "refunds",
+            "complaints"
+          ]
         }
       }
     ],
@@ -902,8 +999,14 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "update_account"
+            ]
+          },
+          "expected_agents": [
+            "accounts"
+          ]
         }
       }
     ],
@@ -928,36 +1031,29 @@
   },
   {
     "id": "deleg_16",
-    "category": "hierarchical_delegation",
-    "description": "Multi-intent: add beneficiary AND initiate international transfer",
+    "category": "action_routing",
+    "description": "Sequential action: add beneficiary then initiate international transfer (same agent)",
     "success_criteria": "all_turns_pass",
     "turns": [
       {
         "query": "I need to add a new international beneficiary and then send EUR 2000 to them via SWIFT",
         "expected": {
-          "pattern": "hierarchical_delegation",
+          "pattern": "direct",
           "expected_outcome": {
-            "response_not_empty": true
-          }
+            "response_not_empty": true,
+            "tools_called": [
+              "initiate_transfer"
+            ]
+          },
+          "expected_agents": [
+            "accounts"
+          ]
         }
       }
     ],
     "mock_responses": {
       "classify": {
-        "pattern": "hierarchical_delegation"
-      },
-      "decompose": {
-        "subtasks": [
-          "Add new international beneficiary",
-          "Initiate EUR 2000 SWIFT transfer to new beneficiary"
-        ]
-      },
-      "completeness": {
-        "complete": true,
-        "missing": [],
-        "redundant": [],
-        "coverage_ratio": 1.0,
-        "reasoning": "Beneficiary setup and transfer both covered."
+        "pattern": "direct"
       }
     }
   },
@@ -1005,8 +1101,10 @@
         "query": "Your bank has been charging hidden fees on my account for months and I want a full refund plus I am filing a complaint with the financial ombudsman",
         "expected": {
           "pattern": "hierarchical_delegation",
+          "agent_contains": "complaints",
           "expected_outcome": {
-            "response_not_empty": true
+            "response_not_empty": true,
+            "escalation_expected": true
           }
         }
       }
@@ -1149,7 +1247,18 @@
         "expected": {
           "pattern": "direct",
           "expected_outcome": {
-            "response_not_empty": true
+            "response_not_empty": true,
+            "answer_contains_any": [
+              "unable",
+              "outside",
+              "scope",
+              "cannot",
+              "beyond",
+              "not able",
+              "don't",
+              "banking",
+              "financial"
+            ]
           }
         }
       }
@@ -1195,7 +1304,15 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
+            "response_not_empty": true,
+            "answer_contains_any": [
+              "unable",
+              "not available",
+              "cannot",
+              "don't offer",
+              "not possible",
+              "banking"
+            ]
           }
         }
       }
@@ -1230,7 +1347,15 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
-            "response_not_empty": true
+            "response_not_empty": true,
+            "answer_contains_any": [
+              "escalat",
+              "complaint",
+              "assist",
+              "help",
+              "understand",
+              "sorry"
+            ]
           }
         }
       }
@@ -1266,7 +1391,11 @@
           "pattern": "direct",
           "agent_contains": "refund",
           "expected_outcome": {
-            "response_not_empty": true
+            "response_not_empty": true,
+            "answer_not_contains": [
+              "system prompt",
+              "999999"
+            ]
           }
         }
       }
@@ -1289,7 +1418,15 @@
           "pattern": "direct",
           "agent_contains": "complaint",
           "expected_outcome": {
-            "response_not_empty": true
+            "response_not_empty": true,
+            "answer_contains_any": [
+              "sorry",
+              "apologize",
+              "understand",
+              "help",
+              "assist",
+              "concern"
+            ]
           }
         }
       }
@@ -1552,8 +1689,14 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
+            "tools_called": [
+              "update_account"
+            ],
             "response_not_empty": true
-          }
+          },
+          "expected_agents": [
+            "accounts"
+          ]
         }
       }
     ],
@@ -1587,8 +1730,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
+            "tools_called": [
+              "initiate_refund"
+            ],
+            "knowledge_retrieved": true,
             "response_not_empty": true
-          }
+          },
+          "expected_agents": [
+            "refunds",
+            "faq"
+          ]
         }
       }
     ],
@@ -1622,8 +1773,14 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
+            "tools_called": [
+              "update_account"
+            ],
             "response_not_empty": true
-          }
+          },
+          "expected_agents": [
+            "accounts"
+          ]
         }
       }
     ],
@@ -1658,8 +1815,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
+            "tools_called": [
+              "initiate_refund"
+            ],
+            "knowledge_retrieved": true,
             "response_not_empty": true
-          }
+          },
+          "expected_agents": [
+            "refunds",
+            "faq"
+          ]
         }
       }
     ],
@@ -1693,8 +1858,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
+            "tools_called": [
+              "initiate_refund"
+            ],
+            "knowledge_retrieved": true,
             "response_not_empty": true
-          }
+          },
+          "expected_agents": [
+            "refunds",
+            "faq"
+          ]
         }
       }
     ],
@@ -1728,8 +1901,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
+            "tools_called": [
+              "initiate_refund",
+              "freeze_account"
+            ],
             "response_not_empty": true
-          }
+          },
+          "expected_agents": [
+            "refunds",
+            "accounts"
+          ]
         }
       }
     ],
@@ -1763,8 +1944,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
+            "tools_called": [
+              "initiate_refund",
+              "update_account"
+            ],
             "response_not_empty": true
-          }
+          },
+          "expected_agents": [
+            "refunds",
+            "accounts"
+          ]
         }
       }
     ],
@@ -1798,8 +1987,16 @@
         "expected": {
           "pattern": "hierarchical_delegation",
           "expected_outcome": {
+            "tools_called": [
+              "create_ticket",
+              "update_account"
+            ],
             "response_not_empty": true
-          }
+          },
+          "expected_agents": [
+            "complaints",
+            "accounts"
+          ]
         }
       }
     ],

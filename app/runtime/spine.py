@@ -381,7 +381,7 @@ class RuntimeSpine:
         ]
 
         try:
-            raw = chat_json(messages=messages, temperature=1.0)
+            raw = chat_json(messages=messages, temperature=0.2, timeout=60)
             pattern = raw.get("pattern", "direct")
             if pattern in ("direct", "hierarchical_delegation"):
                 return pattern

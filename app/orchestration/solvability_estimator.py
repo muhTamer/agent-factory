@@ -98,9 +98,13 @@ class SolvabilityEstimator:
     textual matching and PerformanceStore for historical performance.
 
     Intent-aware: the AOP decomposer labels subtasks with INFORMATIONAL: or
-    ACTION: prefixes.  This estimator uses those labels to apply a penalty
-    when the intent mismatches the agent type, preventing workflow agents
-    from capturing FAQ-style questions and vice versa.
+    ACTION: prefixes.  This estimator uses those labels together with
+    document content metadata (has_customer_facing_docs, has_internal_policy)
+    to apply penalties/bonuses:
+      - INFORMATIONAL subtask + no customer-facing docs → penalty
+      - INFORMATIONAL subtask + customer-facing docs → bonus
+      - ACTION subtask + only customer-facing docs (no internal policy) → penalty
+      - ACTION subtask + internal policy → bonus
     """
 
     # Prefix labels emitted by the AOP decomposer.
@@ -185,51 +189,49 @@ class SolvabilityEstimator:
                 hist_perf = self._historical_performance(aid)
                 combined = self.alpha * txt_sim + self.beta * hist_perf
 
-                # Intent-aware scoring adjustment (optional — controlled by
-                # use_intent_scoring flag):
+                # Intent-aware scoring using document content metadata:
                 #
-                # (a) Penalty (multiplicative): penalise mismatched (subtask, agent) pairs.
-                #     INFORMATIONAL subtask + action agent → ×0.3
-                #     ACTION subtask + knowledge agent → ×0.3
+                # (a) Penalty: agent's docs don't match the subtask intent
+                #     INFORMATIONAL subtask + agent without customer-facing docs → ×0.3
+                #     ACTION subtask + agent with only customer-facing docs → ×0.3
                 #
-                # (b) Bonus (additive): reward intent–agent_kind alignment.
-                #     INFORMATIONAL subtask + knowledge_rag → +0.15
-                #     ACTION subtask + workflow_runner → +0.15
-                #     This ensures correct assignment even when TF-IDF scores are
-                #     near-zero (e.g. "account"≠"accounts" — no stemming).
-                agent_kind = meta.get("agent_kind", "")
+                # (b) Bonus: agent's docs align with the subtask intent
+                #     INFORMATIONAL subtask + agent with customer-facing docs → +0.15
+                #     ACTION subtask + agent with internal policy → +0.15
+                has_cf_docs = meta.get("has_customer_facing_docs", False)
+                has_int_policy = meta.get("has_internal_policy", False)
                 penalty_applied = False
                 bonus_applied = False
 
                 if self.use_intent_scoring:
                     if subtask_intent == "informational":
-                        if meta.get("requires_user_context"):
+                        if not has_cf_docs:
                             combined *= self._ACTION_PENALTY
                             penalty_applied = True
-                        if agent_kind == "knowledge_rag":
+                        else:
                             combined += self._INTENT_KIND_BONUS
                             bonus_applied = True
                     elif subtask_intent == "action":
-                        if not meta.get("requires_user_context"):
+                        if has_cf_docs and not has_int_policy:
                             combined *= self._ACTION_PENALTY
                             penalty_applied = True
-                        if agent_kind == "workflow_runner":
+                        if has_int_policy:
                             combined += self._INTENT_KIND_BONUS
                             bonus_applied = True
 
                 modifiers = ""
                 if penalty_applied:
                     direction = (
-                        "info→action_agent"
+                        "info→no_cf_docs"
                         if subtask_intent == "informational"
-                        else "action→knowledge_agent"
+                        else "action→cf_only"
                     )
                     modifiers += f" [penalty={self._ACTION_PENALTY} {direction}]"
                 if bonus_applied:
                     direction = (
-                        "info→knowledge"
+                        "info→has_cf_docs"
                         if subtask_intent == "informational"
-                        else "action→workflow"
+                        else "action→has_policy"
                     )
                     modifiers += f" [bonus=+{self._INTENT_KIND_BONUS} {direction}]"
                 reasoning = (
@@ -285,60 +287,14 @@ class SolvabilityEstimator:
         """Read average score from performance store (0.5 neutral prior)."""
         return self.store.agent_avg_score(agent_id)
 
-    # Keywords that indicate a knowledge/FAQ-style agent.
-    _KNOWLEDGE_SIGNALS = {
-        "faq",
-        "retrieve",
-        "summarize",
-        "answer",
-        "knowledge",
-        "information",
-    }
-    # Keywords that indicate an action/workflow agent.
-    _ACTION_SIGNALS = {
-        "process",
-        "execute",
-        "initiate",
-        "escalate",
-        "investigate",
-        "file",
-        "manage",
-    }
-
-    @staticmethod
-    def _infer_agent_kind(meta: Dict[str, Any], explicit_kind: str) -> str:
-        """Infer whether an agent is knowledge-oriented or action-oriented.
-
-        Uses explicit agent_kind if set to a recognised value; otherwise
-        falls back to keyword signals in description and capabilities.
-        Returns "knowledge", "action", or "unknown".
-        """
-        if explicit_kind == "knowledge_rag":
-            return "knowledge"
-        if explicit_kind == "workflow_runner":
-            return "action"
-
-        # Infer from description + capabilities text
-        desc = (meta.get("description", "") or "").lower()
-        caps = " ".join(str(c) for c in (meta.get("capabilities", []) or [])).lower()
-        text = desc + " " + caps
-
-        knowledge_hits = sum(
-            1 for kw in SolvabilityEstimator._KNOWLEDGE_SIGNALS if kw in text
-        )
-        action_hits = sum(
-            1 for kw in SolvabilityEstimator._ACTION_SIGNALS if kw in text
-        )
-
-        if knowledge_hits > action_hits:
-            return "knowledge"
-        if action_hits > knowledge_hits:
-            return "action"
-        return "unknown"
-
     @staticmethod
     def _build_agent_text(agent_meta: Dict[str, Any]) -> str:
-        """Concatenate agent metadata into a single text for TF-IDF."""
+        """Concatenate agent metadata into a single text for TF-IDF.
+
+        Includes document_categories and coverage_topics so that the
+        textual similarity captures what the agent's documents actually
+        cover (e.g. 'insurance', 'cards', 'loans' from FAQ categories).
+        """
         parts = []
         desc = agent_meta.get("description", "")
         if desc:
@@ -349,9 +305,12 @@ class SolvabilityEstimator:
         atype = agent_meta.get("type", "")
         if atype:
             parts.append(str(atype))
-        # Include agent_kind (e.g. "knowledge_rag", "workflow_runner") —
-        # helps TF-IDF distinguish informational vs action agents.
-        akind = agent_meta.get("agent_kind", "")
-        if akind and akind != atype:
-            parts.append(str(akind))
+        # Include document categories (e.g. from FAQ Class column)
+        doc_cats = agent_meta.get("document_categories", [])
+        if isinstance(doc_cats, list) and doc_cats:
+            parts.append(" ".join(str(c) for c in doc_cats))
+        # Include coverage topics (e.g. from YAML headers)
+        topics = agent_meta.get("coverage_topics", [])
+        if isinstance(topics, list) and topics:
+            parts.append(" ".join(str(t) for t in topics))
         return " ".join(parts)

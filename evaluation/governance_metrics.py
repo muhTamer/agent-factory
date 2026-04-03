@@ -164,7 +164,11 @@ def compute_governance_action_accuracy(
     }
 
 
-def compute_rq3_metrics(results: List[GovernanceScenarioResult]) -> Dict[str, Any]:
+def compute_rq3_metrics(
+    results: List[GovernanceScenarioResult],
+    scenarios: Optional[List[Dict[str, Any]]] = None,
+    config: Optional[GovernanceConfig] = None,
+) -> Dict[str, Any]:
     """Compute aggregate RQ3 metrics for a single governance level."""
     if not results:
         return {}
@@ -193,15 +197,36 @@ def compute_rq3_metrics(results: List[GovernanceScenarioResult]) -> Dict[str, An
     # Average latency
     avg_latency = sum(r.latency_ms for r in results) / n
 
-    # False positive rate: governance blocks on scenarios that
-    # succeed under the most permissive level (LOW). Approximated
-    # here as blocks on scenarios where the expected outcome is success.
+    # False positive rate: a block is a false positive ONLY if the
+    # scenario's expected governance action was "allow" (i.e. the block
+    # was unjustified).  Blocks on scenarios expected to be blocked are
+    # true positives.  Uses expected_governance_action() when scenario
+    # definitions and config are available; falls back to the old
+    # success-based heuristic otherwise.
     blocked_results = [r for r in results if r.governance_blocks > 0]
-    # Among blocked results, those that still succeeded had false-positive blocks
-    false_positives = [r for r in blocked_results if r.success]
-    false_positive_rate = (
-        len(false_positives) / len(blocked_results) if blocked_results else 0.0
-    )
+    if blocked_results and scenarios and config:
+        scenario_map = {s["id"]: s for s in scenarios}
+        false_positives = []
+        true_positives = []
+        for r in blocked_results:
+            sc = scenario_map.get(r.scenario_id)
+            if sc is None:
+                continue
+            expected = expected_governance_action(sc, config)
+            if expected == "block":
+                true_positives.append(r)
+            else:
+                # "allow" or "indeterminate" — block was not expected
+                false_positives.append(r)
+        false_positive_rate = (
+            len(false_positives) / len(blocked_results) if blocked_results else 0.0
+        )
+    else:
+        # Fallback: legacy heuristic (blocked + success → false positive)
+        false_positives = [r for r in blocked_results if r.success]
+        false_positive_rate = (
+            len(false_positives) / len(blocked_results) if blocked_results else 0.0
+        )
 
     # Per-category task completion breakdown
     categories = sorted(set(r.category for r in results))
@@ -399,7 +424,11 @@ def compute_comparison_table(
     """
     per_level: Dict[str, Any] = {}
     for level_name, results in all_results.items():
-        per_level[level_name] = compute_rq3_metrics(results)
+        level_config = None
+        if scenarios:
+            gov_level = GovernanceLevel(level_name)
+            level_config = GovernanceConfig.for_level(gov_level)
+        per_level[level_name] = compute_rq3_metrics(results, scenarios, level_config)
 
     # Governance action accuracy (deterministic correctness)
     governance_accuracy: Dict[str, Any] = {}
