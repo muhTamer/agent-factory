@@ -85,7 +85,7 @@ def map_query_to_event_and_slots(
             {"role": "user", "content": str(user)},
         ],
         model=model,
-        temperature=1.0,  # keep default supported value for gpt-5-mini
+        # temperature uses LLM_TEMPERATURE default from llm_client
     )
 
     event = raw.get("event", None)

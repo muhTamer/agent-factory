@@ -73,7 +73,7 @@ class LLMScorer:
         ]
 
         try:
-            result = chat_json(messages=messages, model=self.model, temperature=0.0)
+            result = chat_json(messages=messages, model=self.model)
             correctness = float(result.get("correctness", 0.0))
             relevance = float(result.get("relevance", 0.0))
             completeness = float(result.get("completeness", 0.0))
