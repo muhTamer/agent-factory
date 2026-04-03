@@ -50,54 +50,96 @@ class ComparisonResult:
 # ── McNemar's test ──────────────────────────────────────────────────
 
 
-def mcnemar_test(results: List[ComparisonResult]) -> Dict[str, Any]:
-    """Compute McNemar's test for paired binary classification.
+def _mcnemar_pair(
+    correct_a: List[bool], correct_b: List[bool], name_a: str, name_b: str
+) -> Dict[str, Any]:
+    """Compute McNemar's test for a pair of estimators.
 
     Constructs a 2x2 contingency table:
-        - a: both correct
-        - b: TF-IDF correct, Neural wrong
-        - c: TF-IDF wrong, Neural correct
-        - d: both wrong
+        - both_correct: a correct AND b correct
+        - a_only: a correct, b wrong
+        - b_only: a wrong, b correct
+        - both_wrong: both wrong
 
     McNemar statistic (with continuity correction):
-        χ² = (|b - c| - 1)² / (b + c)
-
-    Returns dict with contingency table, chi2, p-value, and interpretation.
+        χ² = (|b_only - a_only| - 1)² / (a_only + b_only)
     """
-    a = b = c = d = 0
-    for r in results:
-        if r.tfidf_correct and r.neural_correct:
-            a += 1
-        elif r.tfidf_correct and not r.neural_correct:
-            b += 1
-        elif not r.tfidf_correct and r.neural_correct:
-            c += 1
+    both_ok = a_only = b_only = both_bad = 0
+    for ca, cb in zip(correct_a, correct_b):
+        if ca and cb:
+            both_ok += 1
+        elif ca and not cb:
+            a_only += 1
+        elif not ca and cb:
+            b_only += 1
         else:
-            d += 1
+            both_bad += 1
 
-    discordant = b + c
+    discordant = a_only + b_only
     if discordant == 0:
         chi2 = 0.0
         p_value = 1.0
     else:
-        # McNemar's with continuity correction
-        chi2 = (abs(b - c) - 1) ** 2 / discordant
-        # Approximate p-value from chi-squared distribution (1 df)
+        chi2 = (abs(a_only - b_only) - 1) ** 2 / discordant
         p_value = _chi2_sf(chi2, df=1)
 
     return {
+        "pair": f"{name_a}_vs_{name_b}",
         "contingency": {
-            "both_correct": a,
-            "tfidf_only": b,
-            "neural_only": c,
-            "both_wrong": d,
+            "both_correct": both_ok,
+            f"{name_a}_only": a_only,
+            f"{name_b}_only": b_only,
+            "both_wrong": both_bad,
         },
         "discordant_pairs": discordant,
         "chi2": round(chi2, 4),
         "p_value": round(p_value, 4),
         "significant_at_005": p_value < 0.05,
-        "favours": "tfidf" if b > c else ("neural" if c > b else "neither"),
+        "favours": (
+            name_a if a_only > b_only else (name_b if b_only > a_only else "neither")
+        ),
     }
+
+
+def mcnemar_test(results: List[ComparisonResult]) -> Dict[str, Any]:
+    """Compute McNemar's test for TF-IDF vs Neural (backward compat)."""
+    return _mcnemar_pair(
+        [r.tfidf_correct for r in results],
+        [r.neural_correct for r in results],
+        "tfidf",
+        "neural",
+    )
+
+
+def mcnemar_all_pairs(results: List[ComparisonResult]) -> Dict[str, Any]:
+    """Compute pairwise McNemar tests for all estimator pairs.
+
+    Returns dict with keys: tfidf_vs_neural, llm_vs_tfidf, llm_vs_neural.
+    LLM pairs are only included if LLM results are present.
+    """
+    pairs = {
+        "tfidf_vs_neural": _mcnemar_pair(
+            [r.tfidf_correct for r in results],
+            [r.neural_correct for r in results],
+            "tfidf",
+            "neural",
+        ),
+    }
+    has_llm = any(r.llm_agent for r in results)
+    if has_llm:
+        pairs["llm_vs_tfidf"] = _mcnemar_pair(
+            [r.llm_correct for r in results],
+            [r.tfidf_correct for r in results],
+            "llm",
+            "tfidf",
+        )
+        pairs["llm_vs_neural"] = _mcnemar_pair(
+            [r.llm_correct for r in results],
+            [r.neural_correct for r in results],
+            "llm",
+            "neural",
+        )
+    return pairs
 
 
 def _chi2_sf(x: float, df: int = 1) -> float:
@@ -294,6 +336,7 @@ class SolvabilityComparison:
                 "speedup_factor": round(avg_neural_ms / max(0.001, avg_tfidf_ms), 1),
             },
             "mcnemar": mcnemar_test(results),
+            "mcnemar_all_pairs": mcnemar_all_pairs(results),
             "by_category": per_category_metrics(results),
             "confusion_tfidf": confusion_matrix(results, "tfidf"),
             "confusion_neural": confusion_matrix(results, "neural"),
@@ -367,16 +410,16 @@ class SolvabilityComparison:
             f"  Speedup: {lat['speedup_factor']:.0f}x (TF-IDF faster)",
         ]
 
-        mc = summary["mcnemar"]
-        ct = mc["contingency"]
-        lines += [
-            "",
-            "McNEMAR'S TEST (paired comparison):",
-            f"  Both correct: {ct['both_correct']}  |  TF-IDF only: {ct['tfidf_only']}",
-            f"  Neural only:  {ct['neural_only']}  |  Both wrong:   {ct['both_wrong']}",
-            f"  chi2={mc['chi2']:.4f}  p={mc['p_value']:.4f}  significant={mc['significant_at_005']}",
-            f"  Favours: {mc['favours']}",
-        ]
+        all_pairs = summary.get("mcnemar_all_pairs", {})
+        lines += ["", "McNEMAR'S PAIRWISE TESTS:"]
+        for pair_key, mc in all_pairs.items():
+            ct = mc["contingency"]
+            lines += [
+                f"  {mc['pair']}:",
+                f"    Contingency: {ct}",
+                f"    chi2={mc['chi2']:.4f}  p={mc['p_value']:.4f}  "
+                f"significant={mc['significant_at_005']}  favours={mc['favours']}",
+            ]
 
         by_cat = summary["by_category"]
         if by_cat:
