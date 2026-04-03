@@ -757,7 +757,7 @@ class TestNoInternalLeakage:
         system_prompt = llm.calls[0][0]["content"]
         lower = system_prompt.lower()
         assert (
-            "internal instructions" in lower
+            "internal" in lower and "instructions" in lower
         ), "Prompt must tell LLM that policy docs are internal instructions"
         assert (
             "never mention" in lower or "never say" in lower

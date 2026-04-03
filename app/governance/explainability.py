@@ -382,6 +382,15 @@ class ExplainabilityEngine:
         narrative = "\n".join(parts)
 
         metrics = self._extract_metrics(trace, response)
+        metrics["event_log"] = [
+            {
+                "stage": event.stage,
+                "ts_ms": event.ts_ms,
+                "delta_ms": event.ts_ms - trace.started_ts_ms,
+                **event.data,
+            }
+            for event in trace.events
+        ]
 
         return Explanation(
             level=ExplanationLevel.FULL,

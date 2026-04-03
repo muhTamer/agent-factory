@@ -12,6 +12,7 @@ Runs the full pipeline:
 Usage:
     python -m scripts.regenerate_agents
 """
+
 from __future__ import annotations
 
 import json
