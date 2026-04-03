@@ -108,8 +108,6 @@ class LLMRouter:
                 {"role": "system", "content": system},
                 {"role": "user", "content": json.dumps(user)},
             ],
-            model="gpt-5-mini",  # uses your deployment env var if set
-            temperature=0.2,
             timeout=60,
         )
 

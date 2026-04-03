@@ -228,13 +228,15 @@ class SimpleRAG:
 
 
 def _build_llm() -> AzureChatOpenAI:
+    from app.llm_client import LLM_MODEL, LLM_TEMPERATURE
+
     return AzureChatOpenAI(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini"),
+        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT", LLM_MODEL),
         api_key=os.environ["AZURE_OPENAI_API_KEY"],
         api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
-        model=os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini"),
-        temperature=1.0,
+        model=os.environ.get("AZURE_OPENAI_DEPLOYMENT", LLM_MODEL),
+        temperature=LLM_TEMPERATURE,
     )
 
 

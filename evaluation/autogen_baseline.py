@@ -226,12 +226,14 @@ class SimpleRAG:
 
 
 def _build_model_client() -> AzureOpenAIChatCompletionClient:
+    from app.llm_client import LLM_MODEL
+
     return AzureOpenAIChatCompletionClient(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini"),
+        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT", LLM_MODEL),
         api_key=os.environ["AZURE_OPENAI_API_KEY"],
         api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
-        model=os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini"),
+        model=os.environ.get("AZURE_OPENAI_DEPLOYMENT", LLM_MODEL),
         model_info={
             "vision": False,
             "function_calling": True,

@@ -555,7 +555,9 @@ def run_rq2_evaluation(
     if enable_judge:
         from evaluation.rq2_judge import RQ2ExplanationJudge
 
-        judge = RQ2ExplanationJudge(temperature=1.0)
+        from app.llm_client import LLM_TEMPERATURE
+
+        judge = RQ2ExplanationJudge(temperature=LLM_TEMPERATURE)
         print("LLM-as-Judge: ENABLED (faithfulness, completeness, clarity)")
 
     print(f"\nRunning {len(scenarios)} scenarios with REAL LLM agents...")
