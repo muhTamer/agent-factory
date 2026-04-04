@@ -1,11 +1,14 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { Bot } from "lucide-react";
+import { Bot, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
-const providers = [
-  {
-    id: "google",
+const ALL_PROVIDERS: Record<
+  string,
+  { name: string; icon: React.ReactNode }
+> = {
+  google: {
     name: "Google",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -16,8 +19,7 @@ const providers = [
       </svg>
     ),
   },
-  {
-    id: "microsoft-entra-id",
+  "microsoft-entra-id": {
     name: "Microsoft",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -28,8 +30,7 @@ const providers = [
       </svg>
     ),
   },
-  {
-    id: "facebook",
+  facebook: {
     name: "Facebook",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#1877F2">
@@ -37,8 +38,7 @@ const providers = [
       </svg>
     ),
   },
-  {
-    id: "apple",
+  apple: {
     name: "Apple",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -46,9 +46,23 @@ const providers = [
       </svg>
     ),
   },
-];
+};
 
 export default function LoginPage() {
+  const [available, setAvailable] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/auth/providers")
+      .then((r) => r.json())
+      .then((data) => setAvailable(data.providers ?? []))
+      .catch(() => {
+        // Fallback: show Google + Microsoft
+        setAvailable(["google", "microsoft-entra-id"]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
       <div className="w-full max-w-md space-y-6 sm:space-y-8 rounded-2xl bg-white p-6 sm:p-8 shadow-lg">
@@ -67,16 +81,30 @@ export default function LoginPage() {
 
         {/* OAuth buttons */}
         <div className="space-y-3">
-          {providers.map((provider) => (
-            <button
-              key={provider.id}
-              onClick={() => signIn(provider.id, { callbackUrl: "/" })}
-              className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300"
-            >
-              {provider.icon}
-              Continue with {provider.name}
-            </button>
-          ))}
+          {loading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 size={24} className="animate-spin text-slate-400" />
+            </div>
+          ) : available.length === 0 ? (
+            <p className="text-center text-sm text-slate-400">
+              No sign-in providers configured. Contact the administrator.
+            </p>
+          ) : (
+            available.map((id) => {
+              const provider = ALL_PROVIDERS[id];
+              if (!provider) return null;
+              return (
+                <button
+                  key={id}
+                  onClick={() => signIn(id, { callbackUrl: "/" })}
+                  className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300"
+                >
+                  {provider.icon}
+                  Continue with {provider.name}
+                </button>
+              );
+            })
+          )}
         </div>
 
         <p className="text-center text-xs text-slate-400">
