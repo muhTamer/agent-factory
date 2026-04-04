@@ -7,6 +7,7 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: MetaAgentFactory
+  AZURE_LOCATION: westeurope
   ACR_NAME: metaagentfactoryacr
   BACKEND_APP: agent-factory-backend
   FRONTEND_APP: agent-factory-frontend

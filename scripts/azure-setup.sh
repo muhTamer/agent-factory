@@ -13,9 +13,9 @@
 set -euo pipefail
 
 # ── Configuration (edit these to match your environment) ───────
-RESOURCE_GROUP="agent-factory-rg"
-LOCATION="eastus"                    # Co-locate with your Azure OpenAI resource
-ACR_NAME="agentfactoryacr"
+RESOURCE_GROUP="MetaAgentFactory"
+LOCATION="westeurope"                # Co-locate with your Azure OpenAI resource
+ACR_NAME="metaagentfactoryacr"
 CONTAINER_ENV="agent-factory-env"
 BACKEND_APP="agent-factory-backend"
 FRONTEND_APP="agent-factory-frontend"

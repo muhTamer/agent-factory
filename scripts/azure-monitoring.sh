@@ -15,11 +15,11 @@ set -euo pipefail
 ALERT_EMAIL="${1:?Usage: $0 <alert-email-address>}"
 
 # ── Configuration ───────────────────────────────────────────────
-RESOURCE_GROUP="agent-factory-rg"
+RESOURCE_GROUP="MetaAgentFactory"
 BACKEND_APP="agent-factory-backend"
-OPENAI_RESOURCE_NAME="${AZURE_OPENAI_RESOURCE_NAME:-}"  # set if known
+OPENAI_RESOURCE_NAME="${AZURE_OPENAI_RESOURCE_NAME:-muh-t-mh0j7i50-eastus2}"
 MONTHLY_BUDGET_USD="${MONTHLY_BUDGET_USD:-100}"
-LOCATION="eastus"
+LOCATION="westeurope"
 
 echo "==> Setting up monitoring for Agent Factory"
 echo "    Alert email: $ALERT_EMAIL"
