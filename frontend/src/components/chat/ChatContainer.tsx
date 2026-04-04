@@ -11,6 +11,7 @@ import { QuickReplies } from "./QuickReplies";
 import { ConversationSidebar } from "./ConversationSidebar";
 import { ExplainabilityPanel } from "./ExplainabilityPanel";
 import { UsageBadge } from "./UsageBadge";
+import { UserMenu } from "../UserMenu";
 import { useRouter } from "next/navigation";
 import { useSetupStore } from "@/store/setupStore";
 import {
@@ -137,6 +138,8 @@ export function ChatContainer() {
             >
               <Settings size={18} />
             </button>
+
+            <UserMenu />
           </div>
         </header>
 

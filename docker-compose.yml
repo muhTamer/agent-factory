@@ -11,6 +11,7 @@ services:
       - .env
     environment:
       - APP_VERSION=0.0.1
+      - AUTH_ENABLED=${AUTH_ENABLED:-false}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 30s
@@ -42,6 +43,8 @@ services:
         NEXT_PUBLIC_CONCIERGE_API: http://concierge:8001
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       - NEXT_PUBLIC_API_BASE=http://backend:8080
       - NEXT_PUBLIC_CONCIERGE_API=http://concierge:8001

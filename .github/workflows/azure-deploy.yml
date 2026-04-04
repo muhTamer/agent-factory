@@ -44,6 +44,7 @@ jobs:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
         run: |
           for APP_NAME in ${{ env.BACKEND_APP }} ${{ env.CONCIERGE_APP }} ${{ env.FRONTEND_APP }}; do
             # Create the app if it doesn't exist (uses a placeholder image)
@@ -71,8 +72,26 @@ jobs:
                 azure-openai-endpoint="$AZURE_OPENAI_ENDPOINT" \
                 azure-openai-api-key="$AZURE_OPENAI_API_KEY" \
                 azure-openai-deployment="$AZURE_OPENAI_DEPLOYMENT" \
+                auth-secret="$AUTH_SECRET" \
               2>/dev/null || true
           done
+
+          # Secrets for the frontend (auth + OAuth)
+          echo "Setting secrets on: ${{ env.FRONTEND_APP }}"
+          az containerapp secret set \
+            --name "${{ env.FRONTEND_APP }}" \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --secrets \
+              auth-secret="$AUTH_SECRET" \
+              google-client-id="${{ secrets.GOOGLE_CLIENT_ID }}" \
+              google-client-secret="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              microsoft-client-id="${{ secrets.MICROSOFT_CLIENT_ID }}" \
+              microsoft-client-secret="${{ secrets.MICROSOFT_CLIENT_SECRET }}" \
+              facebook-client-id="${{ secrets.FACEBOOK_CLIENT_ID }}" \
+              facebook-client-secret="${{ secrets.FACEBOOK_CLIENT_SECRET }}" \
+              apple-client-id="${{ secrets.APPLE_CLIENT_ID }}" \
+              apple-client-secret="${{ secrets.APPLE_CLIENT_SECRET }}" \
+            2>/dev/null || true
 
           # Grant all container apps access to pull from ACR
           ACR_SERVER="${{ env.ACR_NAME }}.azurecr.io"
@@ -122,6 +141,8 @@ jobs:
             AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key
             AZURE_OPENAI_DEPLOYMENT=secretref:azure-openai-deployment
             AZURE_OPENAI_API_VERSION=2024-02-01
+            AUTH_SECRET=secretref:auth-secret
+            AUTH_ENABLED=true
             RATE_LIMIT_REQUESTS=30
             RATE_LIMIT_WINDOW_SECONDS=60
             SESSION_MAX_LLM_CALLS=50
@@ -142,6 +163,8 @@ jobs:
             AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key
             AZURE_OPENAI_DEPLOYMENT=secretref:azure-openai-deployment
             AZURE_OPENAI_API_VERSION=2024-02-01
+            AUTH_SECRET=secretref:auth-secret
+            AUTH_ENABLED=true
             RUNTIME_BACKEND_URL=https://${{ env.BACKEND_FQDN }}
 
       # ── Get concierge FQDN (assigned by Azure on first deploy) ──
@@ -179,3 +202,13 @@ jobs:
           environmentVariables: >-
             NEXT_PUBLIC_API_BASE=https://${{ env.BACKEND_FQDN }}
             NEXT_PUBLIC_CONCIERGE_API=https://${{ steps.concierge-fqdn.outputs.fqdn }}
+            AUTH_SECRET=secretref:auth-secret
+            NEXTAUTH_URL=https://agent-factory-frontend.politedune-9f1beae9.westeurope.azurecontainerapps.io
+            GOOGLE_CLIENT_ID=secretref:google-client-id
+            GOOGLE_CLIENT_SECRET=secretref:google-client-secret
+            MICROSOFT_CLIENT_ID=secretref:microsoft-client-id
+            MICROSOFT_CLIENT_SECRET=secretref:microsoft-client-secret
+            FACEBOOK_CLIENT_ID=secretref:facebook-client-id
+            FACEBOOK_CLIENT_SECRET=secretref:facebook-client-secret
+            APPLE_CLIENT_ID=secretref:apple-client-id
+            APPLE_CLIENT_SECRET=secretref:apple-client-secret

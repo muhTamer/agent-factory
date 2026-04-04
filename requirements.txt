@@ -17,6 +17,9 @@ openai>=1.40.0
 jsonschema>=4.0.0
 requests>=2.31.0
 
+# JWT auth
+PyJWT>=2.8.0
+
 # LLM + YAML + testing deps
 PyYAML>=6.0
 
