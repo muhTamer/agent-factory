@@ -36,14 +36,23 @@ spine: RuntimeSpine | None = None
 tool_registry: ToolRegistry = DEFAULT_REGISTRY  # replaced at startup if config found
 
 app = FastAPI(title="Agent Factory Runtime", version="1.0")
+
+# CORS: allow local dev + Azure Container Apps frontend
+_cors_origins = [
+    "http://localhost:8501",
+    "http://127.0.0.1:8501",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://agent-factory-frontend.politedune-9f1beae9.westeurope.azurecontainerapps.io",
+]
+# Allow extra origins via env var (comma-separated)
+_extra_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if _extra_origins:
+    _cors_origins.extend([o.strip() for o in _extra_origins.split(",") if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8501",
-        "http://127.0.0.1:8501",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
