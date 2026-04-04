@@ -20,7 +20,6 @@ from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-
 # ── Environment mode ─────────────────────────────────────────────
 # Set AF_ENV=development to disable all rate limiting & usage caps locally.
 AF_ENV = os.getenv("AF_ENV", "production").lower()
@@ -45,9 +44,20 @@ BOT_BLOCK_ENABLED = os.getenv("BOT_BLOCK_ENABLED", "true").lower() == "true"
 
 # Known bot User-Agent substrings
 _BOT_SIGNATURES = [
-    "bot", "crawler", "spider", "scrapy", "curl", "wget", "httpx",
-    "python-requests", "go-http-client", "java/", "libwww",
-    "headlesschrome", "phantomjs", "selenium",
+    "bot",
+    "crawler",
+    "spider",
+    "scrapy",
+    "curl",
+    "wget",
+    "httpx",
+    "python-requests",
+    "go-http-client",
+    "java/",
+    "libwww",
+    "headlesschrome",
+    "phantomjs",
+    "selenium",
 ]
 
 # Paths that skip rate limiting (health checks, etc.)
@@ -56,9 +66,11 @@ _EXEMPT_PATHS = {"/health", "/version", "/docs", "/openapi.json", "/redoc"}
 
 # ── Data structures ─────────────────────────────────────────────
 
+
 @dataclass
 class _RateBucket:
     """Sliding-window counter for a single IP."""
+
     timestamps: list[float] = field(default_factory=list)
 
     def count_in_window(self, now: float, window: float) -> int:
@@ -73,6 +85,7 @@ class _RateBucket:
 @dataclass
 class _SessionUsage:
     """Tracks LLM call count and last-active time for a session."""
+
     llm_calls: int = 0
     created_at: float = field(default_factory=time.time)
     last_active: float = field(default_factory=time.time)
@@ -87,6 +100,7 @@ class _SessionUsage:
 @dataclass
 class _DailyCounter:
     """Global daily LLM call counter."""
+
     count: int = 0
     date: str = ""
 
@@ -113,6 +127,7 @@ _daily = _DailyCounter()
 
 
 # ── Helper functions ────────────────────────────────────────────
+
 
 def _get_client_ip(request: Request) -> str:
     """Extract client IP, respecting X-Forwarded-For behind a proxy."""
@@ -151,6 +166,7 @@ def _is_bot(request: Request) -> bool:
 
 # ── Public API (used by middleware and session tracker) ──────────
 
+
 def record_llm_call(session_id: str) -> dict:
     """
     Called after each LLM invocation to track usage.
@@ -187,7 +203,7 @@ def record_llm_call(session_id: str) -> dict:
             detail={
                 "error": "session_limit_exceeded",
                 "message": f"Session LLM limit reached ({SESSION_MAX_LLM_CALLS} calls). "
-                           "Please start a new session.",
+                "Please start a new session.",
                 "limit": SESSION_MAX_LLM_CALLS,
                 "used": session.llm_calls,
             },
@@ -222,7 +238,11 @@ def get_session_usage(session_id: str) -> dict:
     return {
         "session_llm_calls": session.llm_calls if session else 0,
         "session_llm_limit": SESSION_MAX_LLM_CALLS,
-        "session_remaining": (SESSION_MAX_LLM_CALLS - session.llm_calls) if session else SESSION_MAX_LLM_CALLS,
+        "session_remaining": (
+            (SESSION_MAX_LLM_CALLS - session.llm_calls)
+            if session
+            else SESSION_MAX_LLM_CALLS
+        ),
         "daily_llm_calls": _daily.count,
         "daily_llm_limit": DAILY_MAX_LLM_CALLS,
     }
@@ -235,13 +255,20 @@ def get_daily_usage() -> dict:
         "date": _daily.date,
         "daily_llm_calls": _daily.count,
         "daily_llm_limit": DAILY_MAX_LLM_CALLS,
-        "utilization_pct": round((_daily.count / DAILY_MAX_LLM_CALLS) * 100, 1) if DAILY_MAX_LLM_CALLS > 0 else 0,
+        "utilization_pct": (
+            round((_daily.count / DAILY_MAX_LLM_CALLS) * 100, 1)
+            if DAILY_MAX_LLM_CALLS > 0
+            else 0
+        ),
         "warning": _daily.count >= int(DAILY_MAX_LLM_CALLS * DAILY_WARN_THRESHOLD),
-        "active_sessions": len([s for s in _sessions.values() if not s.is_expired(SESSION_TTL_SECONDS)]),
+        "active_sessions": len(
+            [s for s in _sessions.values() if not s.is_expired(SESSION_TTL_SECONDS)]
+        ),
     }
 
 
 # ── FastAPI Middleware ──────────────────────────────────────────
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
@@ -284,7 +311,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 content={
                     "error": "rate_limit_exceeded",
                     "message": f"Too many requests. Limit: {RATE_LIMIT_REQUESTS} "
-                               f"per {RATE_LIMIT_WINDOW_SECONDS}s.",
+                    f"per {RATE_LIMIT_WINDOW_SECONDS}s.",
                     "retry_after": RATE_LIMIT_WINDOW_SECONDS,
                 },
                 headers={"Retry-After": str(RATE_LIMIT_WINDOW_SECONDS)},
@@ -296,7 +323,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Add rate-limit headers
-        remaining = RATE_LIMIT_REQUESTS - bucket.count_in_window(time.time(), RATE_LIMIT_WINDOW_SECONDS)
+        remaining = RATE_LIMIT_REQUESTS - bucket.count_in_window(
+            time.time(), RATE_LIMIT_WINDOW_SECONDS
+        )
         response.headers["X-RateLimit-Limit"] = str(RATE_LIMIT_REQUESTS)
         response.headers["X-RateLimit-Remaining"] = str(max(0, remaining))
         response.headers["X-RateLimit-Window"] = str(RATE_LIMIT_WINDOW_SECONDS)
