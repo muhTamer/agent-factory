@@ -6,12 +6,12 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_RESOURCE_GROUP: agent-factory-rg
-  AZURE_LOCATION: eastus
-  ACR_NAME: agentfactoryacr
+  AZURE_RESOURCE_GROUP: MetaAgentFactory
+  ACR_NAME: metaagentfactoryacr
   BACKEND_APP: agent-factory-backend
   FRONTEND_APP: agent-factory-frontend
   CONTAINER_ENV: agent-factory-env
+  BACKEND_FQDN: agent-factory-backend.politedune-9f1beae9.westeurope.azurecontainerapps.io
 
 jobs:
   build-and-deploy:
@@ -41,7 +41,7 @@ jobs:
       - name: Build and push frontend image
         run: |
           docker build -f frontend.Dockerfile \
-            --build-arg NEXT_PUBLIC_API_BASE=https://${{ env.BACKEND_APP }}.${{ env.AZURE_LOCATION }}.azurecontainerapps.io \
+            --build-arg NEXT_PUBLIC_API_BASE=https://${{ env.BACKEND_FQDN }} \
             -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_APP }}:${{ github.sha }} \
             -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_APP }}:latest \
             .
@@ -79,4 +79,4 @@ jobs:
           targetPort: 3000
           ingress: external
           environmentVariables: >-
-            NEXT_PUBLIC_API_BASE=https://${{ env.BACKEND_APP }}.${{ env.AZURE_LOCATION }}.azurecontainerapps.io
+            NEXT_PUBLIC_API_BASE=https://${{ env.BACKEND_FQDN }}
