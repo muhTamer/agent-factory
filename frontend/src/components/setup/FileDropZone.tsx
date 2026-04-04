@@ -45,7 +45,7 @@ export function FileDropZone({ onFiles, disabled }: FileDropZoneProps) {
       onDrop={handleDrop}
       onClick={() => !disabled && inputRef.current?.click()}
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 transition-colors",
+        "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 sm:px-6 sm:py-10 transition-colors",
         dragOver
           ? "border-blue-400 bg-blue-50"
           : "border-slate-300 bg-slate-50 hover:border-slate-400",

@@ -86,7 +86,7 @@ export function RuntimeStep() {
             : "border-slate-200 bg-slate-50/50"
         }
       >
-        <CardContent className="flex items-center gap-4 p-6">
+        <CardContent className="flex items-center gap-3 p-4 sm:gap-4 sm:p-6">
           {online ? (
             <>
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500 text-white">
@@ -139,7 +139,7 @@ export function RuntimeStep() {
             <p className="mb-2 text-xs font-medium text-slate-500">
               Manual command (if needed):
             </p>
-            <code className="block rounded bg-slate-900 px-3 py-2 text-xs text-green-400">
+            <code className="block overflow-x-auto rounded bg-slate-900 px-3 py-2 text-xs text-green-400">
               {deployment.uvicorn_command}
             </code>
           </CardContent>
@@ -147,7 +147,7 @@ export function RuntimeStep() {
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <Button
           variant="outline"
           onClick={() => setStep("deploy")}
@@ -157,7 +157,7 @@ export function RuntimeStep() {
           Back
         </Button>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Button
             variant="outline"
             onClick={() => setToolsOpen(true)}

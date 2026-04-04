@@ -62,15 +62,15 @@ export function DeployStep() {
       {/* Spec info */}
       <Card className="bg-slate-50">
         <CardContent className="space-y-2 p-4">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-500">Spec path:</span>
-            <code className="rounded bg-slate-200 px-2 py-0.5 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
+            <span className="text-slate-500 shrink-0">Spec path:</span>
+            <code className="rounded bg-slate-200 px-2 py-0.5 text-xs truncate">
               {deployment.spec_path}
             </code>
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-500">Runtime URL:</span>
-            <Badge variant="outline">{deployment.runtime.base_url}</Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
+            <span className="text-slate-500 shrink-0">Runtime URL:</span>
+            <Badge variant="outline" className="truncate">{deployment.runtime.base_url}</Badge>
           </div>
         </CardContent>
       </Card>

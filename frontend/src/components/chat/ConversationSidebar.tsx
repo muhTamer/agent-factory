@@ -200,10 +200,10 @@ export function ConversationSidebar({ onClose }: Props) {
                   </div>
                   <button
                     onClick={(e) => handleDelete(e, thread.id)}
-                    className="mt-0.5 shrink-0 rounded p-1 text-slate-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                    className="mt-0.5 shrink-0 rounded p-1.5 text-slate-300 opacity-100 sm:opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                     title="Delete conversation"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               );

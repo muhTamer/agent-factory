@@ -18,11 +18,11 @@ export function SetupWizard() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Top bar with user menu */}
-      <div className="flex items-center justify-end px-6 py-3">
+      <div className="flex items-center justify-end px-4 sm:px-6 py-3">
         <UserMenu />
       </div>
 
-      <div className="mx-auto max-w-3xl px-4 pb-12">
+      <div className="mx-auto max-w-3xl px-3 sm:px-4 pb-12">
         <WizardProgressBar currentStep={currentStep} />
 
         {/* Global error banner */}

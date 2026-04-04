@@ -97,7 +97,7 @@ export function WelcomeStep() {
     <div className="space-y-8">
       {/* Hero */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-slate-900">Agent Factory</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Agent Factory</h1>
         <p className="mt-2 text-slate-500">
           Build your multi-agent customer service system in minutes
         </p>
@@ -108,7 +108,7 @@ export function WelcomeStep() {
         <h2 className="mb-3 text-sm font-semibold text-slate-700">
           Select your business domain
         </h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {DOMAINS.map((d) => {
             const Icon = d.icon;
             const selected = vertical === d.value;
@@ -149,7 +149,7 @@ export function WelcomeStep() {
 
       {/* Quickstart */}
       <Card className="border-amber-200 bg-amber-50/50">
-        <CardContent className="flex items-center justify-between gap-4 p-4">
+        <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
               <Zap size={20} />
@@ -168,7 +168,7 @@ export function WelcomeStep() {
             size="sm"
             onClick={handleQuickstart}
             disabled={quickLoading}
-            className="shrink-0"
+            className="shrink-0 w-full sm:w-auto"
           >
             {quickLoading ? (
               <Loader2 size={16} className="animate-spin" />

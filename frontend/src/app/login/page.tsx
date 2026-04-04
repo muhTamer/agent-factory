@@ -50,8 +50,8 @@ const providers = [
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
+      <div className="w-full max-w-md space-y-6 sm:space-y-8 rounded-2xl bg-white p-6 sm:p-8 shadow-lg">
         {/* Logo */}
         <div className="text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-blue-500 text-white">
