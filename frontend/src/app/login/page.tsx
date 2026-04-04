@@ -1,13 +1,7 @@
-"use client";
+import { signIn } from "@/auth";
+import { Bot } from "lucide-react";
 
-import { signIn } from "next-auth/react";
-import { Bot, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
-
-const ALL_PROVIDERS: Record<
-  string,
-  { name: string; icon: React.ReactNode }
-> = {
+const ALL_PROVIDERS: Record<string, { name: string; icon: React.ReactNode }> = {
   google: {
     name: "Google",
     icon: (
@@ -48,20 +42,29 @@ const ALL_PROVIDERS: Record<
   },
 };
 
-export default function LoginPage() {
-  const [available, setAvailable] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+function getAvailableProviders(): string[] {
+  const available: string[] = [];
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+    available.push("google");
+  if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET)
+    available.push("microsoft-entra-id");
+  if (
+    process.env.FACEBOOK_CLIENT_ID &&
+    process.env.FACEBOOK_CLIENT_SECRET &&
+    process.env.FACEBOOK_CLIENT_ID !== "placeholder"
+  )
+    available.push("facebook");
+  if (
+    process.env.APPLE_CLIENT_ID &&
+    process.env.APPLE_CLIENT_SECRET &&
+    process.env.APPLE_CLIENT_ID !== "placeholder"
+  )
+    available.push("apple");
+  return available;
+}
 
-  useEffect(() => {
-    fetch("/api/auth/providers")
-      .then((r) => r.json())
-      .then((data) => setAvailable(data.providers ?? []))
-      .catch(() => {
-        // Fallback: show Google + Microsoft
-        setAvailable(["google", "microsoft-entra-id"]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+export default function LoginPage() {
+  const available = getAvailableProviders();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
@@ -79,13 +82,9 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* OAuth buttons */}
+        {/* OAuth buttons — each is a server action form */}
         <div className="space-y-3">
-          {loading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 size={24} className="animate-spin text-slate-400" />
-            </div>
-          ) : available.length === 0 ? (
+          {available.length === 0 ? (
             <p className="text-center text-sm text-slate-400">
               No sign-in providers configured. Contact the administrator.
             </p>
@@ -94,14 +93,21 @@ export default function LoginPage() {
               const provider = ALL_PROVIDERS[id];
               if (!provider) return null;
               return (
-                <button
+                <form
                   key={id}
-                  onClick={() => signIn(id, { callbackUrl: "/" })}
-                  className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300"
+                  action={async () => {
+                    "use server";
+                    await signIn(id, { redirectTo: "/" });
+                  }}
                 >
-                  {provider.icon}
-                  Continue with {provider.name}
-                </button>
+                  <button
+                    type="submit"
+                    className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300"
+                  >
+                    {provider.icon}
+                    Continue with {provider.name}
+                  </button>
+                </form>
               );
             })
           )}
