@@ -17,6 +17,11 @@ function tenantIdFromEmail(email: string): string {
 function buildProviders(): Provider[] {
   const providers: Provider[] = [];
 
+  console.log("[AUTH] Building providers...");
+  console.log("[AUTH] AUTH_SECRET set:", !!process.env.AUTH_SECRET);
+  console.log("[AUTH] GOOGLE_CLIENT_ID set:", !!process.env.GOOGLE_CLIENT_ID);
+  console.log("[AUTH] MICROSOFT_CLIENT_ID set:", !!process.env.MICROSOFT_CLIENT_ID);
+
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     providers.push(
       Google({
