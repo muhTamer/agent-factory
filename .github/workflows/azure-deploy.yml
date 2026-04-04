@@ -35,6 +35,45 @@ jobs:
       - name: Log in to Azure Container Registry
         run: az acr login --name ${{ env.ACR_NAME }}
 
+      # ── Ensure all container apps exist with secrets ──
+      # On first deploy the concierge app won't exist yet.
+      # secretref: requires secrets to already be on the container app,
+      # so we create the app + secrets upfront using GitHub repo secrets.
+      - name: Ensure container apps and secrets exist
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+        run: |
+          for APP_NAME in ${{ env.BACKEND_APP }} ${{ env.CONCIERGE_APP }} ${{ env.FRONTEND_APP }}; do
+            # Create the app if it doesn't exist (uses a placeholder image)
+            if ! az containerapp show --name "$APP_NAME" --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null; then
+              echo "Creating container app: $APP_NAME"
+              az containerapp create \
+                --name "$APP_NAME" \
+                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --environment ${{ env.CONTAINER_ENV }} \
+                --image mcr.microsoft.com/azuredocs/containerapps-helloworld:latest \
+                --target-port 3000 \
+                --ingress external \
+                --min-replicas 0 \
+                --max-replicas 3
+            fi
+          done
+
+          # Ensure secrets exist on backend and concierge
+          for APP_NAME in ${{ env.BACKEND_APP }} ${{ env.CONCIERGE_APP }}; do
+            echo "Setting secrets on: $APP_NAME"
+            az containerapp secret set \
+              --name "$APP_NAME" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --secrets \
+                azure-openai-endpoint="$AZURE_OPENAI_ENDPOINT" \
+                azure-openai-api-key="$AZURE_OPENAI_API_KEY" \
+                azure-openai-deployment="$AZURE_OPENAI_DEPLOYMENT" \
+              2>/dev/null || true
+          done
+
       # ── Build & push backend + concierge images ──
       - name: Build and push backend image
         run: |
