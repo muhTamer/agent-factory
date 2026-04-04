@@ -13,6 +13,8 @@ import json
 import os
 import shutil
 import subprocess
+import time as _time
+import traceback
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,9 +24,11 @@ import requests as http_requests
 from fastapi import Depends, FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 import app.llm_client as llm_client
-from app.auth import AuthUser, get_current_user
+from app.auth import AUTH_ENABLED, AUTH_SECRET, AuthUser, get_current_user
 from app.concierge.concierge_agent import ConciergeAgent
 
 # ---------------------------------------------------------------------------
@@ -72,6 +76,58 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# Request logging middleware
+# ---------------------------------------------------------------------------
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        t0 = _time.time()
+        method = request.method
+        path = request.url.path
+        has_auth = "authorization" in request.headers
+        print(f"[REQ] {method} {path} auth={has_auth}")
+        try:
+            response = await call_next(request)
+            elapsed = _time.time() - t0
+            print(f"[RES] {method} {path} -> {response.status_code} ({elapsed:.2f}s)")
+            return response
+        except Exception as exc:
+            elapsed = _time.time() - t0
+            print(f"[ERR] {method} {path} -> 500 ({elapsed:.2f}s)")
+            traceback.print_exc()
+            return JSONResponse(
+                status_code=500,
+                content={"detail": str(exc), "type": type(exc).__name__},
+            )
+
+
+app.add_middleware(RequestLoggingMiddleware)
+
+
+# ---------------------------------------------------------------------------
+# Diagnostic endpoint
+# ---------------------------------------------------------------------------
+
+
+@app.get("/concierge/debug")
+def debug_info():
+    """Diagnostic endpoint — shows config status (no secret values)."""
+    return {
+        "auth_enabled": AUTH_ENABLED,
+        "auth_secret_set": bool(AUTH_SECRET),
+        "auth_secret_length": len(AUTH_SECRET),
+        "runtime_backend_url": RUNTIME_BACKEND_URL,
+        "data_dir_exists": DATA_DIR.exists(),
+        "fintech_files": {f.name: f.exists() for f in FINTECH_DATA_FILES},
+        "workspaces_root": str(WORKSPACES_ROOT),
+        "active_tenants": len(_tenants),
+        "cors_origins": _cors_origins,
+    }
+
 
 # ---------------------------------------------------------------------------
 # Per-tenant state (LRU eviction)
