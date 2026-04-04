@@ -32,6 +32,7 @@ MCP_TOOLS_CONFIG = REPO_ROOT / "tests" / "fixtures" / "mcp_tools_config.json"
 FINTECH_DATA_FILES = [
     DATA_DIR / "BankFAQs.csv",
     DATA_DIR / "refunds_policy.yaml",
+    DATA_DIR / "complaints_policy.yaml",
 ]
 
 # ---------------------------------------------------------------------------
