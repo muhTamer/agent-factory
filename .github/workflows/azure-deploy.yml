@@ -142,6 +142,7 @@ jobs:
             AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key
             AZURE_OPENAI_DEPLOYMENT=secretref:azure-openai-deployment
             AZURE_OPENAI_API_VERSION=2024-02-01
+            RUNTIME_BACKEND_URL=https://${{ env.BACKEND_FQDN }}
 
       # ── Get concierge FQDN (assigned by Azure on first deploy) ──
       - name: Get concierge FQDN

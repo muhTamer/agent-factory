@@ -27,6 +27,10 @@ from app.concierge.concierge_agent import ConciergeAgent
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "data"
 WORKSPACE = REPO_ROOT / ".workspace"
+
+# Runtime backend URL — on Azure this is the backend container app,
+# locally it's http://127.0.0.1:808
+RUNTIME_BACKEND_URL = os.getenv("RUNTIME_BACKEND_URL", "http://127.0.0.1:808")
 MCP_TOOLS_CONFIG = REPO_ROOT / "tests" / "fixtures" / "mcp_tools_config.json"
 
 FINTECH_DATA_FILES = [
@@ -205,30 +209,60 @@ def deploy_factory(req: DeployRequest):
 @app.post("/concierge/runtime/start")
 def start_runtime(req: RuntimeRequest):
     port = req.port
-    # Launch uvicorn in a new console window (Windows)
-    cmd = (
-        f'start "agent-factory-runtime" cmd /k '
-        f"python -m uvicorn app.runtime.service:app --port {port}"
-    )
-    subprocess.Popen(cmd, shell=True, cwd=str(REPO_ROOT))
-    return {"status": "starting", "port": port}
+    # On Azure the runtime backend is already running as a separate container.
+    # Check if it's reachable and return its status.
+    if RUNTIME_BACKEND_URL.startswith("http://127.0.0.1"):
+        # Local dev: launch uvicorn as a subprocess
+        import platform
+
+        if platform.system() == "Windows":
+            cmd = (
+                f'start "agent-factory-runtime" cmd /k '
+                f"python -m uvicorn app.runtime.service:app --port {port}"
+            )
+        else:
+            cmd = f"python -m uvicorn app.runtime.service:app --port {port} &"
+        subprocess.Popen(cmd, shell=True, cwd=str(REPO_ROOT))
+        return {"status": "starting", "port": port}
+    else:
+        # Cloud: runtime is a separate container, just check health
+        try:
+            r = http_requests.get(f"{RUNTIME_BACKEND_URL}/health", timeout=5)
+            if r.status_code == 200:
+                return {"status": "running", "url": RUNTIME_BACKEND_URL, **r.json()}
+        except Exception:
+            pass
+        return {"status": "unreachable", "url": RUNTIME_BACKEND_URL}
 
 
 @app.post("/concierge/runtime/stop")
 def stop_runtime(req: RuntimeRequest):
     port = req.port
-    kill_cmd = (
-        f'for /f "tokens=5" %%a in '
-        f"('netstat -ano ^| findstr :{port}') do taskkill /F /PID %%a"
-    )
-    subprocess.Popen(kill_cmd, shell=True)
-    return {"status": "stopped", "port": port}
+    if RUNTIME_BACKEND_URL.startswith("http://127.0.0.1"):
+        # Local dev: stop the process
+        import platform
+
+        if platform.system() == "Windows":
+            kill_cmd = (
+                f'for /f "tokens=5" %%a in '
+                f"('netstat -ano ^| findstr :{port}') do taskkill /F /PID %%a"
+            )
+        else:
+            kill_cmd = f"kill $(lsof -t -i:{port}) 2>/dev/null || true"
+        subprocess.Popen(kill_cmd, shell=True)
+        return {"status": "stopped", "port": port}
+    else:
+        # Cloud: runtime is managed by Azure, can't stop it from here
+        return {
+            "status": "managed",
+            "message": "Runtime is managed by Azure Container Apps",
+        }
 
 
 @app.get("/concierge/runtime/health")
 def runtime_health():
     try:
-        r = http_requests.get("http://127.0.0.1:808/health", timeout=2)
+        r = http_requests.get(f"{RUNTIME_BACKEND_URL}/health", timeout=5)
         if r.status_code == 200:
             return r.json()
     except Exception:
