@@ -1,0 +1,214 @@
+name: Build & Deploy to Azure Container Apps
+
+on:
+  # Deploy only after CI workflow passes — prevents deploying broken code
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: MetaAgentFactory
+  AZURE_LOCATION: westeurope
+  ACR_NAME: metaagentfactoryacr
+  BACKEND_APP: agent-factory-backend
+  FRONTEND_APP: agent-factory-frontend
+  CONCIERGE_APP: agent-factory-concierge
+  CONTAINER_ENV: agent-factory-env
+  BACKEND_FQDN: agent-factory-backend.politedune-9f1beae9.westeurope.azurecontainerapps.io
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    # Only deploy if CI succeeded (skip if CI failed or was cancelled)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      # ── Ensure all container apps exist with secrets ──
+      # On first deploy the concierge app won't exist yet.
+      # secretref: requires secrets to already be on the container app,
+      # so we create the app + secrets upfront using GitHub repo secrets.
+      - name: Ensure container apps and secrets exist
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+        run: |
+          for APP_NAME in ${{ env.BACKEND_APP }} ${{ env.CONCIERGE_APP }} ${{ env.FRONTEND_APP }}; do
+            # Create the app if it doesn't exist (uses a placeholder image)
+            if ! az containerapp show --name "$APP_NAME" --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &>/dev/null; then
+              echo "Creating container app: $APP_NAME"
+              az containerapp create \
+                --name "$APP_NAME" \
+                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --environment ${{ env.CONTAINER_ENV }} \
+                --image mcr.microsoft.com/azuredocs/containerapps-helloworld:latest \
+                --target-port 3000 \
+                --ingress external \
+                --min-replicas 0 \
+                --max-replicas 3
+            fi
+          done
+
+          # Ensure secrets exist on backend and concierge
+          for APP_NAME in ${{ env.BACKEND_APP }} ${{ env.CONCIERGE_APP }}; do
+            echo "Setting secrets on: $APP_NAME"
+            az containerapp secret set \
+              --name "$APP_NAME" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --secrets \
+                azure-openai-endpoint="$AZURE_OPENAI_ENDPOINT" \
+                azure-openai-api-key="$AZURE_OPENAI_API_KEY" \
+                azure-openai-deployment="$AZURE_OPENAI_DEPLOYMENT" \
+                auth-secret="$AUTH_SECRET" \
+              2>/dev/null || true
+          done
+
+          # Secrets for the frontend (auth + OAuth)
+          echo "Setting secrets on: ${{ env.FRONTEND_APP }}"
+          az containerapp secret set \
+            --name "${{ env.FRONTEND_APP }}" \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --secrets \
+              auth-secret="$AUTH_SECRET" \
+              google-client-id="${{ secrets.GOOGLE_CLIENT_ID }}" \
+              google-client-secret="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              microsoft-client-id="${{ secrets.MICROSOFT_CLIENT_ID }}" \
+              microsoft-client-secret="${{ secrets.MICROSOFT_CLIENT_SECRET }}" \
+              facebook-client-id="${{ secrets.FACEBOOK_CLIENT_ID }}" \
+              facebook-client-secret="${{ secrets.FACEBOOK_CLIENT_SECRET }}" \
+              apple-client-id="${{ secrets.APPLE_CLIENT_ID }}" \
+              apple-client-secret="${{ secrets.APPLE_CLIENT_SECRET }}" \
+            2>/dev/null || true
+
+          # Grant all container apps access to pull from ACR
+          ACR_SERVER="${{ env.ACR_NAME }}.azurecr.io"
+          ACR_CREDS=$(az acr credential show --name ${{ env.ACR_NAME }})
+          ACR_USERNAME=$(echo "$ACR_CREDS" | jq -r '.username')
+          ACR_PASSWORD=$(echo "$ACR_CREDS" | jq -r '.passwords[0].value')
+          for APP_NAME in ${{ env.BACKEND_APP }} ${{ env.CONCIERGE_APP }} ${{ env.FRONTEND_APP }}; do
+            echo "Configuring ACR access on: $APP_NAME"
+            az containerapp registry set \
+              --name "$APP_NAME" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --server "$ACR_SERVER" \
+              --username "$ACR_USERNAME" \
+              --password "$ACR_PASSWORD" \
+              2>/dev/null || true
+          done
+
+      # ── Build & push backend + concierge images ──
+      - name: Build and push backend image
+        run: |
+          docker build -f backend.Dockerfile \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_APP }}:${{ github.sha }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_APP }}:latest \
+            .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_APP }} --all-tags
+
+      - name: Build and push concierge image
+        run: |
+          docker build -f concierge.Dockerfile \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.CONCIERGE_APP }}:${{ github.sha }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.CONCIERGE_APP }}:latest \
+            .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.CONCIERGE_APP }} --all-tags
+
+      # ── Deploy backend + concierge first (frontend needs their FQDNs) ──
+      - name: Deploy backend
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          containerAppName: ${{ env.BACKEND_APP }}
+          containerAppEnvironment: ${{ env.CONTAINER_ENV }}
+          imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_APP }}:${{ github.sha }}
+          targetPort: 8080
+          ingress: external
+          environmentVariables: >-
+            AZURE_OPENAI_ENDPOINT=secretref:azure-openai-endpoint
+            AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key
+            AZURE_OPENAI_DEPLOYMENT=secretref:azure-openai-deployment
+            AZURE_OPENAI_API_VERSION=2024-02-01
+            AUTH_SECRET=secretref:auth-secret
+            AUTH_ENABLED=true
+            RATE_LIMIT_REQUESTS=30
+            RATE_LIMIT_WINDOW_SECONDS=60
+            SESSION_MAX_LLM_CALLS=50
+            DAILY_MAX_LLM_CALLS=5000
+            BOT_BLOCK_ENABLED=true
+
+      - name: Deploy concierge
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          containerAppName: ${{ env.CONCIERGE_APP }}
+          containerAppEnvironment: ${{ env.CONTAINER_ENV }}
+          imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/${{ env.CONCIERGE_APP }}:${{ github.sha }}
+          targetPort: 8001
+          ingress: external
+          environmentVariables: >-
+            AZURE_OPENAI_ENDPOINT=secretref:azure-openai-endpoint
+            AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key
+            AZURE_OPENAI_DEPLOYMENT=secretref:azure-openai-deployment
+            AZURE_OPENAI_API_VERSION=2024-02-01
+            AUTH_SECRET=secretref:auth-secret
+            AUTH_ENABLED=true
+            RUNTIME_BACKEND_URL=https://${{ env.BACKEND_FQDN }}
+
+      # ── Get concierge FQDN (assigned by Azure on first deploy) ──
+      - name: Get concierge FQDN
+        id: concierge-fqdn
+        run: |
+          FQDN=$(az containerapp show \
+            --name ${{ env.CONCIERGE_APP }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "fqdn=$FQDN" >> "$GITHUB_OUTPUT"
+          echo "Concierge FQDN: $FQDN"
+
+      # ── Build & push frontend (with both backend URLs baked in) ──
+      - name: Build and push frontend image
+        run: |
+          docker build -f frontend.Dockerfile \
+            --build-arg NEXT_PUBLIC_API_BASE=https://${{ env.BACKEND_FQDN }} \
+            --build-arg NEXT_PUBLIC_CONCIERGE_API=https://${{ steps.concierge-fqdn.outputs.fqdn }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_APP }}:${{ github.sha }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_APP }}:latest \
+            .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_APP }} --all-tags
+
+      # ── Deploy frontend ──
+      - name: Deploy frontend
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          containerAppName: ${{ env.FRONTEND_APP }}
+          containerAppEnvironment: ${{ env.CONTAINER_ENV }}
+          imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_APP }}:${{ github.sha }}
+          targetPort: 3000
+          ingress: external
+          environmentVariables: >-
+            NEXT_PUBLIC_API_BASE=https://${{ env.BACKEND_FQDN }}
+            NEXT_PUBLIC_CONCIERGE_API=https://${{ steps.concierge-fqdn.outputs.fqdn }}
+            AUTH_SECRET=secretref:auth-secret
+            NEXTAUTH_URL=https://agent-factory-frontend.politedune-9f1beae9.westeurope.azurecontainerapps.io
+            GOOGLE_CLIENT_ID=secretref:google-client-id
+            GOOGLE_CLIENT_SECRET=secretref:google-client-secret
+            MICROSOFT_CLIENT_ID=secretref:microsoft-client-id
+            MICROSOFT_CLIENT_SECRET=secretref:microsoft-client-secret
+            FACEBOOK_CLIENT_ID=secretref:facebook-client-id
+            FACEBOOK_CLIENT_SECRET=secretref:facebook-client-secret
+            APPLE_CLIENT_ID=secretref:apple-client-id
+            APPLE_CLIENT_SECRET=secretref:apple-client-secret

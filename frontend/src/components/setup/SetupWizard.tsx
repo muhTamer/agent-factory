@@ -7,6 +7,7 @@ import { UploadStep } from "./UploadStep";
 import { AnalysisStep } from "./AnalysisStep";
 import { DeployStep } from "./DeployStep";
 import { RuntimeStep } from "./RuntimeStep";
+import { UserMenu } from "../UserMenu";
 import { AlertTriangle, X } from "lucide-react";
 
 export function SetupWizard() {
@@ -16,7 +17,12 @@ export function SetupWizard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-3xl px-4 py-12">
+      {/* Top bar with user menu */}
+      <div className="flex items-center justify-end px-6 py-3">
+        <UserMenu />
+      </div>
+
+      <div className="mx-auto max-w-3xl px-4 pb-12">
         <WizardProgressBar currentStep={currentStep} />
 
         {/* Global error banner */}

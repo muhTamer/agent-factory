@@ -82,6 +82,11 @@ export function useChat() {
 
       const latencyMs = Date.now() - t0;
 
+      // ── Persist usage stats ──
+      if (data.usage) {
+        useChatStore.setState({ usage: data.usage });
+      }
+
       // ── Persist backend thread_id (always, regardless of active thread) ──
       if (data.thread_id) {
         useThreadStore.getState().updateThreadMeta(capturedThread, {
@@ -145,13 +150,23 @@ export function useChat() {
         });
       }
     } catch (err) {
+      // Surface rate-limit / usage-cap errors with a friendly message
+      let errorText = "Failed to reach the runtime service.";
+      if (err instanceof Error) {
+        errorText = err.message;
+      }
+      // Try to parse structured error from 429 responses
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed?.detail?.message) errorText = parsed.detail.message;
+      } catch {
+        // not JSON — use as-is
+      }
+
       const errorMsg: ChatMessage = {
         id: makeId(),
         role: "system",
-        content:
-          err instanceof Error
-            ? err.message
-            : "Failed to reach the runtime service.",
+        content: errorText,
         timestamp: Date.now(),
         responseKind: "error",
       };

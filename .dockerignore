@@ -1,0 +1,38 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.venv
+.pytest_cache
+
+# Node
+frontend/node_modules
+frontend/.next
+
+# IDE
+.vscode
+.idea
+
+# Environment & secrets
+.env
+*.key
+*.pem
+
+# Generated / non-essential
+evaluation/results
+thesis/output
+generated
+.claude
+.workspace
+
+# Tests & docs (not needed in production image)
+tests
+!tests/fixtures
+evaluation
+docs
+*.md

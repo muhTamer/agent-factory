@@ -34,6 +34,10 @@ interface ChatState {
   error: string | null;
   setError: (e: string | null) => void;
 
+  /** LLM usage stats returned from backend */
+  usage: { session_llm_calls: number; session_llm_limit: number; session_remaining: number } | null;
+  setUsage: (u: ChatState["usage"]) => void;
+
   /** Internal: tracks which threads have in-flight requests */
   _loadingThreads: Record<string, boolean>;
 }
@@ -76,6 +80,9 @@ export const useChatStore = create<ChatState>((set) => ({
 
   error: null,
   setError: (e) => set({ error: e }),
+
+  usage: null,
+  setUsage: (u) => set({ usage: u }),
 
   _loadingThreads: {},
 }));

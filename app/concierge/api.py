@@ -2,22 +2,29 @@
 """
 Concierge REST API — wraps ConciergeAgent for the Next.js frontend.
 Run with: python -m uvicorn app.concierge.api:app --port 8001
+
+Multi-tenant: each authenticated user gets an isolated workspace and
+ConciergeAgent instance keyed by tenant_id.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
+from collections import OrderedDict
+from dataclasses import dataclass
 from pathlib import Path
-
-import requests as http_requests
-from fastapi import FastAPI, File, Form, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
+import requests as http_requests
+from fastapi import Depends, FastAPI, File, Form, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
 import app.llm_client as llm_client
+from app.auth import AuthUser, get_current_user
 from app.concierge.concierge_agent import ConciergeAgent
 
 # ---------------------------------------------------------------------------
@@ -25,12 +32,17 @@ from app.concierge.concierge_agent import ConciergeAgent
 # ---------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "data"
-WORKSPACE = REPO_ROOT / ".workspace"
+WORKSPACES_ROOT = REPO_ROOT / ".workspace"
+
+# Runtime backend URL — on Azure this is the backend container app,
+# locally it's http://127.0.0.1:808
+RUNTIME_BACKEND_URL = os.getenv("RUNTIME_BACKEND_URL", "http://127.0.0.1:808")
 MCP_TOOLS_CONFIG = REPO_ROOT / "tests" / "fixtures" / "mcp_tools_config.json"
 
 FINTECH_DATA_FILES = [
     DATA_DIR / "BankFAQs.csv",
     DATA_DIR / "refunds_policy.yaml",
+    DATA_DIR / "complaints_policy.yaml",
 ]
 
 RETAIL_DATA_FILES = [
@@ -39,48 +51,85 @@ RETAIL_DATA_FILES = [
     DATA_DIR / "retail_complaints_policy.yaml",
 ]
 
+# Max number of tenant sessions held in memory before evicting the oldest
+MAX_TENANTS = 200
+
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
 app = FastAPI(title="Agent Factory Concierge API", version="1.0")
+
+# CORS: allow local dev + Azure Container Apps frontend
+_cors_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "https://agent-factory-frontend.politedune-9f1beae9.westeurope.azurecontainerapps.io",
+]
+_extra_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if _extra_origins:
+    _cors_origins.extend([o.strip() for o in _extra_origins.split(",") if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ---------------------------------------------------------------------------
-# Singleton state (single-user demo)
+# Per-tenant state (LRU eviction)
 # ---------------------------------------------------------------------------
-_agent: ConciergeAgent | None = None
-_vertical: str = "retail"
-_model: str = "gpt-5-mini"
 
 
-def _get_or_create_agent(
-    vertical: str | None = None, model: str | None = None
-) -> ConciergeAgent:
-    global _agent, _vertical, _model
-    v = vertical or _vertical
-    m = model or _model
-    if _agent is None or v != _vertical:
-        WORKSPACE.mkdir(exist_ok=True)
-        _agent = ConciergeAgent(
-            vertical=v,
-            data_dir=str(WORKSPACE),
-            llm_client=llm_client,
-            model=m,
-        )
-        _vertical = v
-        _model = m
-    return _agent
+@dataclass
+class TenantSession:
+    """Holds the concierge agent and metadata for one tenant."""
+
+    tenant_id: str
+    vertical: str = "retail"
+    model: str = "gpt-5-mini"
+    agent: ConciergeAgent | None = None
+
+    @property
+    def workspace(self) -> Path:
+        return WORKSPACES_ROOT / self.tenant_id
+
+    def get_or_create_agent(
+        self, vertical: str | None = None, model: str | None = None
+    ) -> ConciergeAgent:
+        v = vertical or self.vertical
+        m = model or self.model
+        if self.agent is None or v != self.vertical:
+            self.workspace.mkdir(parents=True, exist_ok=True)
+            self.agent = ConciergeAgent(
+                vertical=v,
+                data_dir=str(self.workspace),
+                llm_client=llm_client,
+                model=m,
+            )
+            self.vertical = v
+            self.model = m
+        return self.agent
+
+
+# Ordered dict for LRU eviction
+_tenants: OrderedDict[str, TenantSession] = OrderedDict()
+
+
+def _get_tenant(tenant_id: str) -> TenantSession:
+    """Get or create a TenantSession, evicting the oldest if over limit."""
+    if tenant_id in _tenants:
+        _tenants.move_to_end(tenant_id)
+        return _tenants[tenant_id]
+    # Evict oldest if at capacity
+    while len(_tenants) >= MAX_TENANTS:
+        _tenants.popitem(last=False)
+    session = TenantSession(tenant_id=tenant_id)
+    _tenants[tenant_id] = session
+    return session
 
 
 # ---------------------------------------------------------------------------
@@ -117,8 +166,9 @@ class RuntimeRequest(BaseModel):
 
 
 @app.post("/concierge/init")
-def init_session(req: InitRequest):
-    agent = _get_or_create_agent(vertical=req.vertical, model=req.model)
+def init_session(req: InitRequest, user: AuthUser = Depends(get_current_user)):
+    ts = _get_tenant(user.tenant_id)
+    agent = ts.get_or_create_agent(vertical=req.vertical, model=req.model)
     return {"status": "ready", "vertical": agent.vertical}
 
 
@@ -126,29 +176,34 @@ def init_session(req: InitRequest):
 async def upload_files(
     files: list[UploadFile] = File(...),
     vertical: str = Form("retail"),
+    user: AuthUser = Depends(get_current_user),
 ):
-    WORKSPACE.mkdir(exist_ok=True)
+    ts = _get_tenant(user.tenant_id)
+    ts.workspace.mkdir(parents=True, exist_ok=True)
     saved: list[str] = []
     for f in files:
         content = await f.read()
-        dst = WORKSPACE / f.filename
+        dst = ts.workspace / f.filename
         dst.write_bytes(content)
         saved.append(f.filename)
     # Ensure agent is initialised for this vertical
-    _get_or_create_agent(vertical=vertical)
-    return {"files_saved": saved, "workspace": str(WORKSPACE)}
+    ts.get_or_create_agent(vertical=vertical)
+    return {"files_saved": saved, "workspace": str(ts.workspace)}
 
 
 @app.post("/concierge/quickstart-fintech")
-def quickstart_fintech(req: QuickstartRequest):
-    WORKSPACE.mkdir(exist_ok=True)
+def quickstart_fintech(
+    req: QuickstartRequest, user: AuthUser = Depends(get_current_user)
+):
+    ts = _get_tenant(user.tenant_id)
+    ts.workspace.mkdir(parents=True, exist_ok=True)
     # Copy preset files
     for src in FINTECH_DATA_FILES:
         if not src.exists():
             return {"error": f"Preset file not found: {src}"}
-        shutil.copy2(src, WORKSPACE / src.name)
+        shutil.copy2(src, ts.workspace / src.name)
 
-    agent = _get_or_create_agent(vertical="fintech", model=req.model)
+    agent = ts.get_or_create_agent(vertical="fintech", model=req.model)
     result = agent.handle_event(
         {
             "type": "upload_docs",
@@ -160,15 +215,18 @@ def quickstart_fintech(req: QuickstartRequest):
 
 
 @app.post("/concierge/quickstart-retail")
-def quickstart_retail(req: QuickstartRequest):
-    WORKSPACE.mkdir(exist_ok=True)
+def quickstart_retail(
+    req: QuickstartRequest, user: AuthUser = Depends(get_current_user)
+):
+    ts = _get_tenant(user.tenant_id)
+    ts.workspace.mkdir(parents=True, exist_ok=True)
     # Copy preset files
     for src in RETAIL_DATA_FILES:
         if not src.exists():
             return {"error": f"Preset file not found: {src}"}
-        shutil.copy2(src, WORKSPACE / src.name)
+        shutil.copy2(src, ts.workspace / src.name)
 
-    agent = _get_or_create_agent(vertical="retail", model=req.model)
+    agent = ts.get_or_create_agent(vertical="retail", model=req.model)
     result = agent.handle_event(
         {
             "type": "upload_docs",
@@ -180,8 +238,9 @@ def quickstart_retail(req: QuickstartRequest):
 
 
 @app.post("/concierge/analyze")
-def analyze_documents(req: AnalyzeRequest):
-    agent = _get_or_create_agent(model=req.model)
+def analyze_documents(req: AnalyzeRequest, user: AuthUser = Depends(get_current_user)):
+    ts = _get_tenant(user.tenant_id)
+    agent = ts.get_or_create_agent(model=req.model)
     result = agent.handle_event(
         {
             "type": "upload_docs",
@@ -193,8 +252,9 @@ def analyze_documents(req: AnalyzeRequest):
 
 
 @app.post("/concierge/generate-templates")
-def generate_templates():
-    agent = _get_or_create_agent()
+def generate_templates(user: AuthUser = Depends(get_current_user)):
+    ts = _get_tenant(user.tenant_id)
+    agent = ts.get_or_create_agent()
     result = agent.handle_event(
         {
             "type": "user_action",
@@ -205,46 +265,83 @@ def generate_templates():
 
 
 @app.post("/concierge/deploy")
-def deploy_factory(req: DeployRequest):
-    agent = _get_or_create_agent()
+def deploy_factory(req: DeployRequest, user: AuthUser = Depends(get_current_user)):
+    ts = _get_tenant(user.tenant_id)
+    agent = ts.get_or_create_agent()
     action = "approve_deploy_dry" if req.mode == "dry" else "approve_deploy_live"
     result = agent.handle_event(
         {
             "type": "user_action",
             "action": action,
-            "doc_visibility": req.doc_visibility,  # None → backend applies extension-based defaults
+            "doc_visibility": req.doc_visibility,
         }
     )
+
+    # After deploy, trigger backend to reload with the new spec
+    _trigger_backend_reload(ts)
+
     return result
 
 
 @app.post("/concierge/runtime/start")
-def start_runtime(req: RuntimeRequest):
+def start_runtime(req: RuntimeRequest, user: AuthUser = Depends(get_current_user)):
+    ts = _get_tenant(user.tenant_id)
     port = req.port
-    # Launch uvicorn in a new console window (Windows)
-    cmd = (
-        f'start "agent-factory-runtime" cmd /k '
-        f"python -m uvicorn app.runtime.service:app --port {port}"
-    )
-    subprocess.Popen(cmd, shell=True, cwd=str(REPO_ROOT))
-    return {"status": "starting", "port": port}
+    # On Azure the runtime backend is already running as a separate container.
+    # Check if it's reachable and return its status.
+    if RUNTIME_BACKEND_URL.startswith("http://127.0.0.1"):
+        # Local dev: launch uvicorn as a subprocess
+        import platform
+
+        if platform.system() == "Windows":
+            cmd = (
+                f'start "agent-factory-runtime" cmd /k '
+                f"python -m uvicorn app.runtime.service:app --port {port}"
+            )
+        else:
+            cmd = f"python -m uvicorn app.runtime.service:app --port {port} &"
+        subprocess.Popen(cmd, shell=True, cwd=str(REPO_ROOT))
+        return {"status": "starting", "port": port}
+    else:
+        # Cloud: runtime is a separate container — trigger reload and check health
+        _trigger_backend_reload(ts)
+        try:
+            r = http_requests.get(f"{RUNTIME_BACKEND_URL}/health", timeout=5)
+            if r.status_code == 200:
+                return {"status": "running", "url": RUNTIME_BACKEND_URL, **r.json()}
+        except Exception:
+            pass
+        return {"status": "unreachable", "url": RUNTIME_BACKEND_URL}
 
 
 @app.post("/concierge/runtime/stop")
-def stop_runtime(req: RuntimeRequest):
+def stop_runtime(req: RuntimeRequest, user: AuthUser = Depends(get_current_user)):
     port = req.port
-    kill_cmd = (
-        f'for /f "tokens=5" %%a in '
-        f"('netstat -ano ^| findstr :{port}') do taskkill /F /PID %%a"
-    )
-    subprocess.Popen(kill_cmd, shell=True)
-    return {"status": "stopped", "port": port}
+    if RUNTIME_BACKEND_URL.startswith("http://127.0.0.1"):
+        # Local dev: stop the process
+        import platform
+
+        if platform.system() == "Windows":
+            kill_cmd = (
+                f'for /f "tokens=5" %%a in '
+                f"('netstat -ano ^| findstr :{port}') do taskkill /F /PID %%a"
+            )
+        else:
+            kill_cmd = f"kill $(lsof -t -i:{port}) 2>/dev/null || true"
+        subprocess.Popen(kill_cmd, shell=True)
+        return {"status": "stopped", "port": port}
+    else:
+        # Cloud: runtime is managed by Azure, can't stop it from here
+        return {
+            "status": "managed",
+            "message": "Runtime is managed by Azure Container Apps",
+        }
 
 
 @app.get("/concierge/runtime/health")
 def runtime_health():
     try:
-        r = http_requests.get("http://127.0.0.1:808/health", timeout=2)
+        r = http_requests.get(f"{RUNTIME_BACKEND_URL}/health", timeout=5)
         if r.status_code == 200:
             return r.json()
     except Exception:
@@ -252,11 +349,52 @@ def runtime_health():
     return {"status": "unreachable"}
 
 
+@app.get("/concierge/spec")
+def get_factory_spec(
+    tenant_id: str = "",
+    user: AuthUser = Depends(get_current_user),
+):
+    """Return the generated factory spec (used by backend /reload)."""
+    tid = tenant_id or user.tenant_id
+    workspace = WORKSPACES_ROOT / tid
+    spec_path = workspace / ".factory" / "factory_spec.json"
+    if not spec_path.exists():
+        return {"spec": None, "status": "not_deployed"}
+    try:
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        return {"spec": spec, "status": "ready"}
+    except Exception as exc:
+        return {"spec": None, "status": "error", "error": str(exc)}
+
+
+def _trigger_backend_reload(ts: TenantSession):
+    """Tell the runtime backend to reload its spec for this tenant."""
+    spec_path = ts.workspace / ".factory" / "factory_spec.json"
+    if not spec_path.exists():
+        return
+
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+
+    # Inject tenant_id into the spec so the backend knows which tenant this is for
+    spec["_tenant_id"] = ts.tenant_id
+
+    try:
+        http_requests.post(
+            f"{RUNTIME_BACKEND_URL}/reload",
+            json={"spec": spec, "tenant_id": ts.tenant_id},
+            timeout=30,
+        )
+        print(f"[CONCIERGE] Backend reload triggered for tenant {ts.tenant_id}")
+    except Exception as exc:
+        print(f"[CONCIERGE] Backend reload failed for tenant {ts.tenant_id}: {exc}")
+
+
 @app.get("/concierge/workspace/files")
-def list_workspace_files():
-    WORKSPACE.mkdir(exist_ok=True)
+def list_workspace_files(user: AuthUser = Depends(get_current_user)):
+    ts = _get_tenant(user.tenant_id)
+    ts.workspace.mkdir(parents=True, exist_ok=True)
     files = []
-    for p in sorted(WORKSPACE.iterdir()):
+    for p in sorted(ts.workspace.iterdir()):
         if p.is_file() and not p.name.startswith("."):
             files.append(
                 {
@@ -269,8 +407,9 @@ def list_workspace_files():
 
 
 @app.delete("/concierge/workspace/files/{filename}")
-def delete_workspace_file(filename: str):
-    target = WORKSPACE / filename
+def delete_workspace_file(filename: str, user: AuthUser = Depends(get_current_user)):
+    ts = _get_tenant(user.tenant_id)
+    target = ts.workspace / filename
     if target.exists() and target.is_file():
         target.unlink()
         return {"deleted": filename}
