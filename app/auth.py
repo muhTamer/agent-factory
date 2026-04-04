@@ -12,7 +12,6 @@ from __future__ import annotations
 import hashlib
 import os
 from dataclasses import dataclass
-from functools import lru_cache
 
 import jwt
 from fastapi import Depends, HTTPException, Request
