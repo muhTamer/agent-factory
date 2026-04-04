@@ -40,12 +40,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     strategy: "jwt",
   },
   callbacks: {
-    authorized({ auth, request }) {
-      const isLoggedIn = !!auth?.user;
-      const isOnLogin = request.nextUrl.pathname.startsWith("/login");
-      if (isOnLogin) return true; // always allow login page
-      return isLoggedIn; // redirect to login if not authenticated
-    },
     async jwt({ token, user, account }) {
       if (user) {
         token.provider = account?.provider ?? "";
