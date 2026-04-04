@@ -97,16 +97,20 @@ class ToolTestRequest(BaseModel):
     context: dict = {}
 
 
-# ---------- Startup ----------
-@app.on_event("startup")
-def startup_event():
+# ---------- Spec loading (reusable for startup + /reload) ----------
+def _load_spec_from_path(spec_path: Path) -> bool:
+    """Load agents from a factory spec file. Returns True if successful."""
     global router, spine, tool_registry
 
-    if not FACTORY_SPEC_PATH.exists():
-        raise RuntimeError(f"Factory spec not found at {FACTORY_SPEC_PATH}")
+    if not spec_path.exists():
+        return False
 
-    spec = json.loads(FACTORY_SPEC_PATH.read_text(encoding="utf-8"))
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
     print(f"[BOOT] Loading spec with {len(spec.get('agents', []))} agents...")
+
+    # Clear existing agents
+    registry._agents.clear()
+    registry._meta.clear()
 
     for agent_spec in spec.get("agents", []):
         a_id = agent_spec["id"]
@@ -150,13 +154,13 @@ def startup_event():
     )
 
     print(f"[BOOT] All agents loaded: {registry.all_ids()}")
-
     print(
-        f"[POLICY] blocked_phrases={getattr(pack, 'blocked_phrases', None)} policy_path={policy_path.resolve()}"
+        f"[POLICY] blocked_phrases={getattr(pack, 'blocked_phrases', None)} "
+        f"policy_path={policy_path.resolve()}"
     )
     print(f"[SPINE] guardrails={type(spine.guardrails).__name__}")
 
-    # Load customer tool overrides (stubs used as fallback for any unspecified tool)
+    # Load customer tool overrides
     if TOOLS_CONFIG_PATH.exists():
         tools_config = json.loads(TOOLS_CONFIG_PATH.read_text(encoding="utf-8"))
         tool_registry = build_registry(
@@ -168,6 +172,30 @@ def startup_event():
         tool_registry = DEFAULT_REGISTRY
         print(
             f"[TOOLS] No tools_config.json found — using stubs: {tool_registry.all_names()}"
+        )
+
+    return True
+
+
+def _load_spec_from_json(spec_data: dict) -> bool:
+    """Load agents from a spec dict (received via /reload API)."""
+    # Write spec to disk so generate_agent can find it
+    FACTORY_SPEC_PATH.parent.mkdir(parents=True, exist_ok=True)
+    FACTORY_SPEC_PATH.write_text(
+        json.dumps(spec_data, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    return _load_spec_from_path(FACTORY_SPEC_PATH)
+
+
+# ---------- Startup ----------
+@app.on_event("startup")
+def startup_event():
+    if FACTORY_SPEC_PATH.exists():
+        _load_spec_from_path(FACTORY_SPEC_PATH)
+    else:
+        print(
+            "[BOOT] No factory spec found — running in waiting mode. "
+            "Complete onboarding via the concierge to load agents."
         )
 
 
@@ -183,12 +211,61 @@ def shutdown_event():
 # ---------- Routes ----------
 @app.get("/health")
 def health():
+    agents_meta = registry.all_meta()
     return {
-        "status": "ok",
-        "agents": registry.all_meta(),
+        "status": "ok" if agents_meta else "waiting",
+        "agents": agents_meta,
         "dry_run": True,
         "request_id": str(uuid.uuid4()),
     }
+
+
+class ReloadRequest(BaseModel):
+    spec: dict | None = None
+    concierge_url: str | None = None
+
+
+@app.post("/reload")
+def reload_spec(req: ReloadRequest):
+    """
+    Hot-reload agents from a factory spec.
+    Either pass the spec directly or provide a concierge_url to fetch it from.
+    """
+    if req.spec:
+        ok = _load_spec_from_json(req.spec)
+        if ok:
+            return {"status": "reloaded", "agents": registry.all_ids()}
+        return {"status": "error", "message": "Failed to load spec"}
+
+    if req.concierge_url:
+        import requests as http_requests
+
+        try:
+            r = http_requests.get(f"{req.concierge_url}/concierge/spec", timeout=10)
+            r.raise_for_status()
+            data = r.json()
+            if "spec" not in data or not data["spec"]:
+                return {
+                    "status": "error",
+                    "message": "No spec available from concierge",
+                }
+            ok = _load_spec_from_json(data["spec"])
+            if ok:
+                return {"status": "reloaded", "agents": registry.all_ids()}
+            return {"status": "error", "message": "Failed to load fetched spec"}
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"Failed to fetch spec: {exc}")
+
+    if FACTORY_SPEC_PATH.exists():
+        ok = _load_spec_from_path(FACTORY_SPEC_PATH)
+        if ok:
+            return {"status": "reloaded", "agents": registry.all_ids()}
+        return {"status": "error", "message": "Failed to reload from disk"}
+
+    raise HTTPException(
+        status_code=400,
+        detail="Provide 'spec' (JSON) or 'concierge_url' to reload from.",
+    )
 
 
 @app.get("/tools")

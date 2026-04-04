@@ -200,9 +200,13 @@ def deploy_factory(req: DeployRequest):
         {
             "type": "user_action",
             "action": action,
-            "doc_visibility": req.doc_visibility,  # None → backend applies extension-based defaults
+            "doc_visibility": req.doc_visibility,
         }
     )
+
+    # After deploy, trigger backend to reload with the new spec
+    _trigger_backend_reload()
+
     return result
 
 
@@ -225,7 +229,8 @@ def start_runtime(req: RuntimeRequest):
         subprocess.Popen(cmd, shell=True, cwd=str(REPO_ROOT))
         return {"status": "starting", "port": port}
     else:
-        # Cloud: runtime is a separate container, just check health
+        # Cloud: runtime is a separate container — trigger reload and check health
+        _trigger_backend_reload()
         try:
             r = http_requests.get(f"{RUNTIME_BACKEND_URL}/health", timeout=5)
             if r.status_code == 200:
@@ -268,6 +273,64 @@ def runtime_health():
     except Exception:
         pass
     return {"status": "unreachable"}
+
+
+@app.get("/concierge/spec")
+def get_factory_spec():
+    """Return the generated factory spec (used by backend /reload)."""
+    spec_path = WORKSPACE / ".factory" / "factory_spec.json"
+    if not spec_path.exists():
+        return {"spec": None, "status": "not_deployed"}
+    try:
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        return {"spec": spec, "status": "ready"}
+    except Exception as exc:
+        return {"spec": None, "status": "error", "error": str(exc)}
+
+
+def _trigger_backend_reload():
+    """Tell the runtime backend to reload its spec from this concierge."""
+    if RUNTIME_BACKEND_URL.startswith("http://127.0.0.1"):
+        # Local dev: backend reads from disk, just needs a reload nudge
+        spec_path = WORKSPACE / ".factory" / "factory_spec.json"
+        if spec_path.exists():
+            spec = json.loads(spec_path.read_text(encoding="utf-8"))
+            try:
+                http_requests.post(
+                    f"{RUNTIME_BACKEND_URL}/reload",
+                    json={"spec": spec},
+                    timeout=30,
+                )
+                print("[CONCIERGE] Backend reload triggered (local, spec sent)")
+            except Exception as exc:
+                print(f"[CONCIERGE] Backend reload failed (local): {exc}")
+    else:
+        # Cloud: tell backend to fetch spec from our /concierge/spec endpoint
+        concierge_url = os.getenv("CONCIERGE_PUBLIC_URL", "")
+        if concierge_url:
+            try:
+                http_requests.post(
+                    f"{RUNTIME_BACKEND_URL}/reload",
+                    json={"concierge_url": concierge_url},
+                    timeout=30,
+                )
+                print("[CONCIERGE] Backend reload triggered (cloud)")
+            except Exception as exc:
+                print(f"[CONCIERGE] Backend reload failed (cloud): {exc}")
+        else:
+            # Fallback: send spec directly
+            spec_path = WORKSPACE / ".factory" / "factory_spec.json"
+            if spec_path.exists():
+                spec = json.loads(spec_path.read_text(encoding="utf-8"))
+                try:
+                    http_requests.post(
+                        f"{RUNTIME_BACKEND_URL}/reload",
+                        json={"spec": spec},
+                        timeout=30,
+                    )
+                    print("[CONCIERGE] Backend reload triggered (spec sent directly)")
+                except Exception as exc:
+                    print(f"[CONCIERGE] Backend reload failed: {exc}")
 
 
 @app.get("/concierge/workspace/files")
