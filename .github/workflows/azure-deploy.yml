@@ -74,6 +74,22 @@ jobs:
               2>/dev/null || true
           done
 
+          # Grant all container apps access to pull from ACR
+          ACR_SERVER="${{ env.ACR_NAME }}.azurecr.io"
+          ACR_CREDS=$(az acr credential show --name ${{ env.ACR_NAME }})
+          ACR_USERNAME=$(echo "$ACR_CREDS" | jq -r '.username')
+          ACR_PASSWORD=$(echo "$ACR_CREDS" | jq -r '.passwords[0].value')
+          for APP_NAME in ${{ env.BACKEND_APP }} ${{ env.CONCIERGE_APP }} ${{ env.FRONTEND_APP }}; do
+            echo "Configuring ACR access on: $APP_NAME"
+            az containerapp registry set \
+              --name "$APP_NAME" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --server "$ACR_SERVER" \
+              --username "$ACR_USERNAME" \
+              --password "$ACR_PASSWORD" \
+              2>/dev/null || true
+          done
+
       # ── Build & push backend + concierge images ──
       - name: Build and push backend image
         run: |
