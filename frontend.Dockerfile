@@ -14,7 +14,9 @@ COPY frontend/ .
 # API URL is set at build time for static optimization,
 # and can be overridden at runtime via NEXT_PUBLIC_API_BASE
 ARG NEXT_PUBLIC_API_BASE=http://localhost:8080
+ARG NEXT_PUBLIC_CONCIERGE_API=http://localhost:8001
 ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
+ENV NEXT_PUBLIC_CONCIERGE_API=$NEXT_PUBLIC_CONCIERGE_API
 
 RUN npm run build
 
