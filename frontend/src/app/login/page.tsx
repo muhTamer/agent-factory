@@ -1,6 +1,8 @@
 import { signIn } from "@/auth";
 import { Bot } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 const ALL_PROVIDERS: Record<string, { name: string; icon: React.ReactNode }> = {
   google: {
     name: "Google",
