@@ -14,8 +14,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 COPY data/ ./data/
 COPY scripts/ ./scripts/
-COPY .factory/ ./.factory/
 COPY tests/fixtures/ ./tests/fixtures/
+
+# .factory/ may not exist in CI (generated at runtime) — copy if present
+RUN mkdir -p .factory
+COPY .factor[y]/ ./.factory/
 
 # Create workspace directory
 RUN mkdir -p .workspace

@@ -32,6 +32,7 @@ generated
 
 # Tests & docs (not needed in production image)
 tests
+!tests/fixtures
 evaluation
 docs
 *.md
