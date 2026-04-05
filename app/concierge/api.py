@@ -382,7 +382,9 @@ def deploy_factory(req: DeployRequest, user: AuthUser = Depends(get_current_user
 
 
 @app.post("/concierge/runtime/start")
-def start_runtime(req: RuntimeRequest, user: AuthUser = Depends(get_current_user)):
+def start_runtime(
+    request: Request, req: RuntimeRequest, user: AuthUser = Depends(get_current_user)
+):
     ts = _get_tenant(user.tenant_id)
     port = req.port
     # On Azure the runtime backend is already running as a separate container.
@@ -405,7 +407,13 @@ def start_runtime(req: RuntimeRequest, user: AuthUser = Depends(get_current_user
         logger.info("[start] tenant=%s triggering backend reload", user.tenant_id)
         _trigger_backend_reload(ts)
         try:
-            r = http_requests.get(f"{RUNTIME_BACKEND_URL}/health", timeout=5)
+            fwd_headers = {}
+            auth = request.headers.get("authorization")
+            if auth:
+                fwd_headers["Authorization"] = auth
+            r = http_requests.get(
+                f"{RUNTIME_BACKEND_URL}/health", headers=fwd_headers, timeout=5
+            )
             logger.info("[start] backend health -> %d", r.status_code)
             if r.status_code == 200:
                 return {"status": "running", "url": RUNTIME_BACKEND_URL, **r.json()}
@@ -439,9 +447,16 @@ def stop_runtime(req: RuntimeRequest, user: AuthUser = Depends(get_current_user)
 
 
 @app.get("/concierge/runtime/health")
-def runtime_health():
+def runtime_health(request: Request):
     try:
-        r = http_requests.get(f"{RUNTIME_BACKEND_URL}/health", timeout=5)
+        # Forward the Authorization header so the backend can identify the tenant
+        headers = {}
+        auth = request.headers.get("authorization")
+        if auth:
+            headers["Authorization"] = auth
+        r = http_requests.get(
+            f"{RUNTIME_BACKEND_URL}/health", headers=headers, timeout=5
+        )
         logger.info("[health] backend %s -> %d", RUNTIME_BACKEND_URL, r.status_code)
         if r.status_code == 200:
             return r.json()
