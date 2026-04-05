@@ -63,6 +63,23 @@ export function WelcomeStep() {
   const [quickLoading, setQuickLoading] = useState(false);
   const [quickStatus, setQuickStatus] = useState("");
 
+  const [postTest, setPostTest] = useState<string>("");
+
+  async function testPost() {
+    setPostTest("Testing...");
+    try {
+      const res = await fetch("/api/concierge/cors-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ test: true }),
+      });
+      const data = await res.json();
+      setPostTest(`OK: ${res.status} ${JSON.stringify(data)}`);
+    } catch (err) {
+      setPostTest(`FAIL: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   async function handleQuickstart() {
     setQuickLoading(true);
     setError(null);
@@ -196,10 +213,18 @@ export function WelcomeStep() {
         </Button>
       </div>
 
-      {/* Debug info — remove after fixing deploy */}
-      <p className="text-xs text-slate-400 text-center break-all">
-        API: /api/concierge (proxied)
-      </p>
+      {/* Debug — remove after fixing deploy */}
+      <div className="space-y-1 text-center">
+        <button
+          onClick={testPost}
+          className="text-xs text-blue-500 underline"
+        >
+          Test POST proxy
+        </button>
+        {postTest && (
+          <p className="text-xs text-slate-400 break-all">{postTest}</p>
+        )}
+      </div>
     </div>
   );
 }
