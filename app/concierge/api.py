@@ -151,6 +151,12 @@ def debug_info():
         "active_tenants": len(_tenants),
         "tenant_ids": list(_tenants.keys()),
         "cors_origins": _cors_origins,
+        "llm_config": {
+            "azure_endpoint_set": bool(os.getenv("AZURE_OPENAI_ENDPOINT")),
+            "azure_api_key_set": bool(os.getenv("AZURE_OPENAI_API_KEY")),
+            "azure_deployment": os.getenv("AZURE_OPENAI_DEPLOYMENT", ""),
+            "azure_api_version": os.getenv("AZURE_OPENAI_API_VERSION", ""),
+        },
     }
 
 
@@ -158,7 +164,7 @@ def debug_info():
 def debug_backend():
     """Proxy to the backend's /debug endpoint."""
     try:
-        r = http_requests.get(f"{RUNTIME_BACKEND_URL}/debug", timeout=5)
+        r = http_requests.get(f"{RUNTIME_BACKEND_URL}/debug", timeout=10)
         if r.status_code == 200:
             return {"backend_reachable": True, **r.json()}
     except Exception as exc:
