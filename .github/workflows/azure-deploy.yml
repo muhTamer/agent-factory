@@ -165,7 +165,7 @@ jobs:
             AZURE_OPENAI_API_VERSION=2024-02-01
             AUTH_SECRET=secretref:auth-secret
             AUTH_ENABLED=true
-            RUNTIME_BACKEND_URL=http://agent-factory-backend:8080
+            RUNTIME_BACKEND_URL=https://agent-factory-backend.politedune-9f1beae9.westeurope.azurecontainerapps.io
 
       # ── Get concierge FQDN (assigned by Azure on first deploy) ──
       - name: Get concierge FQDN

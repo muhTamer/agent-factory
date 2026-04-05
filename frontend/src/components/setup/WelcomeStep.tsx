@@ -256,9 +256,14 @@ export function WelcomeStep() {
           </Button>
         </CardContent>
         {quickLoading && quickStatus && (
-          <div className="flex items-center gap-2 border-t border-amber-200 px-4 py-2 text-sm text-amber-700">
-            <Loader2 size={14} className="animate-spin" />
-            {quickStatus}
+          <div className="border-t border-amber-200 px-4 py-2">
+            <div className="flex items-center gap-2 text-sm text-amber-700">
+              <Loader2 size={14} className="animate-spin" />
+              {quickStatus}
+            </div>
+            <p className="mt-1 text-xs text-amber-600">
+              Please keep this tab in the foreground — switching apps may cancel the request.
+            </p>
           </div>
         )}
       </Card>
