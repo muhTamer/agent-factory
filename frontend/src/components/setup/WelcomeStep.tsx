@@ -2,6 +2,7 @@
 
 import { useSetupStore } from "@/store/setupStore";
 import { quickstartFintech, deployFactory } from "@/lib/concierge-api";
+import { CONCIERGE_API } from "@/lib/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -195,6 +196,11 @@ export function WelcomeStep() {
           <ArrowRight size={16} />
         </Button>
       </div>
+
+      {/* Debug info — remove after fixing deploy */}
+      <p className="text-xs text-slate-400 text-center break-all">
+        API: {CONCIERGE_API}
+      </p>
     </div>
   );
 }
