@@ -13,8 +13,6 @@ import json
 import os
 import shutil
 import subprocess
-import time as _time
-import traceback
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
@@ -74,33 +72,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# ---------------------------------------------------------------------------
-# Request logging via FastAPI event hooks (avoids BaseHTTPMiddleware issues)
-# ---------------------------------------------------------------------------
-
-
-@app.middleware("http")
-async def log_requests(request, call_next):
-    t0 = _time.time()
-    method = request.method
-    path = request.url.path
-    has_auth = "authorization" in request.headers
-    print(f"[REQ] {method} {path} auth={has_auth}", flush=True)
-    try:
-        response = await call_next(request)
-        elapsed = _time.time() - t0
-        print(
-            f"[RES] {method} {path} -> {response.status_code} ({elapsed:.2f}s)",
-            flush=True,
-        )
-        return response
-    except Exception:
-        elapsed = _time.time() - t0
-        print(f"[ERR] {method} {path} -> 500 ({elapsed:.2f}s)", flush=True)
-        traceback.print_exc()
-        raise
 
 
 # ---------------------------------------------------------------------------
