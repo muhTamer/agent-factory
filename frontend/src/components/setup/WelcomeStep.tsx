@@ -96,10 +96,10 @@ export function WelcomeStep() {
   }
 
   async function testQuickstartDirect() {
-    setPostTest("Testing quickstart POST (no auth)...");
+    setPostTest("Testing quickstart POST WITH auth...");
     try {
       const t0 = Date.now();
-      const res = await fetch("/api/concierge/quickstart-fintech", {
+      const res = await authFetch("/api/concierge/quickstart-fintech", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ use_llm: true, model: "gpt-5-mini" }),
@@ -110,9 +110,10 @@ export function WelcomeStep() {
         setPostTest(`QS OK: ${res.status} (${elapsed}ms) plan_agents=${data?.plan?.agents?.length ?? "?"}`);
       } else {
         const text = await res.text().catch(() => "no body");
-        setPostTest(`QS HTTP ${res.status} (${elapsed}ms): ${text.slice(0, 200)}`);
+        setPostTest(`QS HTTP ${res.status} (${elapsed}ms): ${text.slice(0, 300)}`);
       }
     } catch (err) {
+      const elapsed = "?";
       const e = err instanceof Error ? err : new Error(String(err));
       setPostTest(`QS FAIL: name=${e.name} msg=${e.message}`);
     }
@@ -281,7 +282,7 @@ export function WelcomeStep() {
             Test POST
           </button>
           <button onClick={testQuickstartDirect} className="text-xs text-blue-500 underline">
-            Test Quickstart (no auth)
+            Test Quickstart (with auth)
           </button>
           <button onClick={testAuthFetch} className="text-xs text-red-500 underline font-bold">
             Test authFetch POST
