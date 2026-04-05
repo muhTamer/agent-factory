@@ -1,4 +1,3 @@
-import { CONCIERGE_API } from "./constants";
 import { authFetch } from "./auth-fetch";
 import type {
   Vertical,
@@ -27,7 +26,7 @@ export async function initSession(
   useLlm = true,
   model = "gpt-5-mini"
 ) {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/init`, {
+  const res = await authFetch(`/api/concierge/init`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ vertical, use_llm: useLlm, model }),
@@ -40,7 +39,7 @@ export async function uploadFiles(files: File[], vertical: Vertical) {
   const form = new FormData();
   files.forEach((f) => form.append("files", f));
   form.append("vertical", vertical);
-  const res = await authFetch(`${CONCIERGE_API}/concierge/upload`, {
+  const res = await authFetch(`/api/concierge/upload`, {
     method: "POST",
     body: form,
   });
@@ -52,7 +51,7 @@ export async function quickstartFintech(
   useLlm = true,
   model = "gpt-5-mini"
 ): Promise<AnalysisResponse> {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/quickstart-fintech`, {
+  const res = await authFetch(`/api/concierge/quickstart-fintech`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ use_llm: useLlm, model }),
@@ -65,7 +64,7 @@ export async function analyzeDocuments(
   useLlm = true,
   model = "gpt-5-mini"
 ): Promise<AnalysisResponse> {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/analyze`, {
+  const res = await authFetch(`/api/concierge/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ use_llm: useLlm, model }),
@@ -75,7 +74,7 @@ export async function analyzeDocuments(
 }
 
 export async function generateTemplates(): Promise<AnalysisResponse> {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/generate-templates`, {
+  const res = await authFetch(`/api/concierge/generate-templates`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
@@ -88,7 +87,7 @@ export async function deployFactory(
   mode: "dry" | "live" = "dry",
   docVisibility?: Record<string, "customer_facing" | "internal">
 ): Promise<DeployResponse> {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/deploy`, {
+  const res = await authFetch(`/api/concierge/deploy`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mode, doc_visibility: docVisibility ?? null }),
@@ -98,7 +97,7 @@ export async function deployFactory(
 }
 
 export async function startRuntime(port = 808) {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/runtime/start`, {
+  const res = await authFetch(`/api/concierge/runtime/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ port }),
@@ -108,7 +107,7 @@ export async function startRuntime(port = 808) {
 }
 
 export async function stopRuntime(port = 808) {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/runtime/stop`, {
+  const res = await authFetch(`/api/concierge/runtime/stop`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ port }),
@@ -118,7 +117,7 @@ export async function stopRuntime(port = 808) {
 }
 
 export async function getRuntimeHealth() {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/runtime/health`, {
+  const res = await authFetch(`/api/concierge/runtime/health`, {
     cache: "no-store",
   });
   if (!res.ok) throw await apiError("Runtime health failed", res);
@@ -126,14 +125,14 @@ export async function getRuntimeHealth() {
 }
 
 export async function listWorkspaceFiles(): Promise<WorkspaceFile[]> {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/workspace/files`);
+  const res = await authFetch(`/api/concierge/workspace/files`);
   if (!res.ok) throw await apiError("Workspace listing failed", res);
   return res.json();
 }
 
 export async function deleteWorkspaceFile(filename: string) {
   const res = await authFetch(
-    `${CONCIERGE_API}/concierge/workspace/files/${encodeURIComponent(filename)}`,
+    `/api/concierge/workspace/files/${encodeURIComponent(filename)}`,
     { method: "DELETE" }
   );
   if (!res.ok) throw await apiError("Delete failed", res);
@@ -143,7 +142,7 @@ export async function deleteWorkspaceFile(filename: string) {
 // ── MCP Tool Configuration ──────────────────────────────────────────
 
 export async function getMcpToolsConfig(): Promise<McpToolsConfig> {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/mcp-tools`);
+  const res = await authFetch(`/api/concierge/mcp-tools`);
   if (!res.ok) throw await apiError("MCP tools fetch failed", res);
   return res.json();
 }
@@ -152,7 +151,7 @@ export async function saveMcpToolsConfig(
   tools: McpToolDef[],
   serverName = "demo-server"
 ) {
-  const res = await authFetch(`${CONCIERGE_API}/concierge/mcp-tools`, {
+  const res = await authFetch(`/api/concierge/mcp-tools`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ tools, server_name: serverName }),
@@ -163,7 +162,7 @@ export async function saveMcpToolsConfig(
 
 export async function saveSingleMcpTool(toolName: string, tool: McpToolDef) {
   const res = await authFetch(
-    `${CONCIERGE_API}/concierge/mcp-tools/${encodeURIComponent(toolName)}`,
+    `/api/concierge/mcp-tools/${encodeURIComponent(toolName)}`,
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -176,7 +175,7 @@ export async function saveSingleMcpTool(toolName: string, tool: McpToolDef) {
 
 export async function deleteMcpTool(toolName: string) {
   const res = await authFetch(
-    `${CONCIERGE_API}/concierge/mcp-tools/${encodeURIComponent(toolName)}`,
+    `/api/concierge/mcp-tools/${encodeURIComponent(toolName)}`,
     { method: "DELETE" }
   );
   if (!res.ok) throw await apiError("MCP tool delete failed", res);

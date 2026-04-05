@@ -1,9 +1,8 @@
-import { API_BASE } from "./constants";
 import { authFetch } from "./auth-fetch";
 import type { ChatRequest, ChatResponse, HealthResponse } from "@/types/api";
 
 export async function getHealth(): Promise<HealthResponse> {
-  const res = await authFetch(`${API_BASE}/health`, { cache: "no-store" });
+  const res = await authFetch(`/api/runtime/health`, { cache: "no-store" });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`Health check failed (${res.status}): ${body}`);
@@ -12,7 +11,7 @@ export async function getHealth(): Promise<HealthResponse> {
 }
 
 export async function postChat(body: ChatRequest): Promise<ChatResponse> {
-  const res = await authFetch(`${API_BASE}/chat`, {
+  const res = await authFetch(`/api/runtime/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
