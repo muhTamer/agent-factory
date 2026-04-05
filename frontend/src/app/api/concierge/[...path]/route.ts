@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 120; // allow up to 2 minutes for LLM calls
 
 const CONCIERGE_URL =
   process.env.NEXT_PUBLIC_CONCIERGE_API || "http://127.0.0.1:8001";
@@ -13,6 +14,8 @@ async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname.replace(/^\/api\/concierge/, "/concierge");
   const url = `${CONCIERGE_URL}${path}${req.nextUrl.search}`;
 
+  console.log(`[PROXY] ${req.method} ${url}`);
+
   const headers = new Headers();
   // Forward content-type and authorization
   const ct = req.headers.get("content-type");
@@ -21,18 +24,24 @@ async function proxy(req: NextRequest) {
   if (auth) headers.set("authorization", auth);
 
   try {
-    const body =
-      req.method !== "GET" && req.method !== "HEAD"
-        ? await req.arrayBuffer()
-        : undefined;
+    let body: ArrayBuffer | undefined;
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      body = await req.arrayBuffer();
+      console.log(`[PROXY] ${req.method} ${url} body=${body.byteLength} bytes`);
+    }
 
     const res = await fetch(url, {
       method: req.method,
       headers,
       body,
+      signal: AbortSignal.timeout(120000), // 2 min timeout
     });
 
     const data = await res.arrayBuffer();
+    console.log(
+      `[PROXY] ${req.method} ${url} -> ${res.status} (${data.byteLength} bytes)`
+    );
+
     return new NextResponse(data, {
       status: res.status,
       headers: {

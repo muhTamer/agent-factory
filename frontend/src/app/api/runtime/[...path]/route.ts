@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 const RUNTIME_URL =
   process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:808";
@@ -13,6 +14,8 @@ async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname.replace(/^\/api\/runtime/, "");
   const url = `${RUNTIME_URL}${path}${req.nextUrl.search}`;
 
+  console.log(`[PROXY] ${req.method} ${url}`);
+
   const headers = new Headers();
   const ct = req.headers.get("content-type");
   if (ct) headers.set("content-type", ct);
@@ -20,18 +23,24 @@ async function proxy(req: NextRequest) {
   if (auth) headers.set("authorization", auth);
 
   try {
-    const body =
-      req.method !== "GET" && req.method !== "HEAD"
-        ? await req.arrayBuffer()
-        : undefined;
+    let body: ArrayBuffer | undefined;
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      body = await req.arrayBuffer();
+      console.log(`[PROXY] ${req.method} ${url} body=${body.byteLength} bytes`);
+    }
 
     const res = await fetch(url, {
       method: req.method,
       headers,
       body,
+      signal: AbortSignal.timeout(120000),
     });
 
     const data = await res.arrayBuffer();
+    console.log(
+      `[PROXY] ${req.method} ${url} -> ${res.status} (${data.byteLength} bytes)`
+    );
+
     return new NextResponse(data, {
       status: res.status,
       headers: {
