@@ -66,7 +66,7 @@ export function WelcomeStep() {
   const [postTest, setPostTest] = useState<string>("");
 
   async function testPost() {
-    setPostTest("Testing...");
+    setPostTest("Testing POST...");
     try {
       const res = await fetch("/api/concierge/cors-test", {
         method: "POST",
@@ -74,9 +74,45 @@ export function WelcomeStep() {
         body: JSON.stringify({ test: true }),
       });
       const data = await res.json();
-      setPostTest(`OK: ${res.status} ${JSON.stringify(data)}`);
+      setPostTest(`POST OK: ${res.status} ${JSON.stringify(data)}`);
     } catch (err) {
-      setPostTest(`FAIL: ${err instanceof Error ? err.message : String(err)}`);
+      const e = err instanceof Error ? err : new Error(String(err));
+      setPostTest(`POST FAIL: name=${e.name} msg=${e.message} cause=${String((e as unknown as Record<string,unknown>).cause ?? "none")}`);
+    }
+  }
+
+  async function testGet() {
+    setPostTest("Testing GET...");
+    try {
+      const res = await fetch("/api/concierge/debug");
+      const data = await res.json();
+      setPostTest(`GET OK: ${res.status} keys=${Object.keys(data).join(",")}`);
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      setPostTest(`GET FAIL: name=${e.name} msg=${e.message}`);
+    }
+  }
+
+  async function testQuickstartDirect() {
+    setPostTest("Testing quickstart POST (no auth)...");
+    try {
+      const t0 = Date.now();
+      const res = await fetch("/api/concierge/quickstart-fintech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ use_llm: true, model: "gpt-5-mini" }),
+      });
+      const elapsed = Date.now() - t0;
+      if (res.ok) {
+        const data = await res.json();
+        setPostTest(`QS OK: ${res.status} (${elapsed}ms) plan_agents=${data?.plan?.agents?.length ?? "?"}`);
+      } else {
+        const text = await res.text().catch(() => "no body");
+        setPostTest(`QS HTTP ${res.status} (${elapsed}ms): ${text.slice(0, 200)}`);
+      }
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      setPostTest(`QS FAIL: name=${e.name} msg=${e.message}`);
     }
   }
 
@@ -214,15 +250,21 @@ export function WelcomeStep() {
       </div>
 
       {/* Debug — remove after fixing deploy */}
-      <div className="space-y-1 text-center">
-        <button
-          onClick={testPost}
-          className="text-xs text-blue-500 underline"
-        >
-          Test POST proxy
-        </button>
+      <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p className="text-xs font-semibold text-slate-500">Debug Panel (v2)</p>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={testGet} className="text-xs text-blue-500 underline">
+            Test GET
+          </button>
+          <button onClick={testPost} className="text-xs text-blue-500 underline">
+            Test POST
+          </button>
+          <button onClick={testQuickstartDirect} className="text-xs text-blue-500 underline">
+            Test Quickstart (no auth)
+          </button>
+        </div>
         {postTest && (
-          <p className="text-xs text-slate-400 break-all">{postTest}</p>
+          <p className="text-xs text-slate-600 break-all font-mono bg-white rounded p-2">{postTest}</p>
         )}
       </div>
     </div>
