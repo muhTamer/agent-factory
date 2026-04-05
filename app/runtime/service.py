@@ -44,7 +44,11 @@ from app.runtime.rate_limiter import (
 
 app = FastAPI(title="Agent Factory Runtime", version="1.0")
 
-# CORS: allow local dev + Azure Container Apps frontend
+# Middleware order: added FIRST = innermost, added LAST = outermost.
+# RateLimitMiddleware is inner; CORSMiddleware is outer so CORS headers
+# are present on ALL responses (including rate-limit 429s and errors).
+app.add_middleware(RateLimitMiddleware)
+
 _cors_origins = [
     "http://localhost:8501",
     "http://127.0.0.1:8501",
@@ -63,7 +67,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(RateLimitMiddleware)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAX_TENANTS = 100

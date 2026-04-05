@@ -57,29 +57,9 @@ MAX_TENANTS = 200
 # ---------------------------------------------------------------------------
 app = FastAPI(title="Agent Factory Concierge API", version="1.0")
 
-# CORS: allow local dev + Azure Container Apps frontend
-_cors_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    "https://agent-factory-frontend.politedune-9f1beae9.westeurope.azurecontainerapps.io",
-]
-_extra_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
-if _extra_origins:
-    _cors_origins.extend([o.strip() for o in _extra_origins.split(",") if o.strip()])
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 # ---------------------------------------------------------------------------
-# Request logging middleware
+# Request logging middleware (added FIRST = innermost)
 # ---------------------------------------------------------------------------
 
 
@@ -106,6 +86,28 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(RequestLoggingMiddleware)
+
+# CORS: allow local dev + Azure Container Apps frontend
+# Added LAST = outermost, so CORS headers are present on ALL responses
+# (including error responses from inner middleware).
+_cors_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "https://agent-factory-frontend.politedune-9f1beae9.westeurope.azurecontainerapps.io",
+]
+_extra_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if _extra_origins:
+    _cors_origins.extend([o.strip() for o in _extra_origins.split(",") if o.strip()])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ---------------------------------------------------------------------------
