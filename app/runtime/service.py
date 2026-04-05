@@ -10,14 +10,17 @@ and evicted (LRU) when the cap is reached.
 from __future__ import annotations
 
 import json
+import logging
 import os
+import time
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.auth import AuthUser, get_current_user, get_optional_user
@@ -40,6 +43,16 @@ from app.runtime.rate_limiter import (
     record_llm_call,
     get_session_usage,
     get_daily_usage,
+)
+
+# ---------------------------------------------------------------------------
+# Structured logging
+# ---------------------------------------------------------------------------
+logger = logging.getLogger("runtime")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 
 app = FastAPI(title="Agent Factory Runtime", version="1.0")
@@ -67,6 +80,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled %s on %s %s: %s",
+        type(exc).__name__,
+        request.method,
+        request.url.path,
+        exc,
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "type": type(exc).__name__},
+    )
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAX_TENANTS = 100
@@ -112,20 +142,22 @@ def _get_tenant(tenant_id: str) -> TenantRuntime:
         return _tenants[tenant_id]
     while len(_tenants) >= MAX_TENANTS:
         evicted_id, _ = _tenants.popitem(last=False)
-        print(f"[TENANT] Evicted idle tenant {evicted_id}")
+        logger.info("Tenant evicted (LRU): %s", evicted_id)
     tr = TenantRuntime(tenant_id=tenant_id)
     # Create a spine in "waiting" mode (no agents loaded yet)
     tr.spine = RuntimeSpine(
         registry=tr.registry, router=tr.router, guardrails=guardrails
     )
     _tenants[tenant_id] = tr
+    logger.info("Tenant created: %s (total=%d)", tenant_id, len(_tenants))
     return tr
 
 
 def _load_spec_for_tenant(tr: TenantRuntime, spec: dict) -> bool:
     """Load agents from a spec dict into the tenant's runtime."""
+    t0 = time.time()
     agents = spec.get("agents", [])
-    print(f"[TENANT:{tr.tenant_id}] Loading spec with {len(agents)} agents...")
+    logger.info("[load] tenant=%s agents_in_spec=%d", tr.tenant_id, len(agents))
 
     # Clear existing agents
     tr.registry._agents.clear()
@@ -136,21 +168,37 @@ def _load_spec_for_tenant(tr: TenantRuntime, spec: dict) -> bool:
         a_type = agent_spec.get("type")
 
         if a_type == "guardrails":
+            logger.info(
+                "[load] tenant=%s skipping guardrails agent %s", tr.tenant_id, a_id
+            )
             continue
 
         if a_type == "autogen":
-            gen_path = generate_agent(agent_spec)
-            gen_dir = gen_path if isinstance(gen_path, Path) else Path(gen_path)
-            if gen_dir.suffix == ".py":
-                gen_dir = gen_dir.parent
+            logger.info("[load] tenant=%s generating agent %s ...", tr.tenant_id, a_id)
+            try:
+                gen_path = generate_agent(agent_spec)
+                gen_dir = gen_path if isinstance(gen_path, Path) else Path(gen_path)
+                if gen_dir.suffix == ".py":
+                    gen_dir = gen_dir.parent
 
-            agent = tr.registry.import_generated_agent(a_id, gen_dir)
-            agent.load(agent_spec)
-            tr.registry.register(a_id, agent, meta=agent_spec.get("blueprint_meta"))
-            print(f"[TENANT:{tr.tenant_id}] Agent ready: {a_id}")
+                agent = tr.registry.import_generated_agent(a_id, gen_dir)
+                agent.load(agent_spec)
+                tr.registry.register(a_id, agent, meta=agent_spec.get("blueprint_meta"))
+                logger.info("[load] tenant=%s agent ready: %s", tr.tenant_id, a_id)
+            except Exception as exc:
+                logger.error(
+                    "[load] tenant=%s agent %s FAILED: %s",
+                    tr.tenant_id,
+                    a_id,
+                    exc,
+                    exc_info=True,
+                )
         else:
-            print(
-                f"[TENANT:{tr.tenant_id}] Skipping unrecognized type {a_type} ({a_id})"
+            logger.warning(
+                "[load] tenant=%s skipping unrecognized type %s (%s)",
+                tr.tenant_id,
+                a_type,
+                a_id,
             )
 
     llm_router = LLMRouter(registry=tr.registry)
@@ -175,7 +223,13 @@ def _load_spec_for_tenant(tr: TenantRuntime, spec: dict) -> bool:
     )
     tr.loaded = True
 
-    print(f"[TENANT:{tr.tenant_id}] All agents loaded: {tr.registry.all_ids()}")
+    elapsed = time.time() - t0
+    logger.info(
+        "[load] tenant=%s complete in %.1fs — agents=%s",
+        tr.tenant_id,
+        elapsed,
+        tr.registry.all_ids(),
+    )
     return True
 
 
@@ -191,6 +245,12 @@ _DEV_TENANT_ID = "dev"
 
 @app.on_event("startup")
 def startup_event():
+    logger.info(
+        "Runtime starting — auth=%s, governance=%s, cors=%s",
+        os.getenv("AUTH_ENABLED", "true"),
+        _gov_level.value,
+        _cors_origins,
+    )
     if FACTORY_SPEC_PATH.exists():
         spec = json.loads(FACTORY_SPEC_PATH.read_text(encoding="utf-8"))
         tr = _get_tenant(_DEV_TENANT_ID)
@@ -203,11 +263,11 @@ def startup_event():
                 config=tools_config.get("tools", []),
                 mcp_servers=tools_config.get("mcp_servers", []),
             )
-            print(f"[TOOLS] Loaded customer config: {tr.tool_registry.all_names()}")
+            logger.info("[tools] loaded config: %s", tr.tool_registry.all_names())
     else:
-        print(
-            "[BOOT] No factory spec found — running in waiting mode. "
-            "Complete onboarding via the concierge to load agents."
+        logger.info(
+            "No factory spec at %s — waiting mode. Complete onboarding via concierge.",
+            FACTORY_SPEC_PATH,
         )
 
 
@@ -216,7 +276,7 @@ def shutdown_event():
     for tr in _tenants.values():
         if hasattr(tr.tool_registry, "shutdown"):
             tr.tool_registry.shutdown()
-    print("[TOOLS] MCP servers disconnected.")
+    logger.info("MCP servers disconnected.")
 
 
 # ---------------------------------------------------------------------------
@@ -281,22 +341,45 @@ def reload_spec(req: ReloadRequest):
     Called by the concierge after deploy.
     """
     tenant_id = req.tenant_id or _DEV_TENANT_ID
+    logger.info(
+        "[reload] tenant=%s spec=%s concierge_url=%s",
+        tenant_id,
+        bool(req.spec),
+        req.concierge_url,
+    )
 
     if req.spec:
+        agent_ids = [a.get("id", "?") for a in req.spec.get("agents", [])]
+        logger.info(
+            "[reload] tenant=%s loading %d agents: %s",
+            tenant_id,
+            len(agent_ids),
+            agent_ids,
+        )
         tr = _get_tenant(tenant_id)
         ok = _load_spec_for_tenant(tr, req.spec)
         if ok:
+            logger.info(
+                "[reload] tenant=%s success — agents=%s",
+                tenant_id,
+                tr.registry.all_ids(),
+            )
             return {"status": "reloaded", "agents": tr.registry.all_ids()}
+        logger.error("[reload] tenant=%s failed to load spec", tenant_id)
         return {"status": "error", "message": "Failed to load spec"}
 
     if req.concierge_url:
         import requests as http_requests
 
+        logger.info(
+            "[reload] tenant=%s fetching spec from %s", tenant_id, req.concierge_url
+        )
         try:
             r = http_requests.get(f"{req.concierge_url}/concierge/spec", timeout=10)
             r.raise_for_status()
             data = r.json()
             if "spec" not in data or not data["spec"]:
+                logger.warning("[reload] tenant=%s no spec from concierge", tenant_id)
                 return {
                     "status": "error",
                     "message": "No spec available from concierge",
@@ -307,10 +390,14 @@ def reload_spec(req: ReloadRequest):
                 return {"status": "reloaded", "agents": tr.registry.all_ids()}
             return {"status": "error", "message": "Failed to load fetched spec"}
         except Exception as exc:
+            logger.error("[reload] tenant=%s fetch failed: %s", tenant_id, exc)
             raise HTTPException(status_code=502, detail=f"Failed to fetch spec: {exc}")
 
     # Fallback: try loading from disk (dev mode)
     if FACTORY_SPEC_PATH.exists():
+        logger.info(
+            "[reload] tenant=%s loading from disk %s", tenant_id, FACTORY_SPEC_PATH
+        )
         spec = json.loads(FACTORY_SPEC_PATH.read_text(encoding="utf-8"))
         tr = _get_tenant(tenant_id)
         ok = _load_spec_for_tenant(tr, spec)
@@ -326,12 +413,21 @@ def reload_spec(req: ReloadRequest):
 
 @app.post("/chat")
 def chat(req: ChatRequest, user: AuthUser = Depends(get_current_user)):
+    t0 = time.time()
     q = req.query.strip()
     if not q:
         raise HTTPException(status_code=400, detail="Query text required.")
 
+    logger.info(
+        "[chat] tenant=%s thread=%s query=%s",
+        user.tenant_id,
+        req.thread_id or "new",
+        q[:80],
+    )
+
     tr = _get_tenant(user.tenant_id)
     if tr.spine is None or not tr.loaded:
+        logger.warning("[chat] tenant=%s agents not loaded", user.tenant_id)
         raise HTTPException(
             status_code=503,
             detail="Your agents are not loaded yet. Complete onboarding first.",
@@ -353,6 +449,16 @@ def chat(req: ChatRequest, user: AuthUser = Depends(get_current_user)):
     tr.thread_ctx[thread_id] = ctx
     resp["thread_id"] = thread_id
     resp["usage"] = usage
+
+    elapsed = time.time() - t0
+    routed_to = resp.get("agent_id", "?")
+    logger.info(
+        "[chat] tenant=%s thread=%s agent=%s elapsed=%.1fs",
+        user.tenant_id,
+        thread_id,
+        routed_to,
+        elapsed,
+    )
     return resp
 
 
