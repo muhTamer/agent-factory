@@ -154,6 +154,18 @@ def debug_info():
     }
 
 
+@app.get("/concierge/debug/backend")
+def debug_backend():
+    """Proxy to the backend's /debug endpoint."""
+    try:
+        r = http_requests.get(f"{RUNTIME_BACKEND_URL}/debug", timeout=5)
+        if r.status_code == 200:
+            return {"backend_reachable": True, **r.json()}
+    except Exception as exc:
+        return {"backend_reachable": False, "error": str(exc)}
+    return {"backend_reachable": False, "status_code": r.status_code}
+
+
 @app.post("/concierge/cors-test")
 def cors_test():
     """Minimal POST endpoint to verify CORS works for cross-origin requests."""

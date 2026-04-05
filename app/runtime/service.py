@@ -313,6 +313,31 @@ class EstimatorSwitchRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+@app.get("/debug")
+def debug_info():
+    """Diagnostic endpoint — shows runtime state (no auth required)."""
+    bp_dir = REPO_ROOT / "factory" / "blueprints"
+    blueprints = (
+        [d.name for d in bp_dir.iterdir() if d.is_dir()] if bp_dir.exists() else []
+    )
+    tenant_info = {}
+    for tid, tr in _tenants.items():
+        tenant_info[tid] = {
+            "loaded": tr.loaded,
+            "agents": tr.registry.all_ids() if tr.registry else [],
+            "agent_count": len(tr.registry.all_ids()) if tr.registry else 0,
+        }
+    return {
+        "auth_enabled": os.getenv("AUTH_ENABLED", "true"),
+        "blueprints_dir_exists": bp_dir.exists(),
+        "blueprints": blueprints,
+        "factory_spec_exists": FACTORY_SPEC_PATH.exists(),
+        "active_tenants": len(_tenants),
+        "tenants": tenant_info,
+        "governance_level": _gov_level.value,
+    }
+
+
 @app.get("/health")
 def health(user: AuthUser | None = Depends(get_optional_user)):
     """Health check. When authenticated, returns tenant-specific agent info."""
