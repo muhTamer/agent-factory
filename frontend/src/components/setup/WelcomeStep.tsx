@@ -16,6 +16,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { Vertical } from "@/types/concierge";
+import { useAuthStore } from "@/store/authStore";
+import { authFetch } from "@/lib/auth-fetch";
 
 const DOMAINS: {
   value: Vertical;
@@ -113,6 +115,25 @@ export function WelcomeStep() {
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
       setPostTest(`QS FAIL: name=${e.name} msg=${e.message}`);
+    }
+  }
+
+  async function testAuthFetch() {
+    const token = useAuthStore.getState().backendToken;
+    setPostTest(`Token: ${token ? `present (${token.length} chars, starts: ${token.slice(0, 20)}...)` : "NULL/undefined"}\nTesting authFetch POST...`);
+    try {
+      const t0 = Date.now();
+      const res = await authFetch("/api/concierge/cors-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ test: true }),
+      });
+      const elapsed = Date.now() - t0;
+      const data = await res.json();
+      setPostTest(`Token: ${token ? `yes (${token.length} chars)` : "NO"} | authFetch POST OK: ${res.status} (${elapsed}ms) ${JSON.stringify(data)}`);
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      setPostTest(`Token: ${token ? `yes (${token.length} chars)` : "NO"} | authFetch FAIL: name=${e.name} msg=${e.message}`);
     }
   }
 
@@ -261,6 +282,9 @@ export function WelcomeStep() {
           </button>
           <button onClick={testQuickstartDirect} className="text-xs text-blue-500 underline">
             Test Quickstart (no auth)
+          </button>
+          <button onClick={testAuthFetch} className="text-xs text-red-500 underline font-bold">
+            Test authFetch POST
           </button>
         </div>
         {postTest && (
