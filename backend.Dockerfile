@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 COPY data/ ./data/
+COPY factory/ ./factory/
 COPY scripts/ ./scripts/
 
 # .factory/ may not exist in CI (generated at runtime) — copy if present
