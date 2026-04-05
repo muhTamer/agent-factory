@@ -24,8 +24,6 @@ import requests as http_requests
 from fastapi import Depends, FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
 
 import app.llm_client as llm_client
 from app.auth import AUTH_ENABLED, AUTH_SECRET, AuthUser, get_current_user
@@ -57,39 +55,7 @@ MAX_TENANTS = 200
 # ---------------------------------------------------------------------------
 app = FastAPI(title="Agent Factory Concierge API", version="1.0")
 
-
-# ---------------------------------------------------------------------------
-# Request logging middleware (added FIRST = innermost)
-# ---------------------------------------------------------------------------
-
-
-class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        t0 = _time.time()
-        method = request.method
-        path = request.url.path
-        has_auth = "authorization" in request.headers
-        print(f"[REQ] {method} {path} auth={has_auth}")
-        try:
-            response = await call_next(request)
-            elapsed = _time.time() - t0
-            print(f"[RES] {method} {path} -> {response.status_code} ({elapsed:.2f}s)")
-            return response
-        except Exception as exc:
-            elapsed = _time.time() - t0
-            print(f"[ERR] {method} {path} -> 500 ({elapsed:.2f}s)")
-            traceback.print_exc()
-            return JSONResponse(
-                status_code=500,
-                content={"detail": str(exc), "type": type(exc).__name__},
-            )
-
-
-app.add_middleware(RequestLoggingMiddleware)
-
 # CORS: allow local dev + Azure Container Apps frontend
-# Added LAST = outermost, so CORS headers are present on ALL responses
-# (including error responses from inner middleware).
 _cors_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -111,6 +77,33 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
+# Request logging via FastAPI event hooks (avoids BaseHTTPMiddleware issues)
+# ---------------------------------------------------------------------------
+
+
+@app.middleware("http")
+async def log_requests(request, call_next):
+    t0 = _time.time()
+    method = request.method
+    path = request.url.path
+    has_auth = "authorization" in request.headers
+    print(f"[REQ] {method} {path} auth={has_auth}", flush=True)
+    try:
+        response = await call_next(request)
+        elapsed = _time.time() - t0
+        print(
+            f"[RES] {method} {path} -> {response.status_code} ({elapsed:.2f}s)",
+            flush=True,
+        )
+        return response
+    except Exception:
+        elapsed = _time.time() - t0
+        print(f"[ERR] {method} {path} -> 500 ({elapsed:.2f}s)", flush=True)
+        traceback.print_exc()
+        raise
+
+
+# ---------------------------------------------------------------------------
 # Diagnostic endpoint
 # ---------------------------------------------------------------------------
 
@@ -129,6 +122,12 @@ def debug_info():
         "active_tenants": len(_tenants),
         "cors_origins": _cors_origins,
     }
+
+
+@app.post("/concierge/cors-test")
+def cors_test():
+    """Minimal POST endpoint to verify CORS works for cross-origin requests."""
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------
