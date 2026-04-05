@@ -8,11 +8,16 @@ export default auth((req) => {
   // If no AUTH_SECRET configured, allow all requests (local dev)
   if (!process.env.AUTH_SECRET) return;
 
+  const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth?.user;
-  const isOnLogin = req.nextUrl.pathname.startsWith("/login");
-  const isAuthRoute = req.nextUrl.pathname.startsWith("/api/auth");
+  const isOnLogin = pathname.startsWith("/login");
+  const isAuthRoute = pathname.startsWith("/api/auth");
+  // Proxy routes handle their own auth via Authorization header
+  const isProxyRoute =
+    pathname.startsWith("/api/concierge") ||
+    pathname.startsWith("/api/runtime");
 
-  if (isAuthRoute || isOnLogin) return;
+  if (isAuthRoute || isOnLogin || isProxyRoute) return;
 
   if (!isLoggedIn) {
     return Response.redirect(new URL("/login", req.nextUrl.origin));
