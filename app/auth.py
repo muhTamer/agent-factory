@@ -10,6 +10,7 @@ JWT on every request using the shared AUTH_SECRET.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 from dataclasses import dataclass
 
@@ -17,8 +18,14 @@ import jwt
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+logger = logging.getLogger("auth")
+
 AUTH_SECRET = os.getenv("AUTH_SECRET", "")
 AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() == "true"
+
+logger.info(
+    "Auth module loaded: enabled=%s, secret_set=%s", AUTH_ENABLED, bool(AUTH_SECRET)
+)
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -42,6 +49,7 @@ def tenant_id_from_email(email: str) -> str:
 def decode_token(token: str) -> AuthUser:
     """Decode and validate a JWT token."""
     if not AUTH_SECRET:
+        logger.error("AUTH_SECRET not configured — cannot validate tokens")
         raise HTTPException(
             status_code=500,
             detail="AUTH_SECRET not configured on server.",
@@ -49,18 +57,31 @@ def decode_token(token: str) -> AuthUser:
     try:
         payload = jwt.decode(token, AUTH_SECRET, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
+        logger.warning("Token expired for sub=%s", _safe_sub(token))
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError as exc:
+        logger.warning("Invalid token: %s", exc)
         raise HTTPException(status_code=401, detail=f"Invalid token: {exc}")
 
     email = payload.get("email", "")
-    return AuthUser(
+    user = AuthUser(
         user_id=payload.get("sub", ""),
         email=email,
         name=payload.get("name", ""),
         tenant_id=payload.get("tenant_id") or tenant_id_from_email(email),
         provider=payload.get("provider", ""),
     )
+    logger.debug("Authenticated: %s tenant=%s", user.email, user.tenant_id)
+    return user
+
+
+def _safe_sub(token: str) -> str:
+    """Extract 'sub' from a JWT without verifying (for logging only)."""
+    try:
+        payload = jwt.decode(token, options={"verify_signature": False})
+        return payload.get("sub", "?")
+    except Exception:
+        return "?"
 
 
 async def get_current_user(

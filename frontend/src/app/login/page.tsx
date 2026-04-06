@@ -1,11 +1,10 @@
-"use client";
-
-import { signIn } from "next-auth/react";
+import { signIn } from "@/auth";
 import { Bot } from "lucide-react";
 
-const providers = [
-  {
-    id: "google",
+export const dynamic = "force-dynamic";
+
+const ALL_PROVIDERS: Record<string, { name: string; icon: React.ReactNode }> = {
+  google: {
     name: "Google",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -16,8 +15,7 @@ const providers = [
       </svg>
     ),
   },
-  {
-    id: "microsoft-entra-id",
+  "microsoft-entra-id": {
     name: "Microsoft",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -28,8 +26,7 @@ const providers = [
       </svg>
     ),
   },
-  {
-    id: "facebook",
+  facebook: {
     name: "Facebook",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#1877F2">
@@ -37,8 +34,7 @@ const providers = [
       </svg>
     ),
   },
-  {
-    id: "apple",
+  apple: {
     name: "Apple",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -46,12 +42,35 @@ const providers = [
       </svg>
     ),
   },
-];
+};
+
+function getAvailableProviders(): string[] {
+  const available: string[] = [];
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+    available.push("google");
+  if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET)
+    available.push("microsoft-entra-id");
+  if (
+    process.env.FACEBOOK_CLIENT_ID &&
+    process.env.FACEBOOK_CLIENT_SECRET &&
+    process.env.FACEBOOK_CLIENT_ID !== "placeholder"
+  )
+    available.push("facebook");
+  if (
+    process.env.APPLE_CLIENT_ID &&
+    process.env.APPLE_CLIENT_SECRET &&
+    process.env.APPLE_CLIENT_ID !== "placeholder"
+  )
+    available.push("apple");
+  return available;
+}
 
 export default function LoginPage() {
+  const available = getAvailableProviders();
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
+      <div className="w-full max-w-md space-y-6 sm:space-y-8 rounded-2xl bg-white p-6 sm:p-8 shadow-lg">
         {/* Logo */}
         <div className="text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-blue-500 text-white">
@@ -65,18 +84,35 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* OAuth buttons */}
+        {/* OAuth buttons — each is a server action form */}
         <div className="space-y-3">
-          {providers.map((provider) => (
-            <button
-              key={provider.id}
-              onClick={() => signIn(provider.id, { callbackUrl: "/" })}
-              className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300"
-            >
-              {provider.icon}
-              Continue with {provider.name}
-            </button>
-          ))}
+          {available.length === 0 ? (
+            <p className="text-center text-sm text-slate-400">
+              No sign-in providers configured. Contact the administrator.
+            </p>
+          ) : (
+            available.map((id) => {
+              const provider = ALL_PROVIDERS[id];
+              if (!provider) return null;
+              return (
+                <form
+                  key={id}
+                  action={async () => {
+                    "use server";
+                    await signIn(id, { redirectTo: "/" });
+                  }}
+                >
+                  <button
+                    type="submit"
+                    className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:border-slate-300"
+                  >
+                    {provider.icon}
+                    Continue with {provider.name}
+                  </button>
+                </form>
+              );
+            })
+          )}
         </div>
 
         <p className="text-center text-xs text-slate-400">

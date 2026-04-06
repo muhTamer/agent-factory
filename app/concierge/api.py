@@ -10,22 +10,35 @@ ConciergeAgent instance keyed by tenant_id.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import subprocess
+import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests as http_requests
-from fastapi import Depends, FastAPI, File, Form, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 import app.llm_client as llm_client
-from app.auth import AuthUser, get_current_user
+from app.auth import AUTH_ENABLED, AUTH_SECRET, AuthUser, get_current_user
 from app.concierge.concierge_agent import ConciergeAgent
+
+# ---------------------------------------------------------------------------
+# Structured logging
+# ---------------------------------------------------------------------------
+logger = logging.getLogger("concierge")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -79,6 +92,98 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ---------------------------------------------------------------------------
+# Global exception handler — catches unhandled errors so they return JSON
+# instead of crashing and lets us log them. No middleware wrapping needed.
+# ---------------------------------------------------------------------------
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled %s on %s %s: %s",
+        type(exc).__name__,
+        request.method,
+        request.url.path,
+        exc,
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "type": type(exc).__name__},
+    )
+
+
+@app.on_event("startup")
+def _log_startup():
+    logger.info(
+        "Concierge starting — auth=%s, data_dir=%s, runtime=%s, cors=%s",
+        AUTH_ENABLED,
+        DATA_DIR.exists(),
+        RUNTIME_BACKEND_URL,
+        _cors_origins,
+    )
+    for f in FINTECH_DATA_FILES:
+        logger.info("  preset file %s: %s", f.name, "OK" if f.exists() else "MISSING")
+    bp_dir = REPO_ROOT / "factory" / "blueprints"
+    if bp_dir.exists():
+        bps = [d.name for d in bp_dir.iterdir() if d.is_dir()]
+        logger.info("  blueprints: %s", bps)
+    else:
+        logger.warning("  blueprints dir MISSING: %s", bp_dir)
+
+
+# ---------------------------------------------------------------------------
+# Diagnostic endpoint
+# ---------------------------------------------------------------------------
+
+
+@app.get("/concierge/debug")
+def debug_info():
+    """Diagnostic endpoint — shows config status (no secret values)."""
+    bp_dir = REPO_ROOT / "factory" / "blueprints"
+    blueprints = (
+        [d.name for d in bp_dir.iterdir() if d.is_dir()] if bp_dir.exists() else []
+    )
+    return {
+        "auth_enabled": AUTH_ENABLED,
+        "auth_secret_set": bool(AUTH_SECRET),
+        "auth_secret_length": len(AUTH_SECRET),
+        "runtime_backend_url": RUNTIME_BACKEND_URL,
+        "data_dir_exists": DATA_DIR.exists(),
+        "fintech_files": {f.name: f.exists() for f in FINTECH_DATA_FILES},
+        "blueprints_dir_exists": bp_dir.exists(),
+        "blueprints": blueprints,
+        "workspaces_root": str(WORKSPACES_ROOT),
+        "active_tenants": len(_tenants),
+        "tenant_ids": list(_tenants.keys()),
+        "cors_origins": _cors_origins,
+        "llm_config": {
+            "azure_endpoint_set": bool(os.getenv("AZURE_OPENAI_ENDPOINT")),
+            "azure_api_key_set": bool(os.getenv("AZURE_OPENAI_API_KEY")),
+            "azure_deployment": os.getenv("AZURE_OPENAI_DEPLOYMENT", ""),
+            "azure_api_version": os.getenv("AZURE_OPENAI_API_VERSION", ""),
+        },
+    }
+
+
+@app.get("/concierge/debug/backend")
+def debug_backend():
+    """Proxy to the backend's /debug endpoint."""
+    try:
+        r = http_requests.get(f"{RUNTIME_BACKEND_URL}/debug", timeout=10)
+        if r.status_code == 200:
+            return {"backend_reachable": True, **r.json()}
+    except Exception as exc:
+        return {"backend_reachable": False, "error": str(exc)}
+    return {"backend_reachable": False, "status_code": r.status_code}
+
+
+@app.post("/concierge/cors-test")
+def cors_test():
+    """Minimal POST endpoint to verify CORS works for cross-origin requests."""
+    return {"ok": True}
+
+
 # ---------------------------------------------------------------------------
 # Per-tenant state (LRU eviction)
 # ---------------------------------------------------------------------------
@@ -126,9 +231,11 @@ def _get_tenant(tenant_id: str) -> TenantSession:
         return _tenants[tenant_id]
     # Evict oldest if at capacity
     while len(_tenants) >= MAX_TENANTS:
-        _tenants.popitem(last=False)
+        evicted_id, _ = _tenants.popitem(last=False)
+        logger.info("Tenant evicted (LRU): %s", evicted_id)
     session = TenantSession(tenant_id=tenant_id)
     _tenants[tenant_id] = session
+    logger.info("Tenant created: %s (total=%d)", tenant_id, len(_tenants))
     return session
 
 
@@ -167,8 +274,12 @@ class RuntimeRequest(BaseModel):
 
 @app.post("/concierge/init")
 def init_session(req: InitRequest, user: AuthUser = Depends(get_current_user)):
+    logger.info(
+        "[init] tenant=%s vertical=%s model=%s", user.tenant_id, req.vertical, req.model
+    )
     ts = _get_tenant(user.tenant_id)
     agent = ts.get_or_create_agent(vertical=req.vertical, model=req.model)
+    logger.info("[init] tenant=%s ready", user.tenant_id)
     return {"status": "ready", "vertical": agent.vertical}
 
 
@@ -178,6 +289,12 @@ async def upload_files(
     vertical: str = Form("retail"),
     user: AuthUser = Depends(get_current_user),
 ):
+    logger.info(
+        "[upload] tenant=%s files=%d vertical=%s",
+        user.tenant_id,
+        len(files),
+        vertical,
+    )
     ts = _get_tenant(user.tenant_id)
     ts.workspace.mkdir(parents=True, exist_ok=True)
     saved: list[str] = []
@@ -186,6 +303,12 @@ async def upload_files(
         dst = ts.workspace / f.filename
         dst.write_bytes(content)
         saved.append(f.filename)
+        logger.info(
+            "[upload] tenant=%s saved %s (%d bytes)",
+            user.tenant_id,
+            f.filename,
+            len(content),
+        )
     # Ensure agent is initialised for this vertical
     ts.get_or_create_agent(vertical=vertical)
     return {"files_saved": saved, "workspace": str(ts.workspace)}
@@ -195,15 +318,27 @@ async def upload_files(
 def quickstart_fintech(
     req: QuickstartRequest, user: AuthUser = Depends(get_current_user)
 ):
+    t0 = time.time()
+    logger.info(
+        "[quickstart] tenant=%s model=%s use_llm=%s",
+        user.tenant_id,
+        req.model,
+        req.use_llm,
+    )
     ts = _get_tenant(user.tenant_id)
     ts.workspace.mkdir(parents=True, exist_ok=True)
     # Copy preset files
     for src in FINTECH_DATA_FILES:
         if not src.exists():
+            logger.error("[quickstart] preset file missing: %s", src)
             return {"error": f"Preset file not found: {src}"}
         shutil.copy2(src, ts.workspace / src.name)
+        logger.info("[quickstart] copied %s", src.name)
 
     agent = ts.get_or_create_agent(vertical="fintech", model=req.model)
+    logger.info(
+        "[quickstart] tenant=%s agent ready, calling handle_event...", user.tenant_id
+    )
     result = agent.handle_event(
         {
             "type": "upload_docs",
@@ -211,6 +346,8 @@ def quickstart_fintech(
             "model": req.model,
         }
     )
+    elapsed = time.time() - t0
+    logger.info("[quickstart] tenant=%s done in %.1fs", user.tenant_id, elapsed)
     return result
 
 
@@ -239,6 +376,8 @@ def quickstart_retail(
 
 @app.post("/concierge/analyze")
 def analyze_documents(req: AnalyzeRequest, user: AuthUser = Depends(get_current_user)):
+    t0 = time.time()
+    logger.info("[analyze] tenant=%s model=%s", user.tenant_id, req.model)
     ts = _get_tenant(user.tenant_id)
     agent = ts.get_or_create_agent(model=req.model)
     result = agent.handle_event(
@@ -248,6 +387,7 @@ def analyze_documents(req: AnalyzeRequest, user: AuthUser = Depends(get_current_
             "model": req.model,
         }
     )
+    logger.info("[analyze] tenant=%s done in %.1fs", user.tenant_id, time.time() - t0)
     return result
 
 
@@ -266,6 +406,8 @@ def generate_templates(user: AuthUser = Depends(get_current_user)):
 
 @app.post("/concierge/deploy")
 def deploy_factory(req: DeployRequest, user: AuthUser = Depends(get_current_user)):
+    t0 = time.time()
+    logger.info("[deploy] tenant=%s mode=%s", user.tenant_id, req.mode)
     ts = _get_tenant(user.tenant_id)
     agent = ts.get_or_create_agent()
     action = "approve_deploy_dry" if req.mode == "dry" else "approve_deploy_live"
@@ -276,6 +418,9 @@ def deploy_factory(req: DeployRequest, user: AuthUser = Depends(get_current_user
             "doc_visibility": req.doc_visibility,
         }
     )
+    logger.info(
+        "[deploy] tenant=%s spec generated in %.1fs", user.tenant_id, time.time() - t0
+    )
 
     # After deploy, trigger backend to reload with the new spec
     _trigger_backend_reload(ts)
@@ -284,7 +429,9 @@ def deploy_factory(req: DeployRequest, user: AuthUser = Depends(get_current_user
 
 
 @app.post("/concierge/runtime/start")
-def start_runtime(req: RuntimeRequest, user: AuthUser = Depends(get_current_user)):
+def start_runtime(
+    request: Request, req: RuntimeRequest, user: AuthUser = Depends(get_current_user)
+):
     ts = _get_tenant(user.tenant_id)
     port = req.port
     # On Azure the runtime backend is already running as a separate container.
@@ -304,13 +451,21 @@ def start_runtime(req: RuntimeRequest, user: AuthUser = Depends(get_current_user
         return {"status": "starting", "port": port}
     else:
         # Cloud: runtime is a separate container — trigger reload and check health
+        logger.info("[start] tenant=%s triggering backend reload", user.tenant_id)
         _trigger_backend_reload(ts)
         try:
-            r = http_requests.get(f"{RUNTIME_BACKEND_URL}/health", timeout=5)
+            fwd_headers = {}
+            auth = request.headers.get("authorization")
+            if auth:
+                fwd_headers["Authorization"] = auth
+            r = http_requests.get(
+                f"{RUNTIME_BACKEND_URL}/health", headers=fwd_headers, timeout=5
+            )
+            logger.info("[start] backend health -> %d", r.status_code)
             if r.status_code == 200:
                 return {"status": "running", "url": RUNTIME_BACKEND_URL, **r.json()}
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.error("[start] backend health check failed: %s", exc)
         return {"status": "unreachable", "url": RUNTIME_BACKEND_URL}
 
 
@@ -339,13 +494,21 @@ def stop_runtime(req: RuntimeRequest, user: AuthUser = Depends(get_current_user)
 
 
 @app.get("/concierge/runtime/health")
-def runtime_health():
+def runtime_health(request: Request):
     try:
-        r = http_requests.get(f"{RUNTIME_BACKEND_URL}/health", timeout=5)
+        # Forward the Authorization header so the backend can identify the tenant
+        headers = {}
+        auth = request.headers.get("authorization")
+        if auth:
+            headers["Authorization"] = auth
+        r = http_requests.get(
+            f"{RUNTIME_BACKEND_URL}/health", headers=headers, timeout=5
+        )
+        logger.info("[health] backend %s -> %d", RUNTIME_BACKEND_URL, r.status_code)
         if r.status_code == 200:
             return r.json()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("[health] backend unreachable: %s", exc)
     return {"status": "unreachable"}
 
 
@@ -371,22 +534,37 @@ def _trigger_backend_reload(ts: TenantSession):
     """Tell the runtime backend to reload its spec for this tenant."""
     spec_path = ts.workspace / ".factory" / "factory_spec.json"
     if not spec_path.exists():
+        logger.warning(
+            "[reload] No spec file for tenant %s at %s", ts.tenant_id, spec_path
+        )
         return
 
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    agent_ids = [a.get("id", "?") for a in spec.get("agents", [])]
+    logger.info(
+        "[reload] tenant=%s agents=%s url=%s",
+        ts.tenant_id,
+        agent_ids,
+        RUNTIME_BACKEND_URL,
+    )
 
     # Inject tenant_id into the spec so the backend knows which tenant this is for
     spec["_tenant_id"] = ts.tenant_id
 
     try:
-        http_requests.post(
+        r = http_requests.post(
             f"{RUNTIME_BACKEND_URL}/reload",
             json={"spec": spec, "tenant_id": ts.tenant_id},
             timeout=30,
         )
-        print(f"[CONCIERGE] Backend reload triggered for tenant {ts.tenant_id}")
+        logger.info(
+            "[reload] tenant=%s backend responded %d: %s",
+            ts.tenant_id,
+            r.status_code,
+            r.text[:200],
+        )
     except Exception as exc:
-        print(f"[CONCIERGE] Backend reload failed for tenant {ts.tenant_id}: {exc}")
+        logger.error("[reload] tenant=%s backend unreachable: %s", ts.tenant_id, exc)
 
 
 @app.get("/concierge/workspace/files")

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { API_BASE } from "@/lib/constants";
+import { authFetch } from "@/lib/auth-fetch";
 import { Shield, ToggleLeft, ToggleRight, RefreshCw, AlertTriangle } from "lucide-react";
 import { CollapsibleSection } from "./CollapsibleSection";
 
@@ -46,7 +46,7 @@ export function GuardrailsAdminPanel() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_BASE}/guardrails`);
+      const res = await authFetch(`/api/runtime/guardrails`);
       if (!res.ok) throw new Error(`Failed to fetch guardrails: ${res.status}`);
       const json: GuardrailsResponse = await res.json();
       setData(json);
@@ -64,7 +64,7 @@ export function GuardrailsAdminPanel() {
   const toggleRule = async (ruleId: string, enabled: boolean) => {
     setToggling(ruleId);
     try {
-      const res = await fetch(`${API_BASE}/guardrails/${ruleId}`, {
+      const res = await authFetch(`/api/runtime/guardrails/${ruleId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),

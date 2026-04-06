@@ -4,6 +4,7 @@ import Facebook from "next-auth/providers/facebook";
 import Apple from "next-auth/providers/apple";
 import MicrosoftEntraId from "next-auth/providers/microsoft-entra-id";
 import { createHash } from "crypto";
+import type { Provider } from "next-auth/providers";
 
 function tenantIdFromEmail(email: string): string {
   return createHash("sha256")
@@ -12,27 +13,65 @@ function tenantIdFromEmail(email: string): string {
     .slice(0, 16);
 }
 
+/** Only include providers whose credentials are actually set. */
+function buildProviders(): Provider[] {
+  const providers: Provider[] = [];
+
+  console.log("[AUTH] Building providers...");
+  console.log("[AUTH] AUTH_SECRET set:", !!process.env.AUTH_SECRET);
+  console.log("[AUTH] GOOGLE_CLIENT_ID set:", !!process.env.GOOGLE_CLIENT_ID);
+  console.log("[AUTH] MICROSOFT_CLIENT_ID set:", !!process.env.MICROSOFT_CLIENT_ID);
+
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    providers.push(
+      Google({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      })
+    );
+  }
+
+  if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
+    providers.push(
+      MicrosoftEntraId({
+        clientId: process.env.MICROSOFT_CLIENT_ID,
+        clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+        issuer: `https://login.microsoftonline.com/consumers/v2.0`,
+      })
+    );
+  }
+
+  if (
+    process.env.FACEBOOK_CLIENT_ID &&
+    process.env.FACEBOOK_CLIENT_SECRET &&
+    process.env.FACEBOOK_CLIENT_ID !== "placeholder"
+  ) {
+    providers.push(
+      Facebook({
+        clientId: process.env.FACEBOOK_CLIENT_ID,
+        clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+      })
+    );
+  }
+
+  if (
+    process.env.APPLE_CLIENT_ID &&
+    process.env.APPLE_CLIENT_SECRET &&
+    process.env.APPLE_CLIENT_ID !== "placeholder"
+  ) {
+    providers.push(
+      Apple({
+        clientId: process.env.APPLE_CLIENT_ID,
+        clientSecret: process.env.APPLE_CLIENT_SECRET,
+      })
+    );
+  }
+
+  return providers;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    MicrosoftEntraId({
-      clientId: process.env.MICROSOFT_CLIENT_ID!,
-      clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
-      // Allow personal Microsoft accounts (Hotmail, Outlook, Live)
-      issuer: `https://login.microsoftonline.com/consumers/v2.0`,
-    }),
-    Facebook({
-      clientId: process.env.FACEBOOK_CLIENT_ID!,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-    }),
-    Apple({
-      clientId: process.env.APPLE_CLIENT_ID!,
-      clientSecret: process.env.APPLE_CLIENT_SECRET!,
-    }),
-  ],
+  providers: buildProviders(),
   pages: {
     signIn: "/login",
   },

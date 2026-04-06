@@ -61,7 +61,15 @@ _BOT_SIGNATURES = [
 ]
 
 # Paths that skip rate limiting (health checks, etc.)
-_EXEMPT_PATHS = {"/health", "/version", "/docs", "/openapi.json", "/redoc"}
+_EXEMPT_PATHS = {
+    "/health",
+    "/version",
+    "/docs",
+    "/openapi.json",
+    "/redoc",
+    "/reload",
+    "/debug",
+}
 
 
 # ── Data structures ─────────────────────────────────────────────

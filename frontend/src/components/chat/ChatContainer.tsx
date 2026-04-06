@@ -69,8 +69,8 @@ export function ChatContainer() {
       {/* ── Center: Chat area ── */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Header */}
-        <header className="flex items-center justify-between border-b px-4 py-3">
-          <div className="flex items-center gap-3">
+        <header className="flex items-center justify-between border-b px-2 py-2 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Burger menu — mobile only */}
             <button
               onClick={() => setHistoryOpen(true)}
@@ -84,10 +84,10 @@ export function ChatContainer() {
               <Bot size={18} />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-slate-800">
+              <h1 className="text-sm sm:text-base font-semibold text-slate-800 truncate">
                 Customer Service
               </h1>
-              <div className="flex items-center gap-1.5 text-sm text-slate-400">
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-400">
                 {backendConnected ? (
                   <>
                     <Wifi size={10} className="text-green-500" />

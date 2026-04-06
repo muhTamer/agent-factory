@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { API_BASE } from "@/lib/constants";
+import { authFetch } from "@/lib/auth-fetch";
 import { Brain, RefreshCw, AlertTriangle } from "lucide-react";
 import { CollapsibleSection } from "./CollapsibleSection";
 
@@ -34,7 +34,7 @@ export function EstimatorTogglePanel() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_BASE}/solvability-estimator`);
+      const res = await authFetch(`/api/runtime/solvability-estimator`);
       if (!res.ok) throw new Error(`${res.status}`);
       const json: EstimatorResponse = await res.json();
       setActiveKind(json.kind);
@@ -60,7 +60,7 @@ export function EstimatorTogglePanel() {
     setSwitching(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/solvability-estimator`, {
+      const res = await authFetch(`/api/runtime/solvability-estimator`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind }),

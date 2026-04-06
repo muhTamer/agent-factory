@@ -8,9 +8,15 @@ import { useAuthStore } from "@/store/authStore";
 const TOKEN_REFRESH_MS = 20 * 60 * 60 * 1000;
 
 async function fetchBackendToken(): Promise<string> {
+  console.info("[AUTH] Fetching backend JWT from /api/token...");
   const res = await fetch("/api/token");
-  if (!res.ok) throw new Error(`Token fetch failed: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`[AUTH] Token fetch failed: ${res.status} ${body}`);
+    throw new Error(`Token fetch failed: ${res.status} ${body}`);
+  }
   const { token } = await res.json();
+  console.info("[AUTH] Backend JWT acquired (length=%d)", token?.length ?? 0);
   return token;
 }
 
@@ -37,7 +43,8 @@ export function useAuth() {
     try {
       const token = await fetchBackendToken();
       setBackendToken(token);
-    } catch {
+    } catch (err) {
+      console.error("[AUTH] Token refresh failed:", err);
       clearBackendToken();
     } finally {
       setFetchingToken(false);

@@ -30,7 +30,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   }
 
   return (
-    <div className="border-t bg-white px-4 py-3">
+    <div className="border-t bg-white px-3 py-2 sm:px-4 sm:py-3">
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         <textarea
           ref={inputRef}
@@ -51,7 +51,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         <button
           onClick={handleSubmit}
           disabled={!text.trim() || disabled}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500 text-white transition-colors hover:bg-blue-600 disabled:bg-slate-200 disabled:text-slate-400"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500 text-white transition-colors hover:bg-blue-600 disabled:bg-slate-200 disabled:text-slate-400"
         >
           <Send size={16} />
         </button>
