@@ -65,13 +65,14 @@ function getAvailableProviders(): string[] {
   return available;
 }
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string; callbackUrl?: string };
+  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
 }) {
   const available = getAvailableProviders();
-  const error = searchParams?.error;
+  const params = await searchParams;
+  const error = params?.error;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
