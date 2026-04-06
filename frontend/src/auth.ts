@@ -32,11 +32,16 @@ function buildProviders(): Provider[] {
   }
 
   if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
+    console.log("[AUTH] Configuring Microsoft Entra ID provider");
     providers.push(
       MicrosoftEntraId({
         clientId: process.env.MICROSOFT_CLIENT_ID,
         clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-        issuer: `https://login.microsoftonline.com/consumers/v2.0`,
+        authorization: {
+          params: {
+            scope: "openid profile email User.Read",
+          },
+        },
       })
     );
   }
