@@ -112,7 +112,12 @@ class ToolRegistry:
             if kind == "stub":
                 # Keep the existing stub if already registered; otherwise no-op stub
                 if name not in self._tools:
-                    self._tools[name] = StubTool(name, lambda s, c: {})
+                    try:
+                        from app.runtime.tools.stub_tools import TOOL_DESCRIPTIONS
+                        desc = TOOL_DESCRIPTIONS.get(name, "")
+                    except ImportError:
+                        desc = ""
+                    self._tools[name] = StubTool(name, lambda s, c: {}, description=desc)
 
             elif kind == "http":
                 self._tools[name] = HttpTool(

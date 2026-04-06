@@ -110,12 +110,12 @@ class RAGFSMResult:
 class RAGFSMConfig:
     """Tunable thresholds for the RAG FSM."""
 
-    solvability_threshold: float = 0.25  # Below this -> delegate
-    clarification_threshold: float = 0.15  # Below this + short query -> clarify
+    solvability_threshold: float = 0.20  # Below this -> delegate
+    clarification_threshold: float = 0.12  # Below this + short query -> clarify
     min_query_tokens: int = 2  # Queries shorter than this -> clarify
     max_clarifications: int = 2  # Max clarification rounds before fallback
-    top_k: int = 5  # Number of TF-IDF results
-    relevance_gate: float = 0.12  # Minimum score to consider a hit relevant
+    top_k: int = 8  # Number of TF-IDF results
+    relevance_gate: float = 0.10  # Minimum score to consider a hit relevant
     delegation_target: Optional[str] = None  # Default agent to delegate to
 
     # Dense retrieval (off by default — needs embedding API key)

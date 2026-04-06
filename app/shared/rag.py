@@ -19,7 +19,7 @@ _WORD = re.compile(r"[A-Za-z0-9]+")
 # Below this threshold we return an honest "no information" message rather
 # than letting the LLM synthesise from general knowledge.
 # Override per agent by passing min_score to build_agent().
-_DEFAULT_MIN_SCORE = 0.12
+_DEFAULT_MIN_SCORE = 0.10
 
 
 def _tok(s: str) -> List[str]:
@@ -473,7 +473,7 @@ import json, math, re, yaml
 from app.runtime.interfaces import IAgent
 
 _WORD = re.compile(r"[A-Za-z0-9]+")
-_DEFAULT_MIN_SCORE = 0.12
+_DEFAULT_MIN_SCORE = 0.10
 
 def _tok(s: str) -> List[str]:
     return [t.lower() for t in _WORD.findall(s or "")]
@@ -696,7 +696,7 @@ class Agent(IAgent):
 
         return response
 
-    def _search_fallback(self, query: str, top_k: int = 5) -> Dict[str, Any]:
+    def _search_fallback(self, query: str, top_k: int = 8) -> Dict[str, Any]:
         \"\"\"Fallback TF-IDF search without FSM (backward compatibility).\"\"\"
         if not self._texts or not self._vecs:
             return {"intent": "faq", "answer": "I don't have that yet.", "score": 0.0, "citations": []}

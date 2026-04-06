@@ -38,11 +38,12 @@ from app.runtime.tools.registry import ToolRegistry
 # Build the default registry from existing stub callables
 # ---------------------------------------------------------------------------
 def _build_default_registry() -> ToolRegistry:
-    from app.runtime.tools.stub_tools import STUB_TOOLS
+    from app.runtime.tools.stub_tools import STUB_TOOLS, TOOL_DESCRIPTIONS
 
     registry = ToolRegistry()
     for name, fn in STUB_TOOLS.items():
-        registry.register(name, StubTool(name, fn))
+        desc = TOOL_DESCRIPTIONS.get(name, "")
+        registry.register(name, StubTool(name, fn, description=desc))
     return registry
 
 
@@ -70,12 +71,13 @@ def build_registry(
     Returns:
         A new ToolRegistry instance with customer overrides and MCP tools.
     """
-    from app.runtime.tools.stub_tools import STUB_TOOLS
+    from app.runtime.tools.stub_tools import STUB_TOOLS, TOOL_DESCRIPTIONS
 
     registry = ToolRegistry()
     # Seed with all stubs as fallback
     for name, fn in STUB_TOOLS.items():
-        registry.register(name, StubTool(name, fn))
+        desc = TOOL_DESCRIPTIONS.get(name, "")
+        registry.register(name, StubTool(name, fn, description=desc))
 
     # Apply customer overrides (may replace individual stubs)
     if config:

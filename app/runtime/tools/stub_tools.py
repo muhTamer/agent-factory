@@ -122,6 +122,70 @@ STUB_TOOLS: Dict[str, Any] = {
     "initiate_transfer": _initiate_transfer,
 }
 
+
+# Rich descriptions for each tool so the LLM knows what each tool does,
+# what arguments it accepts, and when to call it.  These are injected into
+# the ReAct system prompt via StubTool.describe().
+TOOL_DESCRIPTIONS: Dict[str, str] = {
+    "verify_identity": (
+        "Verify a customer's identity. Call this when you need to confirm "
+        "the customer is who they claim to be. Args: any available customer "
+        "identifiers (email, account_id, name)."
+    ),
+    "lookup_payment": (
+        "Look up a payment or transaction by ID, reference, or account. "
+        "Call this to retrieve transaction details such as amount, date, "
+        "status, and merchant. Args: transaction_id, account_id, or "
+        "order_number."
+    ),
+    "initiate_refund": (
+        "Process a refund for the customer. Call this when the customer "
+        "requests a refund, reports a duplicate/unauthorized charge, or "
+        "disputes a transaction AND you have enough context (amount or "
+        "transaction reference). Args: amount, account_id, reason, "
+        "transaction_id (all optional — use whatever is available)."
+    ),
+    "create_ticket": (
+        "Create a support/complaint ticket. Call this when the customer "
+        "files a complaint, reports an issue, or when a case needs to be "
+        "tracked. Args: subject, description, priority, customer_id "
+        "(all optional)."
+    ),
+    "handoff_to_human": (
+        "Hand off the conversation to a human agent. Call this for cases "
+        "requiring human judgement — e.g. regulatory escalation, ombudsman "
+        "threats, complex disputes, or when the customer explicitly "
+        "requests a manager. Args: reason, priority."
+    ),
+    "lookup_customer": (
+        "Look up customer account information. Call this to retrieve "
+        "account status, KYC status, and other profile data. "
+        "Args: customer_id, account_id, email."
+    ),
+    "update_profile": (
+        "Update customer profile information such as address, phone, "
+        "email, or notification preferences. Args: field, new_value, "
+        "account_id."
+    ),
+    "update_account": (
+        "Perform account-level actions: open, close, upgrade, downgrade, "
+        "or modify an account or subscription. Args: action, account_id, "
+        "account_type."
+    ),
+    "generate_statement": (
+        "Generate an account statement for a given period. "
+        "Args: account_id, period (e.g. '3 months'), format."
+    ),
+    "freeze_account": (
+        "Freeze/block a customer account for security reasons (fraud, "
+        "unauthorized access, lost card). Args: account_id, reason."
+    ),
+    "initiate_transfer": (
+        "Initiate a funds transfer between accounts. "
+        "Args: from_account, to_account, amount, reference."
+    ),
+}
+
 # Map abstract API-style names from factory_spec.json to concrete
 # stub tool names so agents can find their tools regardless of
 # which naming convention the spec uses.

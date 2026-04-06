@@ -173,11 +173,12 @@ def _generate_agent_source(agent_id: str) -> str:
                 try:
                     from app.runtime.tools.registry import ToolRegistry
                     from app.runtime.tools.adapters.stub import StubTool
-                    from app.runtime.tools.stub_tools import STUB_TOOLS
+                    from app.runtime.tools.stub_tools import STUB_TOOLS, TOOL_DESCRIPTIONS
 
                     registry = ToolRegistry()
                     for tool_name, stub_fn in STUB_TOOLS.items():
-                        registry.register(tool_name, StubTool(tool_name, stub_fn))
+                        desc = TOOL_DESCRIPTIONS.get(tool_name, "")
+                        registry.register(tool_name, StubTool(tool_name, stub_fn, description=desc))
                     tools = {{name: registry.get(name) for name in registry.all_names()}}
                 except Exception:
                     pass

@@ -40,8 +40,8 @@ class DomainAgentConfig:
     temperature: float = (
         1.0  # 1.0 is the only value some models accept (o-series, gpt-5-mini)
     )
-    top_k: int = 5
-    retrieval_threshold: float = 0.12
+    top_k: int = 8
+    retrieval_threshold: float = 0.10
     # Dense retrieval (hybrid fusion with TF-IDF)
     enable_dense_retrieval: bool = False
     dense_weight: float = 0.6  # Weight for dense (embedding) scores
@@ -616,6 +616,26 @@ class DomainAgentEngine:
             "(e.g. transaction details, account status, payment history).\n"
             "- After looking up data via tools, check the results against policy "
             "rules before asking the user for anything else.\n\n"
+            "CRITICAL — Bias toward completing actions:\n"
+            "- Your PRIMARY goal is to COMPLETE the user's request, not just "
+            "discuss it. If the user asks for a refund, you must actually call "
+            "initiate_refund. If they file a complaint, call create_ticket.\n"
+            "- When the user has provided ENOUGH context to act (e.g. an amount, "
+            "account number, transaction reference, or description of the issue), "
+            "proceed to call the appropriate tool. Do NOT ask for optional details "
+            "that are not strictly required.\n"
+            "- If you have already retrieved knowledge AND gathered basic details "
+            "from the user, your NEXT step should be calling the relevant tool — "
+            "not asking another question.\n"
+            "- After calling a tool successfully, use respond() to confirm the "
+            "outcome to the user.\n"
+            "- Common action patterns:\n"
+            "  * Refund request → retrieve policy → (optionally ask for missing "
+            "critical details) → call initiate_refund → respond with confirmation\n"
+            "  * Complaint → retrieve policy → call create_ticket → respond\n"
+            "  * Fraud/unauthorized charge → call initiate_refund + freeze_account "
+            "→ respond\n"
+            "  * Escalation/ombudsman → call handoff_to_human → respond\n\n"
             'Return STRICT JSON: {"thought": "...", "action": "...", "action_input": {...}}'
         )
 
@@ -658,7 +678,12 @@ class DomainAgentEngine:
                 f"{original_ctx}"
                 f'You previously asked the user: "{thread_state.pending_question}"\n'
                 f"User responded: {query}"
-                f"{slots_str}{prev_steps_str}{steps_str}"
+                f"{slots_str}{prev_steps_str}{steps_str}\n\n"
+                "IMPORTANT: The user has now provided the information you asked for. "
+                "Do NOT ask another question unless absolutely critical information "
+                "is still missing. Instead, proceed to call the appropriate tool "
+                "(e.g. initiate_refund, create_ticket) with whatever details you have, "
+                "then respond to confirm the outcome."
             )
             thread_state.pending_question = None
 
