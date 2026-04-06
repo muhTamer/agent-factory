@@ -71,9 +71,11 @@ function buildProviders(): Provider[] {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  debug: true,
   providers: buildProviders(),
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   session: {
     strategy: "jwt",
