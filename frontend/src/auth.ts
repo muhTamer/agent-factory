@@ -75,6 +75,9 @@ function buildProviders(): Provider[] {
   return providers;
 }
 
+// Store last auth error for the debug endpoint
+export let lastAuthError: { time: string; error: string; details: unknown } | null = null;
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: true,
   providers: buildProviders(),
@@ -84,6 +87,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   session: {
     strategy: "jwt",
+  },
+  logger: {
+    error(error) {
+      const details = error instanceof Error
+        ? { name: error.name, message: error.message, cause: String((error as unknown as Record<string, unknown>).cause ?? "none"), stack: error.stack?.split("\n").slice(0, 5).join("\n") }
+        : error;
+      lastAuthError = {
+        time: new Date().toISOString(),
+        error: error instanceof Error ? error.message : String(error),
+        details,
+      };
+      console.error("[AUTH ERROR]", JSON.stringify(lastAuthError));
+    },
+    warn(code) {
+      console.warn("[AUTH WARN]", code);
+    },
+    debug(message, metadata) {
+      console.debug("[AUTH DEBUG]", message, metadata);
+    },
   },
   callbacks: {
     async jwt({ token, user, account }) {

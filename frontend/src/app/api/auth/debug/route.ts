@@ -1,25 +1,28 @@
 import { NextResponse } from "next/server";
+import { lastAuthError } from "@/auth";
 
 /**
  * Debug endpoint — shows which auth env vars are set (not their values).
  * Remove this in production once auth is working.
  */
 export async function GET() {
-  // Test Microsoft OIDC discovery
-  let msDiscovery = "not tested";
-  try {
-    const res = await fetch(
-      "https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration",
-      { signal: AbortSignal.timeout(5000) }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      msDiscovery = `ok (issuer=${data.issuer})`;
-    } else {
-      msDiscovery = `http ${res.status}`;
+  // Test both OIDC discovery endpoints
+  const discoveries: Record<string, string> = {};
+  for (const tenant of ["common", "consumers"]) {
+    try {
+      const res = await fetch(
+        `https://login.microsoftonline.com/${tenant}/v2.0/.well-known/openid-configuration`,
+        { signal: AbortSignal.timeout(5000) }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        discoveries[tenant] = `ok (issuer=${data.issuer})`;
+      } else {
+        discoveries[tenant] = `http ${res.status}`;
+      }
+    } catch (e) {
+      discoveries[tenant] = `error: ${e instanceof Error ? e.message : String(e)}`;
     }
-  } catch (e) {
-    msDiscovery = `error: ${e instanceof Error ? e.message : String(e)}`;
   }
 
   return NextResponse.json({
@@ -38,6 +41,7 @@ export async function GET() {
     FACEBOOK_CLIENT_ID: process.env.FACEBOOK_CLIENT_ID ?? "not set",
     APPLE_CLIENT_ID: process.env.APPLE_CLIENT_ID ?? "not set",
     NODE_ENV: process.env.NODE_ENV,
-    ms_oidc_discovery: msDiscovery,
+    ms_oidc_discovery: discoveries,
+    last_auth_error: lastAuthError,
   });
 }
