@@ -40,6 +40,9 @@ async function tenantIdFromEmail(email: string): Promise<string> {
     .slice(0, 16);
 }
 
+// Store last auth error for the debug endpoint
+export let lastAuthError: { time: string; error: string; details: unknown } | null = null;
+
 async function buildProdAuth() {
   const NextAuth = (await import("next-auth")).default;
   const Google = (await import("next-auth/providers/google")).default;
@@ -67,11 +70,12 @@ async function buildProdAuth() {
       process.env.MICROSOFT_CLIENT_ID &&
       process.env.MICROSOFT_CLIENT_SECRET
     ) {
+      console.log("[AUTH] Configuring Microsoft Entra ID provider");
       providers.push(
         MicrosoftEntraId({
           clientId: process.env.MICROSOFT_CLIENT_ID,
           clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-          issuer: `https://login.microsoftonline.com/consumers/v2.0`,
+          issuer: `https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0`,
         })
       );
     }
@@ -106,9 +110,40 @@ async function buildProdAuth() {
   }
 
   return NextAuth({
+    debug: true,
     providers: buildProviders(),
-    pages: { signIn: "/login" },
+    pages: {
+      signIn: "/login",
+      error: "/login",
+    },
     session: { strategy: "jwt" },
+    logger: {
+      error(error) {
+        const details =
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                cause: String(
+                  (error as unknown as Record<string, unknown>).cause ?? "none"
+                ),
+                stack: error.stack?.split("\n").slice(0, 5).join("\n"),
+              }
+            : error;
+        lastAuthError = {
+          time: new Date().toISOString(),
+          error: error instanceof Error ? error.message : String(error),
+          details,
+        };
+        console.error("[AUTH ERROR]", JSON.stringify(lastAuthError));
+      },
+      warn(code) {
+        console.warn("[AUTH WARN]", code);
+      },
+      debug(message, metadata) {
+        console.debug("[AUTH DEBUG]", message, metadata);
+      },
+    },
     callbacks: {
       async jwt({ token, user, account }) {
         if (user) {
@@ -142,10 +177,8 @@ async function getProd() {
 export const handlers: { GET: any; POST: any } = IS_DEV_NO_AUTH
   ? devHandlers()
   : {
-      GET: async (req: any) =>
-        (await getProd()).handlers.GET(req),
-      POST: async (req: any) =>
-        (await getProd()).handlers.POST(req),
+      GET: async (req: any) => (await getProd()).handlers.GET(req),
+      POST: async (req: any) => (await getProd()).handlers.POST(req),
     };
 
 export const auth: any = IS_DEV_NO_AUTH
