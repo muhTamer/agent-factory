@@ -145,29 +145,76 @@ export function WelcomeStep() {
     setQuickLoading(true);
     setError(null);
     try {
-      // Step 1: POST to start job (should return instantly with job_id)
+      // Step 1: Start quickstart job (inline fetch to avoid any module issues)
       setQuickStatus("Starting quickstart...");
-      const res = await quickstartFintech(true, "gpt-5-mini", (elapsed) => {
-        setQuickStatus(`Analyzing preset documents... (${Math.round(elapsed)}s)`);
+      const startRes = await authFetch("/api/concierge/quickstart-fintech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ use_llm: true, model: "gpt-5-mini" }),
       });
-      setVertical("fintech");
-      setQuickstart(true);
-      setPlan(res.plan);
-      setAnalysisSummaryText(res.text);
+      if (!startRes.ok) {
+        const errText = await startRes.text().catch(() => startRes.statusText);
+        throw new Error(`Quickstart failed (${startRes.status}): ${errText}`);
+      }
+      const startData = await startRes.json();
 
-      // Step 2: Auto-deploy (runs in background, polls via GET)
+      // Step 2: Poll until quickstart completes
+      if (startData.job_id) {
+        let qsResult: Record<string, unknown> | null = null;
+        while (!qsResult) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const pollRes = await authFetch(`/api/concierge/job/${startData.job_id}`);
+          const pollData = await pollRes.json();
+          if (pollData.status === "done") {
+            qsResult = pollData.result;
+          } else if (pollData.status === "error") {
+            throw new Error(`Quickstart: ${pollData.error}`);
+          } else {
+            setQuickStatus(`Analyzing preset documents... (${Math.round(pollData.elapsed ?? 0)}s)`);
+          }
+        }
+        setVertical("fintech");
+        setQuickstart(true);
+        setPlan((qsResult as { plan: unknown }).plan);
+        setAnalysisSummaryText((qsResult as { text: string }).text);
+      }
+
+      // Step 3: Start deploy job
       setQuickStatus("Generating agents & deploying...");
-      const dep = await deployFactory("dry", undefined, (elapsed) => {
-        setQuickStatus(`Generating agents & deploying... (${Math.round(elapsed)}s)`);
+      const depRes = await authFetch("/api/concierge/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "dry", doc_visibility: null }),
       });
-      setDeployment(dep.deployment_request);
-      setDeployMessage(dep.text);
+      if (!depRes.ok) {
+        const errText = await depRes.text().catch(() => depRes.statusText);
+        throw new Error(`Deploy failed (${depRes.status}): ${errText}`);
+      }
+      const depStart = await depRes.json();
+
+      // Step 4: Poll until deploy completes
+      if (depStart.job_id) {
+        let depResult: Record<string, unknown> | null = null;
+        while (!depResult) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const pollRes = await authFetch(`/api/concierge/job/${depStart.job_id}`);
+          const pollData = await pollRes.json();
+          if (pollData.status === "done") {
+            depResult = pollData.result;
+          } else if (pollData.status === "error") {
+            throw new Error(`Deploy: ${pollData.error}`);
+          } else {
+            setQuickStatus(`Generating agents & deploying... (${Math.round(pollData.elapsed ?? 0)}s)`);
+          }
+        }
+        setDeployment((depResult as { deployment_request: unknown }).deployment_request);
+        setDeployMessage((depResult as { text: string }).text);
+      }
 
       // Jump straight to runtime step
       setStep("runtime");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Quickstart failed";
-      setError(`${msg} [status=${quickStatus}]`);
+      setError(err instanceof Error ? err.message : "Quickstart failed");
     } finally {
       setQuickLoading(false);
       setQuickStatus("");
@@ -246,6 +293,7 @@ export function WelcomeStep() {
             </div>
           </div>
           <Button
+            type="button"
             size="sm"
             onClick={handleQuickstart}
             disabled={quickLoading}
