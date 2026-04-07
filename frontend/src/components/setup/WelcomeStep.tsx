@@ -142,17 +142,21 @@ export function WelcomeStep() {
     setQuickLoading(true);
     setError(null);
     try {
-      // Step 1: Analyze
+      // Step 1: Analyze (runs in background, polls via GET)
       setQuickStatus("Analyzing preset documents...");
-      const res = await quickstartFintech();
+      const res = await quickstartFintech(true, "gpt-5-mini", (elapsed) => {
+        setQuickStatus(`Analyzing preset documents... (${Math.round(elapsed)}s)`);
+      });
       setVertical("fintech");
       setQuickstart(true);
       setPlan(res.plan);
       setAnalysisSummaryText(res.text);
 
-      // Step 2: Auto-deploy
+      // Step 2: Auto-deploy (runs in background, polls via GET)
       setQuickStatus("Generating agents & deploying...");
-      const dep = await deployFactory("dry");
+      const dep = await deployFactory("dry", undefined, (elapsed) => {
+        setQuickStatus(`Generating agents & deploying... (${Math.round(elapsed)}s)`);
+      });
       setDeployment(dep.deployment_request);
       setDeployMessage(dep.text);
 
@@ -262,7 +266,7 @@ export function WelcomeStep() {
               {quickStatus}
             </div>
             <p className="mt-1 text-xs text-amber-600">
-              Please keep this tab in the foreground — switching apps may cancel the request.
+              You can switch apps — progress won&apos;t be lost.
             </p>
           </div>
         )}
