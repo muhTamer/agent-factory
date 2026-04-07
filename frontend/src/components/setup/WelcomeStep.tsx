@@ -96,7 +96,7 @@ export function WelcomeStep() {
   }
 
   async function testQuickstartDirect() {
-    setPostTest("Testing quickstart POST WITH auth...");
+    setPostTest("Testing quickstart POST (async job)...");
     try {
       const t0 = Date.now();
       const res = await authFetch("/api/concierge/quickstart-fintech", {
@@ -105,15 +105,18 @@ export function WelcomeStep() {
         body: JSON.stringify({ use_llm: true, model: "gpt-5-mini" }),
       });
       const elapsed = Date.now() - t0;
-      if (res.ok) {
-        const data = await res.json();
-        setPostTest(`QS OK: ${res.status} (${elapsed}ms) plan_agents=${data?.plan?.agents?.length ?? "?"}`);
+      const data = await res.json();
+      if (data.job_id) {
+        setPostTest(`JOB STARTED: ${res.status} (${elapsed}ms) job_id=${data.job_id} — now polling...`);
+        // Poll once to verify
+        await new Promise((r) => setTimeout(r, 2000));
+        const poll = await authFetch(`/api/concierge/job/${data.job_id}`);
+        const pollData = await poll.json();
+        setPostTest(`JOB: ${res.status} (${elapsed}ms) job_id=${data.job_id} poll=${JSON.stringify(pollData).slice(0, 200)}`);
       } else {
-        const text = await res.text().catch(() => "no body");
-        setPostTest(`QS HTTP ${res.status} (${elapsed}ms): ${text.slice(0, 300)}`);
+        setPostTest(`QS OK: ${res.status} (${elapsed}ms) ${JSON.stringify(data).slice(0, 200)}`);
       }
     } catch (err) {
-      const elapsed = "?";
       const e = err instanceof Error ? err : new Error(String(err));
       setPostTest(`QS FAIL: name=${e.name} msg=${e.message}`);
     }
@@ -142,8 +145,8 @@ export function WelcomeStep() {
     setQuickLoading(true);
     setError(null);
     try {
-      // Step 1: Analyze (runs in background, polls via GET)
-      setQuickStatus("Analyzing preset documents...");
+      // Step 1: POST to start job (should return instantly with job_id)
+      setQuickStatus("Starting quickstart...");
       const res = await quickstartFintech(true, "gpt-5-mini", (elapsed) => {
         setQuickStatus(`Analyzing preset documents... (${Math.round(elapsed)}s)`);
       });
@@ -163,9 +166,8 @@ export function WelcomeStep() {
       // Jump straight to runtime step
       setStep("runtime");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Quickstart failed"
-      );
+      const msg = err instanceof Error ? err.message : "Quickstart failed";
+      setError(`${msg} [status=${quickStatus}]`);
     } finally {
       setQuickLoading(false);
       setQuickStatus("");
