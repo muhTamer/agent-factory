@@ -32,12 +32,11 @@ No real LLM calls are made. All routing and workflows are mocked.
 from __future__ import annotations
 
 import csv
-import importlib
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock, patch
+from typing import Any, Dict, List
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -215,7 +214,6 @@ class _WrappedDomainAgent:
         }
 
 
-
 # ---------------------------------------------------------------------------
 # PHASE 1 -- Document Analysis (DUA)
 # ---------------------------------------------------------------------------
@@ -241,7 +239,9 @@ class TestPhase1DocumentAnalysis:
         # Copy real retail files to tmp workspace
         shutil.copy2(RETAIL_FAQ_CSV, tmp_path / "RetailFAQs.csv")
         shutil.copy2(RETAIL_REFUND_POLICY, tmp_path / "retail_refunds_policy.yaml")
-        shutil.copy2(RETAIL_COMPLAINT_POLICY, tmp_path / "retail_complaints_policy.yaml")
+        shutil.copy2(
+            RETAIL_COMPLAINT_POLICY, tmp_path / "retail_complaints_policy.yaml"
+        )
 
         caps = dua.infer_capabilities(list(tmp_path.glob("*")))
 
@@ -291,7 +291,11 @@ class TestPhase1DocumentAnalysis:
         )
 
         advisory = dua.detect_signals_llm(
-            ["RetailFAQs.csv", "retail_refunds_policy.yaml", "retail_complaints_policy.yaml"]
+            [
+                "RetailFAQs.csv",
+                "retail_refunds_policy.yaml",
+                "retail_complaints_policy.yaml",
+            ]
         )
         assert advisory["primary"] == "retail"
         assert advisory["scores"]["retail"] > 0.5
@@ -317,7 +321,9 @@ class TestPhase2AgentSuggestions:
         # Copy retail files into workspace
         shutil.copy2(RETAIL_FAQ_CSV, tmp_path / "RetailFAQs.csv")
         shutil.copy2(RETAIL_REFUND_POLICY, tmp_path / "retail_refunds_policy.yaml")
-        shutil.copy2(RETAIL_COMPLAINT_POLICY, tmp_path / "retail_complaints_policy.yaml")
+        shutil.copy2(
+            RETAIL_COMPLAINT_POLICY, tmp_path / "retail_complaints_policy.yaml"
+        )
 
         agent = ConciergeAgent(
             vertical="retail",
@@ -339,7 +345,9 @@ class TestPhase2AgentSuggestions:
 
         shutil.copy2(RETAIL_FAQ_CSV, tmp_path / "RetailFAQs.csv")
         shutil.copy2(RETAIL_REFUND_POLICY, tmp_path / "retail_refunds_policy.yaml")
-        shutil.copy2(RETAIL_COMPLAINT_POLICY, tmp_path / "retail_complaints_policy.yaml")
+        shutil.copy2(
+            RETAIL_COMPLAINT_POLICY, tmp_path / "retail_complaints_policy.yaml"
+        )
 
         agent = ConciergeAgent(vertical="retail", data_dir=str(tmp_path))
         result = agent.handle_event({"type": "upload_docs", "use_llm": False})
@@ -355,13 +363,14 @@ class TestPhase2AgentSuggestions:
 
         shutil.copy2(RETAIL_FAQ_CSV, tmp_path / "RetailFAQs.csv")
         shutil.copy2(RETAIL_REFUND_POLICY, tmp_path / "retail_refunds_policy.yaml")
-        shutil.copy2(RETAIL_COMPLAINT_POLICY, tmp_path / "retail_complaints_policy.yaml")
+        shutil.copy2(
+            RETAIL_COMPLAINT_POLICY, tmp_path / "retail_complaints_policy.yaml"
+        )
 
         agent = ConciergeAgent(vertical="retail", data_dir=str(tmp_path))
         result = agent.handle_event({"type": "upload_docs", "use_llm": False})
 
         assert "retail" in result["text"].lower()
-
 
 
 # ---------------------------------------------------------------------------
@@ -372,14 +381,16 @@ class TestPhase2AgentSuggestions:
 def _make_faq_engine():
     """Build a FAQ domain agent engine with real retail FAQ corpus."""
     corpus = _load_faq_corpus()[:20]  # first 20 FAQs for speed
-    llm = ScenarioLLM(lambda sys, usr, idx: {
-        "thought": "I found the answer in the knowledge base.",
-        "action": "respond",
-        "action_input": {
-            "answer": "Based on our FAQ, I can help you with that. "
-            "Please refer to our customer service for further details."
-        },
-    })
+    llm = ScenarioLLM(
+        lambda sys, usr, idx: {
+            "thought": "I found the answer in the knowledge base.",
+            "action": "respond",
+            "action_input": {
+                "answer": "Based on our FAQ, I can help you with that. "
+                "Please refer to our customer service for further details."
+            },
+        }
+    )
     return _build_engine(
         corpus_texts=corpus,
         corpus_source="RetailFAQs.csv",
@@ -392,18 +403,24 @@ def _make_faq_engine():
 def _make_refund_engine():
     """Build a refund domain agent engine with retail refund policy corpus."""
     corpus = _load_policy_corpus(RETAIL_REFUND_POLICY)[:15]
-    llm = ScenarioLLM(lambda sys, usr, idx: {
-        "thought": "I should retrieve the refund policy.",
-        "action": "retrieve_knowledge",
-        "action_input": {"query": "return refund eligibility"},
-    } if idx == 0 else {
-        "thought": "Policy retrieved. Responding to customer.",
-        "action": "respond",
-        "action_input": {
-            "answer": "Based on our return policy, you may return unopened items "
-            "within 365 days for a full refund."
-        },
-    })
+    llm = ScenarioLLM(
+        lambda sys, usr, idx: (
+            {
+                "thought": "I should retrieve the refund policy.",
+                "action": "retrieve_knowledge",
+                "action_input": {"query": "return refund eligibility"},
+            }
+            if idx == 0
+            else {
+                "thought": "Policy retrieved. Responding to customer.",
+                "action": "respond",
+                "action_input": {
+                    "answer": "Based on our return policy, you may return unopened items "
+                    "within 365 days for a full refund."
+                },
+            }
+        )
+    )
     return _build_engine(
         corpus_texts=corpus,
         corpus_source="retail_refunds_policy.yaml",
@@ -416,18 +433,24 @@ def _make_refund_engine():
 def _make_complaint_engine():
     """Build a complaint domain agent engine with retail complaint policy corpus."""
     corpus = _load_policy_corpus(RETAIL_COMPLAINT_POLICY)[:15]
-    llm = ScenarioLLM(lambda sys, usr, idx: {
-        "thought": "I should retrieve the complaint policy.",
-        "action": "retrieve_knowledge",
-        "action_input": {"query": "complaint resolution damaged product"},
-    } if idx == 0 else {
-        "thought": "Policy retrieved. Responding to customer.",
-        "action": "respond",
-        "action_input": {
-            "answer": "I am sorry about the damage. We will arrange a replacement "
-            "or refund. Your complaint has been recorded."
-        },
-    })
+    llm = ScenarioLLM(
+        lambda sys, usr, idx: (
+            {
+                "thought": "I should retrieve the complaint policy.",
+                "action": "retrieve_knowledge",
+                "action_input": {"query": "complaint resolution damaged product"},
+            }
+            if idx == 0
+            else {
+                "thought": "Policy retrieved. Responding to customer.",
+                "action": "respond",
+                "action_input": {
+                    "answer": "I am sorry about the damage. We will arrange a replacement "
+                    "or refund. Your complaint has been recorded."
+                },
+            }
+        )
+    )
     return _build_engine(
         corpus_texts=corpus,
         corpus_source="retail_complaints_policy.yaml",
@@ -449,7 +472,9 @@ class TestPhase3Deploy:
 
         faq = _WrappedDomainAgent("retail_faq_agent", _make_faq_engine())
         refund = _WrappedDomainAgent("retail_refund_agent", _make_refund_engine())
-        complaint = _WrappedDomainAgent("retail_complaint_agent", _make_complaint_engine())
+        complaint = _WrappedDomainAgent(
+            "retail_complaint_agent", _make_complaint_engine()
+        )
 
         registry.register("retail_faq_agent", faq)
         registry.register("retail_refund_agent", refund)
@@ -475,7 +500,9 @@ class TestPhase3Deploy:
         registry = AgentRegistry()
         faq = _WrappedDomainAgent("retail_faq_agent", _make_faq_engine())
         refund = _WrappedDomainAgent("retail_refund_agent", _make_refund_engine())
-        complaint = _WrappedDomainAgent("retail_complaint_agent", _make_complaint_engine())
+        complaint = _WrappedDomainAgent(
+            "retail_complaint_agent", _make_complaint_engine()
+        )
 
         registry.register("retail_faq_agent", faq)
         registry.register("retail_refund_agent", refund)
@@ -485,7 +512,6 @@ class TestPhase3Deploy:
         assert meta["retail_faq_agent"]["ready"] is True
         assert meta["retail_refund_agent"]["ready"] is True
         assert meta["retail_complaint_agent"]["ready"] is True
-
 
 
 # ---------------------------------------------------------------------------
@@ -671,7 +697,9 @@ class TestPhase4MultiAgentRouting:
         assert r_complaint.get("agent_id") == "retail_complaint_agent"
 
     def test_empty_query_returns_error(self, retail_spine):
-        result = retail_spine.handle_chat("", context={"thread_id": "retail-e2e-empty-001"})
+        result = retail_spine.handle_chat(
+            "", context={"thread_id": "retail-e2e-empty-001"}
+        )
         assert "error" in result
 
     def test_multiple_faq_sessions_independent(self, retail_spine):
@@ -685,7 +713,6 @@ class TestPhase4MultiAgentRouting:
             agents_used.append(result.get("agent_id"))
 
         assert all(a == "retail_faq_agent" for a in agents_used)
-
 
 
 # ---------------------------------------------------------------------------
@@ -710,14 +737,21 @@ class TestPhase5RefundAgentToolActions:
             {
                 "thought": "Policy retrieved. I need to look up the customer order.",
                 "action": "call_tool",
-                "action_input": {"tool": "lookup_order", "args": {"order_id": "ORD-12345"}},
+                "action_input": {
+                    "tool": "lookup_order",
+                    "args": {"order_id": "ORD-12345"},
+                },
             },
             {
                 "thought": "Order found and within 365-day window. Checking eligibility.",
                 "action": "call_tool",
                 "action_input": {
                     "tool": "check_return_eligibility",
-                    "args": {"order_id": "ORD-12345", "item_id": "ITEM-001", "product_condition": "unopened"},
+                    "args": {
+                        "order_id": "ORD-12345",
+                        "item_id": "ITEM-001",
+                        "product_condition": "unopened",
+                    },
                 },
             },
             {
@@ -725,7 +759,11 @@ class TestPhase5RefundAgentToolActions:
                 "action": "call_tool",
                 "action_input": {
                     "tool": "initiate_return",
-                    "args": {"order_id": "ORD-12345", "item_id": "ITEM-001", "reason": "Changed mind"},
+                    "args": {
+                        "order_id": "ORD-12345",
+                        "item_id": "ITEM-001",
+                        "reason": "Changed mind",
+                    },
                 },
             },
             {
@@ -761,7 +799,13 @@ class TestPhase5RefundAgentToolActions:
                         "order_date": "2026-03-01",
                         "order_age_days": 30,
                         "order_total": 89.99,
-                        "items": [{"item_id": "ITEM-001", "name": "KALLAX Shelf", "price": 89.99}],
+                        "items": [
+                            {
+                                "item_id": "ITEM-001",
+                                "name": "KALLAX Shelf",
+                                "price": 89.99,
+                            }
+                        ],
                     },
                 ),
                 "check_return_eligibility": _mock_tool(
@@ -812,9 +856,16 @@ class TestPhase5RefundAgentToolActions:
         engine = _build_engine(
             corpus_texts=["Return items within 365 days for full refund."],
             tools={
-                "lookup_order": _mock_tool("lookup_order", {"order_found": True, "order_age_days": 30}),
-                "check_return_eligibility": _mock_tool("check_return_eligibility", {"eligible": True, "refund_amount": 89.99}),
-                "initiate_return": _mock_tool("initiate_return", {"return_status": "approved"}),
+                "lookup_order": _mock_tool(
+                    "lookup_order", {"order_found": True, "order_age_days": 30}
+                ),
+                "check_return_eligibility": _mock_tool(
+                    "check_return_eligibility",
+                    {"eligible": True, "refund_amount": 89.99},
+                ),
+                "initiate_return": _mock_tool(
+                    "initiate_return", {"return_status": "approved"}
+                ),
             },
             domain="refunds",
             goal="Process customer returns",
@@ -834,8 +885,12 @@ class TestPhase5RefundAgentToolActions:
             corpus_texts=["Return policy: 365 days unopened, 180 days opened."],
             tools={
                 "lookup_order": _mock_tool("lookup_order", {"order_found": True}),
-                "check_return_eligibility": _mock_tool("check_return_eligibility", {"eligible": True}),
-                "initiate_return": _mock_tool("initiate_return", {"return_status": "approved"}),
+                "check_return_eligibility": _mock_tool(
+                    "check_return_eligibility", {"eligible": True}
+                ),
+                "initiate_return": _mock_tool(
+                    "initiate_return", {"return_status": "approved"}
+                ),
             },
             domain="refunds",
             goal="Process customer returns",
@@ -847,7 +902,6 @@ class TestPhase5RefundAgentToolActions:
         assert "retrieve_knowledge" in actions
         assert "call_tool" in actions
         assert "respond" in actions
-
 
 
 # ---------------------------------------------------------------------------
@@ -873,7 +927,10 @@ class TestPhase6ComplaintAgentToolActions:
             {
                 "thought": "Policy retrieved. I need to look up the customer order.",
                 "action": "call_tool",
-                "action_input": {"tool": "lookup_order", "args": {"order_id": "ORD-67890"}},
+                "action_input": {
+                    "tool": "lookup_order",
+                    "args": {"order_id": "ORD-67890"},
+                },
             },
             {
                 "thought": "Order found. Creating a formal complaint record.",
@@ -934,7 +991,13 @@ class TestPhase6ComplaintAgentToolActions:
                         "order_date": "2026-03-20",
                         "order_age_days": 10,
                         "order_total": 199.00,
-                        "items": [{"item_id": "ITEM-010", "name": "MALM Desk", "price": 199.00}],
+                        "items": [
+                            {
+                                "item_id": "ITEM-010",
+                                "name": "MALM Desk",
+                                "price": 199.00,
+                            }
+                        ],
                     },
                 ),
                 "create_complaint_record": _mock_tool(
@@ -985,9 +1048,17 @@ class TestPhase6ComplaintAgentToolActions:
         engine = _build_engine(
             corpus_texts=["Report damaged items within 14 days for resolution."],
             tools={
-                "lookup_order": _mock_tool("lookup_order", {"order_found": True, "order_age_days": 10}),
-                "create_complaint_record": _mock_tool("create_complaint_record", {"complaint_id": "CMP-001", "status": "open"}),
-                "compute_compensation": _mock_tool("compute_compensation", {"compensation_amount": 200, "approval_required": False}),
+                "lookup_order": _mock_tool(
+                    "lookup_order", {"order_found": True, "order_age_days": 10}
+                ),
+                "create_complaint_record": _mock_tool(
+                    "create_complaint_record",
+                    {"complaint_id": "CMP-001", "status": "open"},
+                ),
+                "compute_compensation": _mock_tool(
+                    "compute_compensation",
+                    {"compensation_amount": 200, "approval_required": False},
+                ),
             },
             domain="complaints",
             goal="Resolve customer complaints",
@@ -1008,8 +1079,12 @@ class TestPhase6ComplaintAgentToolActions:
             corpus_texts=["Complaint handling: damaged items within 14 days."],
             tools={
                 "lookup_order": _mock_tool("lookup_order", {"order_found": True}),
-                "create_complaint_record": _mock_tool("create_complaint_record", {"complaint_id": "CMP-001"}),
-                "compute_compensation": _mock_tool("compute_compensation", {"compensation_amount": 200}),
+                "create_complaint_record": _mock_tool(
+                    "create_complaint_record", {"complaint_id": "CMP-001"}
+                ),
+                "compute_compensation": _mock_tool(
+                    "compute_compensation", {"compensation_amount": 200}
+                ),
             },
             domain="complaints",
             goal="Resolve customer complaints",
@@ -1037,7 +1112,11 @@ class TestPhase6ComplaintAgentToolActions:
                     "action": "call_tool",
                     "action_input": {
                         "tool": "order_replacement_part",
-                        "args": {"order_id": "ORD-111", "item_id": "ITEM-001", "part_number": "123456"},
+                        "args": {
+                            "order_id": "ORD-111",
+                            "item_id": "ITEM-001",
+                            "part_number": "123456",
+                        },
                     },
                 },
                 {
@@ -1072,7 +1151,9 @@ class TestPhase6ComplaintAgentToolActions:
             goal="Help customers with missing parts",
             llm_fn=llm,
         )
-        result = engine.handle("I am missing screws (part 123456) from my order ORD-111")
+        result = engine.handle(
+            "I am missing screws (part 123456) from my order ORD-111"
+        )
 
         assert result["answer"], "Should return an answer about replacement parts"
         assert "order_replacement_part" in result["tools_used"]
