@@ -1,7 +1,6 @@
 "use client";
 
 import { useSetupStore } from "@/store/setupStore";
-import { quickstartFintech, quickstartRetail, deployFactory } from "@/lib/concierge-api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,7 +95,7 @@ export function WelcomeStep() {
   }
 
   async function testQuickstartDirect() {
-    setPostTest("Testing quickstart POST WITH auth...");
+    setPostTest("Testing quickstart POST (async job)...");
     try {
       const t0 = Date.now();
       const res = await authFetch("/api/concierge/quickstart-fintech", {
@@ -105,12 +104,16 @@ export function WelcomeStep() {
         body: JSON.stringify({ use_llm: true, model: "gpt-5-mini" }),
       });
       const elapsed = Date.now() - t0;
-      if (res.ok) {
-        const data = await res.json();
-        setPostTest(`QS OK: ${res.status} (${elapsed}ms) plan_agents=${data?.plan?.agents?.length ?? "?"}`);
+      const data = await res.json();
+      if (data.job_id) {
+        setPostTest(`JOB STARTED: ${res.status} (${elapsed}ms) job_id=${data.job_id} — now polling...`);
+        // Poll once to verify
+        await new Promise((r) => setTimeout(r, 2000));
+        const poll = await authFetch(`/api/concierge/job/${data.job_id}`);
+        const pollData = await poll.json();
+        setPostTest(`JOB: ${res.status} (${elapsed}ms) job_id=${data.job_id} poll=${JSON.stringify(pollData).slice(0, 200)}`);
       } else {
-        const text = await res.text().catch(() => "no body");
-        setPostTest(`QS HTTP ${res.status} (${elapsed}ms): ${text.slice(0, 300)}`);
+        setPostTest(`QS OK: ${res.status} (${elapsed}ms) ${JSON.stringify(data).slice(0, 200)}`);
       }
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
@@ -138,32 +141,85 @@ export function WelcomeStep() {
   }
 
   async function handleQuickstart(variant: "fintech" | "retail") {
+    if (quickLoading) return; // guard against double tap
     setQuickLoading(true);
     setError(null);
+    setQuickStatus("Starting quickstart...");
+    // Let React render the loading state before starting fetch
+    await new Promise((r) => setTimeout(r, 100));
     try {
-      // Step 1: Analyze
-      setQuickStatus("Analyzing preset documents...");
-      const res =
-        variant === "fintech"
-          ? await quickstartFintech()
-          : await quickstartRetail();
-      setVertical(variant);
-      setQuickstart(true);
-      setPlan(res.plan);
-      setAnalysisSummaryText(res.text);
+      // Step 1: Start quickstart job
+      const endpoint = variant === "retail"
+        ? "/api/concierge/quickstart-retail"
+        : "/api/concierge/quickstart-fintech";
+      const startRes = await authFetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ use_llm: true, model: "gpt-5-mini" }),
+      });
+      if (!startRes.ok) {
+        const errText = await startRes.text().catch(() => startRes.statusText);
+        throw new Error(`Quickstart failed (${startRes.status}): ${errText}`);
+      }
+      const startData = await startRes.json();
 
-      // Step 2: Auto-deploy
+      // Step 2: Poll until quickstart completes
+      if (startData.job_id) {
+        let qsResult: Record<string, unknown> | null = null;
+        while (!qsResult) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const pollRes = await authFetch(`/api/concierge/job/${startData.job_id}`);
+          const pollData = await pollRes.json();
+          if (pollData.status === "done") {
+            qsResult = pollData.result;
+          } else if (pollData.status === "error") {
+            throw new Error(`Quickstart: ${pollData.error}`);
+          } else {
+            setQuickStatus(`Analyzing preset documents... (${Math.round(pollData.elapsed ?? 0)}s)`);
+          }
+        }
+        setVertical(variant);
+        setQuickstart(true);
+        setPlan((qsResult as Record<string, never>).plan);
+        setAnalysisSummaryText((qsResult as Record<string, never>).text);
+      }
+
+      // Step 3: Start deploy job
       setQuickStatus("Generating agents & deploying...");
-      const dep = await deployFactory("dry");
-      setDeployment(dep.deployment_request);
-      setDeployMessage(dep.text);
+      const depRes = await authFetch("/api/concierge/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "dry", doc_visibility: null }),
+      });
+      if (!depRes.ok) {
+        const errText = await depRes.text().catch(() => depRes.statusText);
+        throw new Error(`Deploy failed (${depRes.status}): ${errText}`);
+      }
+      const depStart = await depRes.json();
+
+      // Step 4: Poll until deploy completes
+      if (depStart.job_id) {
+        let depResult: Record<string, unknown> | null = null;
+        while (!depResult) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const pollRes = await authFetch(`/api/concierge/job/${depStart.job_id}`);
+          const pollData = await pollRes.json();
+          if (pollData.status === "done") {
+            depResult = pollData.result;
+          } else if (pollData.status === "error") {
+            throw new Error(`Deploy: ${pollData.error}`);
+          } else {
+            setQuickStatus(`Generating agents & deploying... (${Math.round(pollData.elapsed ?? 0)}s)`);
+          }
+        }
+        setDeployment((depResult as Record<string, never>).deployment_request);
+        setDeployMessage((depResult as Record<string, never>).text);
+      }
 
       // Jump straight to runtime step
       setStep("runtime");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Quickstart failed"
-      );
+      setError(err instanceof Error ? err.message : "Quickstart failed");
     } finally {
       setQuickLoading(false);
       setQuickStatus("");
@@ -293,13 +349,12 @@ export function WelcomeStep() {
             </Button>
           </CardContent>
         </Card>
-
         {quickLoading && quickStatus && (
           <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
             <Loader2 size={14} className="animate-spin" />
             {quickStatus}
             <p className="mt-1 text-xs text-amber-600">
-              Please keep this tab in the foreground — switching apps may cancel the request.
+              You can switch apps — progress won&apos;t be lost.
             </p>
           </div>
         )}

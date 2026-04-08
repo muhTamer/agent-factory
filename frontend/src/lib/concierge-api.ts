@@ -21,6 +21,29 @@ async function apiError(label: string, res: Response): Promise<Error> {
   return new Error(`${label} (${res.status}): ${detail}`);
 }
 
+/**
+ * Poll a background job until it completes.
+ * Returns the result on success, throws on error.
+ */
+async function pollJob<T>(
+  jobId: string,
+  label: string,
+  intervalMs = 2000,
+  onProgress?: (elapsed: number) => void
+): Promise<T> {
+  while (true) {
+    await new Promise((r) => setTimeout(r, intervalMs));
+    const res = await authFetch(`/api/concierge/job/${jobId}`);
+    if (!res.ok) throw await apiError(label, res);
+    const data = await res.json();
+    if (data.status === "done") return data.result as T;
+    if (data.status === "error")
+      throw new Error(`${label}: ${data.error}`);
+    // still processing
+    if (onProgress && data.elapsed) onProgress(data.elapsed);
+  }
+}
+
 export async function initSession(
   vertical: Vertical,
   useLlm = true,
@@ -49,7 +72,8 @@ export async function uploadFiles(files: File[], vertical: Vertical) {
 
 export async function quickstartFintech(
   useLlm = true,
-  model = "gpt-5-mini"
+  model = "gpt-5-mini",
+  onProgress?: (elapsed: number) => void
 ): Promise<AnalysisResponse> {
   const res = await authFetch(`/api/concierge/quickstart-fintech`, {
     method: "POST",
@@ -57,7 +81,11 @@ export async function quickstartFintech(
     body: JSON.stringify({ use_llm: useLlm, model }),
   });
   if (!res.ok) throw await apiError("Quickstart failed", res);
-  return res.json();
+  const data = await res.json();
+  if (data.job_id) {
+    return pollJob<AnalysisResponse>(data.job_id, "Quickstart failed", 2000, onProgress);
+  }
+  return data;
 }
 
 export async function quickstartRetail(
@@ -75,7 +103,8 @@ export async function quickstartRetail(
 
 export async function analyzeDocuments(
   useLlm = true,
-  model = "gpt-5-mini"
+  model = "gpt-5-mini",
+  onProgress?: (elapsed: number) => void
 ): Promise<AnalysisResponse> {
   const res = await authFetch(`/api/concierge/analyze`, {
     method: "POST",
@@ -83,7 +112,11 @@ export async function analyzeDocuments(
     body: JSON.stringify({ use_llm: useLlm, model }),
   });
   if (!res.ok) throw await apiError("Analysis failed", res);
-  return res.json();
+  const data = await res.json();
+  if (data.job_id) {
+    return pollJob<AnalysisResponse>(data.job_id, "Analysis failed", 2000, onProgress);
+  }
+  return data;
 }
 
 export async function generateTemplates(): Promise<AnalysisResponse> {
@@ -98,7 +131,8 @@ export async function generateTemplates(): Promise<AnalysisResponse> {
 
 export async function deployFactory(
   mode: "dry" | "live" = "dry",
-  docVisibility?: Record<string, "customer_facing" | "internal">
+  docVisibility?: Record<string, "customer_facing" | "internal">,
+  onProgress?: (elapsed: number) => void
 ): Promise<DeployResponse> {
   const res = await authFetch(`/api/concierge/deploy`, {
     method: "POST",
@@ -106,7 +140,11 @@ export async function deployFactory(
     body: JSON.stringify({ mode, doc_visibility: docVisibility ?? null }),
   });
   if (!res.ok) throw await apiError("Deploy failed", res);
-  return res.json();
+  const data = await res.json();
+  if (data.job_id) {
+    return pollJob<DeployResponse>(data.job_id, "Deploy failed", 2000, onProgress);
+  }
+  return data;
 }
 
 export async function startRuntime(port = 808) {

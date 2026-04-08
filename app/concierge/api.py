@@ -14,7 +14,9 @@ import logging
 import os
 import shutil
 import subprocess
+import threading
 import time
+import uuid as uuid_mod
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
@@ -66,6 +68,45 @@ RETAIL_DATA_FILES = [
 
 # Max number of tenant sessions held in memory before evicting the oldest
 MAX_TENANTS = 200
+
+# ---------------------------------------------------------------------------
+# Async Job Store — lets long-running endpoints return immediately
+# ---------------------------------------------------------------------------
+_jobs: Dict[str, Dict[str, Any]] = {}
+_jobs_lock = threading.Lock()
+_MAX_JOBS = 500  # evict oldest when exceeded
+
+
+def _create_job(tenant_id: str, kind: str) -> str:
+    job_id = uuid_mod.uuid4().hex[:12]
+    with _jobs_lock:
+        if len(_jobs) >= _MAX_JOBS:
+            oldest = next(iter(_jobs))
+            del _jobs[oldest]
+        _jobs[job_id] = {
+            "status": "processing",
+            "kind": kind,
+            "tenant_id": tenant_id,
+            "created": time.time(),
+            "result": None,
+            "error": None,
+        }
+    return job_id
+
+
+def _finish_job(job_id: str, result: Any = None, error: str | None = None):
+    with _jobs_lock:
+        if job_id in _jobs:
+            _jobs[job_id]["status"] = "error" if error else "done"
+            _jobs[job_id]["result"] = result
+            _jobs[job_id]["error"] = error
+            _jobs[job_id]["finished"] = time.time()
+
+
+def _get_job(job_id: str) -> Dict[str, Any] | None:
+    with _jobs_lock:
+        return _jobs.get(job_id)
+
 
 # ---------------------------------------------------------------------------
 # App
@@ -130,6 +171,30 @@ def _log_startup():
         logger.info("  blueprints: %s", bps)
     else:
         logger.warning("  blueprints dir MISSING: %s", bp_dir)
+
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Job status polling
+# ---------------------------------------------------------------------------
+
+
+@app.get("/concierge/job/{job_id}")
+def get_job_status(job_id: str):
+    """Poll a background job. Returns status, and result when done."""
+    job = _get_job(job_id)
+    if not job:
+        return JSONResponse(status_code=404, content={"detail": "Job not found"})
+    if job["status"] == "processing":
+        elapsed = time.time() - job["created"]
+        return {"job_id": job_id, "status": "processing", "elapsed": round(elapsed, 1)}
+    if job["status"] == "error":
+        return JSONResponse(
+            status_code=500,
+            content={"job_id": job_id, "status": "error", "error": job["error"]},
+        )
+    # Done — return the full result
+    return {"job_id": job_id, "status": "done", "result": job["result"]}
 
 
 # ---------------------------------------------------------------------------
@@ -318,7 +383,7 @@ async def upload_files(
 def quickstart_fintech(
     req: QuickstartRequest, user: AuthUser = Depends(get_current_user)
 ):
-    t0 = time.time()
+    """Start quickstart as a background job. Returns job_id for polling."""
     logger.info(
         "[quickstart] tenant=%s model=%s use_llm=%s",
         user.tenant_id,
@@ -327,7 +392,7 @@ def quickstart_fintech(
     )
     ts = _get_tenant(user.tenant_id)
     ts.workspace.mkdir(parents=True, exist_ok=True)
-    # Copy preset files
+    # Copy preset files (fast, do synchronously)
     for src in FINTECH_DATA_FILES:
         if not src.exists():
             logger.error("[quickstart] preset file missing: %s", src)
@@ -335,20 +400,30 @@ def quickstart_fintech(
         shutil.copy2(src, ts.workspace / src.name)
         logger.info("[quickstart] copied %s", src.name)
 
-    agent = ts.get_or_create_agent(vertical="fintech", model=req.model)
-    logger.info(
-        "[quickstart] tenant=%s agent ready, calling handle_event...", user.tenant_id
-    )
-    result = agent.handle_event(
-        {
-            "type": "upload_docs",
-            "use_llm": req.use_llm,
-            "model": req.model,
-        }
-    )
-    elapsed = time.time() - t0
-    logger.info("[quickstart] tenant=%s done in %.1fs", user.tenant_id, elapsed)
-    return result
+    job_id = _create_job(user.tenant_id, "quickstart")
+
+    def _run():
+        t0 = time.time()
+        try:
+            agent = ts.get_or_create_agent(vertical="fintech", model=req.model)
+            logger.info(
+                "[quickstart] tenant=%s agent ready, calling handle_event...",
+                ts.tenant_id,
+            )
+            result = agent.handle_event(
+                {"type": "upload_docs", "use_llm": req.use_llm, "model": req.model}
+            )
+            elapsed = time.time() - t0
+            logger.info("[quickstart] tenant=%s done in %.1fs", ts.tenant_id, elapsed)
+            _finish_job(job_id, result=result)
+        except Exception as exc:
+            logger.error(
+                "[quickstart] tenant=%s FAILED: %s", ts.tenant_id, exc, exc_info=True
+            )
+            _finish_job(job_id, error=str(exc))
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"job_id": job_id, "status": "processing"}
 
 
 @app.post("/concierge/quickstart-retail")
@@ -376,19 +451,30 @@ def quickstart_retail(
 
 @app.post("/concierge/analyze")
 def analyze_documents(req: AnalyzeRequest, user: AuthUser = Depends(get_current_user)):
-    t0 = time.time()
+    """Start analysis as a background job. Returns job_id for polling."""
     logger.info("[analyze] tenant=%s model=%s", user.tenant_id, req.model)
     ts = _get_tenant(user.tenant_id)
-    agent = ts.get_or_create_agent(model=req.model)
-    result = agent.handle_event(
-        {
-            "type": "upload_docs",
-            "use_llm": req.use_llm,
-            "model": req.model,
-        }
-    )
-    logger.info("[analyze] tenant=%s done in %.1fs", user.tenant_id, time.time() - t0)
-    return result
+    job_id = _create_job(user.tenant_id, "analyze")
+
+    def _run():
+        t0 = time.time()
+        try:
+            agent = ts.get_or_create_agent(model=req.model)
+            result = agent.handle_event(
+                {"type": "upload_docs", "use_llm": req.use_llm, "model": req.model}
+            )
+            logger.info(
+                "[analyze] tenant=%s done in %.1fs", ts.tenant_id, time.time() - t0
+            )
+            _finish_job(job_id, result=result)
+        except Exception as exc:
+            logger.error(
+                "[analyze] tenant=%s FAILED: %s", ts.tenant_id, exc, exc_info=True
+            )
+            _finish_job(job_id, error=str(exc))
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"job_id": job_id, "status": "processing"}
 
 
 @app.post("/concierge/generate-templates")
@@ -406,26 +492,40 @@ def generate_templates(user: AuthUser = Depends(get_current_user)):
 
 @app.post("/concierge/deploy")
 def deploy_factory(req: DeployRequest, user: AuthUser = Depends(get_current_user)):
-    t0 = time.time()
+    """Start deploy as a background job. Returns job_id for polling."""
     logger.info("[deploy] tenant=%s mode=%s", user.tenant_id, req.mode)
     ts = _get_tenant(user.tenant_id)
-    agent = ts.get_or_create_agent()
-    action = "approve_deploy_dry" if req.mode == "dry" else "approve_deploy_live"
-    result = agent.handle_event(
-        {
-            "type": "user_action",
-            "action": action,
-            "doc_visibility": req.doc_visibility,
-        }
-    )
-    logger.info(
-        "[deploy] tenant=%s spec generated in %.1fs", user.tenant_id, time.time() - t0
-    )
+    job_id = _create_job(user.tenant_id, "deploy")
 
-    # After deploy, trigger backend to reload with the new spec
-    _trigger_backend_reload(ts)
+    def _run():
+        t0 = time.time()
+        try:
+            agent = ts.get_or_create_agent()
+            action = (
+                "approve_deploy_dry" if req.mode == "dry" else "approve_deploy_live"
+            )
+            result = agent.handle_event(
+                {
+                    "type": "user_action",
+                    "action": action,
+                    "doc_visibility": req.doc_visibility,
+                }
+            )
+            logger.info(
+                "[deploy] tenant=%s spec generated in %.1fs",
+                ts.tenant_id,
+                time.time() - t0,
+            )
+            _trigger_backend_reload(ts)
+            _finish_job(job_id, result=result)
+        except Exception as exc:
+            logger.error(
+                "[deploy] tenant=%s FAILED: %s", ts.tenant_id, exc, exc_info=True
+            )
+            _finish_job(job_id, error=str(exc))
 
-    return result
+    threading.Thread(target=_run, daemon=True).start()
+    return {"job_id": job_id, "status": "processing"}
 
 
 @app.post("/concierge/runtime/start")
