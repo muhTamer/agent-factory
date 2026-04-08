@@ -178,8 +178,8 @@ export function WelcomeStep() {
         }
         setVertical("fintech");
         setQuickstart(true);
-        setPlan((qsResult as { plan: unknown }).plan);
-        setAnalysisSummaryText((qsResult as { text: string }).text);
+        setPlan((qsResult as Record<string, never>).plan);
+        setAnalysisSummaryText((qsResult as Record<string, never>).text);
       }
 
       // Step 3: Start deploy job
@@ -210,8 +210,8 @@ export function WelcomeStep() {
             setQuickStatus(`Generating agents & deploying... (${Math.round(pollData.elapsed ?? 0)}s)`);
           }
         }
-        setDeployment((depResult as { deployment_request: unknown }).deployment_request);
-        setDeployMessage((depResult as { text: string }).text);
+        setDeployment((depResult as Record<string, never>).deployment_request);
+        setDeployMessage((depResult as Record<string, never>).text);
       }
 
       // Jump straight to runtime step
