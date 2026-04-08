@@ -11,6 +11,7 @@ import {
   Zap,
   ArrowRight,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -63,6 +64,7 @@ export function WelcomeStep() {
 
   const [quickLoading, setQuickLoading] = useState(false);
   const [quickStatus, setQuickStatus] = useState("");
+  const [quickstartOpen, setQuickstartOpen] = useState(false);
 
   const [postTest, setPostTest] = useState<string>("");
 
@@ -282,73 +284,109 @@ export function WelcomeStep() {
 
       {/* Quickstart */}
       <div className="space-y-3">
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4">
+        <Card className="border-slate-200">
+          <button
+            type="button"
+            onClick={() => setQuickstartOpen((o) => !o)}
+            className="flex w-full items-center justify-between p-4 text-left"
+          >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500 text-white">
                 <Zap size={20} />
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-800">
-                  Quickstart: Fintech
+                  Quickstart with Preset Data
                 </p>
                 <p className="text-xs text-slate-500">
-                  Load preset bank FAQs & refund policy, analyze & deploy in one
-                  click
+                  Test the system instantly using built-in sample documents
                 </p>
               </div>
             </div>
-            <Button
-              size="sm"
-              onClick={() => handleQuickstart("fintech")}
-              disabled={quickLoading}
-              className="shrink-0 w-full sm:w-auto"
-            >
-              {quickLoading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <>
-                  <Zap size={14} />
-                  Launch
-                </>
+            <ChevronDown
+              size={18}
+              className={cn(
+                "text-slate-400 transition-transform",
+                quickstartOpen && "rotate-180"
               )}
-            </Button>
-          </CardContent>
+            />
+          </button>
+
+          {quickstartOpen && (
+            <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-4">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Quickstart uses preset data so you can explore the full pipeline
+                without uploading anything. <strong>Fintech</strong> loads
+                synthetic bank FAQs and a refund policy.{" "}
+                <strong>Retail</strong> loads FAQs scraped from IKEA alongside
+                auto-generated refund and complaint policies.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Fintech */}
+                <Card className="border-amber-200 bg-amber-50/50">
+                  <CardContent className="flex flex-col gap-3 p-4">
+                    <div className="flex items-center gap-3">
+                      <Landmark size={18} className="text-amber-600 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">Fintech</p>
+                        <p className="text-xs text-slate-500">
+                          Bank FAQs & refund policy
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleQuickstart("fintech")}
+                      disabled={quickLoading}
+                      className="w-full"
+                    >
+                      {quickLoading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <>
+                          <Zap size={14} />
+                          Launch
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Retail */}
+                <Card className="border-emerald-200 bg-emerald-50/50">
+                  <CardContent className="flex flex-col gap-3 p-4">
+                    <div className="flex items-center gap-3">
+                      <ShoppingBag size={18} className="text-emerald-600 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">Retail</p>
+                        <p className="text-xs text-slate-500">
+                          IKEA FAQs, refund & complaint policies
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleQuickstart("retail")}
+                      disabled={quickLoading}
+                      className="w-full"
+                    >
+                      {quickLoading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <>
+                          <ShoppingBag size={14} />
+                          Launch
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
         </Card>
 
-        <Card className="border-emerald-200 bg-emerald-50/50">
-          <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white">
-                <ShoppingBag size={20} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-800">
-                  Quickstart: Retail
-                </p>
-                <p className="text-xs text-slate-500">
-                  Load preset retail FAQs, refund & complaint policies, analyze
-                  & deploy in one click
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => handleQuickstart("retail")}
-              disabled={quickLoading}
-              className="shrink-0 w-full sm:w-auto"
-            >
-              {quickLoading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <>
-                  <ShoppingBag size={14} />
-                  Launch
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
         {quickLoading && quickStatus && (
           <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
             <Loader2 size={14} className="animate-spin" />

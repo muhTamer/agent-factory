@@ -412,6 +412,295 @@
     },
 
     {
+      "_comment": "── ACCOUNT TOOLS ───────────────────────────────────────────────",
+      "name": "get_account_details",
+      "description": "Retrieve full account details including type, status, balance, and linked services. Returns account information for the authenticated customer.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "account_id": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "response": {
+        "account_id": "{{account_id}}",
+        "customer_id": "{{customer_id}}",
+        "account_type": "individual_current",
+        "account_status": "active",
+        "balance": 12450.75,
+        "currency": "EUR",
+        "opened_date": "2024-06-15",
+        "branch": "Amsterdam Central",
+        "kyc_status": "verified",
+        "kyc_expiry": "2034-06-15",
+        "linked_services": ["debit_card", "digital_wallet", "online_banking"]
+      },
+      "scenarios": [
+        {
+          "_comment": "Account not found",
+          "when": {
+            "account_id": {
+              "starts_with": "FAIL"
+            }
+          },
+          "response": {
+            "account_found": false,
+            "message": "Account not found in system."
+          }
+        },
+        {
+          "_comment": "Restricted account (KYC expired)",
+          "when": {
+            "account_id": {
+              "starts_with": "EXPIRED"
+            }
+          },
+          "response": {
+            "account_id": "{{account_id}}",
+            "account_status": "restricted",
+            "kyc_status": "expired",
+            "kyc_expiry": "2025-01-01",
+            "message": "Account restricted — KYC re-verification required."
+          }
+        },
+        {
+          "_comment": "Dormant account",
+          "when": {
+            "account_id": {
+              "starts_with": "DORMANT"
+            }
+          },
+          "response": {
+            "account_id": "{{account_id}}",
+            "account_status": "dormant",
+            "balance": 0,
+            "message": "Account is dormant due to inactivity. Visit branch to reactivate."
+          }
+        }
+      ]
+    },
+    {
+      "name": "submit_kyc_documents",
+      "description": "Submit KYC documents for verification. Accepts document type and initiates the verification process. Returns submission status and expected timeline.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "document_type": {
+          "type": "string",
+          "required": true,
+          "description": "One of: government_id, proof_of_address, company_registration, partnership_deed, board_resolution"
+        },
+        "verification_method": {
+          "type": "string",
+          "default": "digital",
+          "description": "One of: in_branch, video_kyc, digital"
+        }
+      },
+      "response": {
+        "submission_id": "KYC-{{customer_id}}-001",
+        "status": "submitted",
+        "document_type": "{{document_type}}",
+        "verification_method": "{{verification_method:digital}}",
+        "estimated_completion": "1-2 business days",
+        "message": "KYC documents submitted for {{verification_method:digital}} verification. Expected completion in 1-2 business days."
+      },
+      "scenarios": [
+        {
+          "_comment": "In-branch verification — immediate",
+          "when": {
+            "verification_method": {
+              "equals": "in_branch"
+            }
+          },
+          "response": {
+            "submission_id": "KYC-{{customer_id}}-001",
+            "status": "verified",
+            "estimated_completion": "immediate",
+            "message": "KYC verified in-branch. Account will be activated within 24 hours."
+          }
+        },
+        {
+          "_comment": "Video KYC",
+          "when": {
+            "verification_method": {
+              "equals": "video_kyc"
+            }
+          },
+          "response": {
+            "submission_id": "KYC-{{customer_id}}-001",
+            "status": "scheduled",
+            "estimated_completion": "same day",
+            "message": "Video KYC session scheduled. You will receive a link via email within 1 hour."
+          }
+        }
+      ]
+    },
+    {
+      "name": "open_account",
+      "description": "Initiate account opening for a new or existing customer. Validates eligibility and required documents based on account type.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "account_type": {
+          "type": "string",
+          "required": true,
+          "description": "One of: individual_current, sole_proprietorship, partnership, llp, private_limited, public_limited"
+        },
+        "channel": {
+          "type": "string",
+          "default": "online_portal",
+          "description": "One of: branch, online_portal, mobile_app"
+        }
+      },
+      "response": {
+        "application_id": "APP-{{customer_id}}-001",
+        "status": "pending_kyc",
+        "account_type": "{{account_type}}",
+        "channel": "{{channel:online_portal}}",
+        "required_documents": ["government_issued_photo_id", "proof_of_address"],
+        "estimated_activation": "2-5 business days",
+        "message": "Account opening initiated. Please submit required KYC documents to proceed."
+      },
+      "scenarios": [
+        {
+          "_comment": "Company account — more documents needed",
+          "when": {
+            "account_type": {
+              "in": ["private_limited", "public_limited"]
+            }
+          },
+          "response": {
+            "application_id": "APP-{{customer_id}}-001",
+            "status": "pending_documentation",
+            "required_documents": ["memorandum_of_association", "articles_of_association", "certificate_of_incorporation", "board_resolution", "director_kyc"],
+            "estimated_activation": "5-7 business days",
+            "message": "Company account opening initiated. Additional corporate documents required."
+          }
+        },
+        {
+          "_comment": "Branch channel — express processing",
+          "when": {
+            "channel": {
+              "equals": "branch"
+            }
+          },
+          "response": {
+            "application_id": "APP-{{customer_id}}-001",
+            "status": "in_progress",
+            "estimated_activation": "same day",
+            "message": "In-branch account opening. Activation possible same day with complete documentation."
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_account_details",
+      "description": "Update account information such as address, contact details, or signatories. Returns update status and required follow-up actions.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "account_id": {
+          "type": "string",
+          "required": true
+        },
+        "update_type": {
+          "type": "string",
+          "required": true,
+          "description": "One of: address_change, signatory_change, contact_update, branch_transfer"
+        }
+      },
+      "response": {
+        "update_id": "UPD-{{account_id}}-001",
+        "status": "submitted",
+        "update_type": "{{update_type}}",
+        "processing_time": "1-3 business days",
+        "message": "Account update request submitted. Processing in 1-3 business days."
+      },
+      "scenarios": [
+        {
+          "_comment": "Signatory change requires additional docs",
+          "when": {
+            "update_type": {
+              "equals": "signatory_change"
+            }
+          },
+          "response": {
+            "update_id": "UPD-{{account_id}}-001",
+            "status": "pending_documentation",
+            "required_documents": ["board_resolution_or_partner_consent", "new_signatory_kyc"],
+            "processing_time": "3-5 business days",
+            "message": "Signatory change requires board resolution and KYC of new signatory."
+          }
+        },
+        {
+          "_comment": "Branch transfer",
+          "when": {
+            "update_type": {
+              "equals": "branch_transfer"
+            }
+          },
+          "response": {
+            "update_id": "UPD-{{account_id}}-001",
+            "status": "initiated",
+            "processing_time": "5-7 business days",
+            "message": "Branch transfer initiated. Please visit your current branch to complete the process."
+          }
+        }
+      ]
+    },
+    {
+      "name": "close_account",
+      "description": "Initiate account closure. Checks for outstanding liabilities and pending transactions before processing.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "account_id": {
+          "type": "string",
+          "required": true
+        },
+        "final_balance_method": {
+          "type": "string",
+          "default": "transfer",
+          "description": "One of: transfer, cheque"
+        }
+      },
+      "response": {
+        "closure_id": "CLO-{{account_id}}-001",
+        "status": "processing",
+        "final_balance": 12450.75,
+        "disbursement_method": "{{final_balance_method:transfer}}",
+        "estimated_completion": "7-10 business days",
+        "message": "Account closure initiated. Final balance of EUR 12,450.75 will be disbursed via {{final_balance_method:transfer}}."
+      },
+      "scenarios": [
+        {
+          "_comment": "Outstanding liabilities block closure",
+          "when": {
+            "account_id": {
+              "starts_with": "DUES"
+            }
+          },
+          "response": {
+            "closure_id": "CLO-{{account_id}}-001",
+            "status": "blocked",
+            "outstanding_amount": 350.00,
+            "message": "Account closure blocked. Outstanding dues of EUR 350.00 must be cleared before closure."
+          }
+        }
+      ]
+    },
+    {
       "_comment": "── RETAIL TOOLS ────────────────────────────────────────────────",
       "name": "lookup_order",
       "description": "Look up a retail order by order number. Returns order details including items, purchase date, payment method, delivery status, and order total.",

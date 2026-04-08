@@ -58,6 +58,7 @@ FINTECH_DATA_FILES = [
     DATA_DIR / "BankFAQs.csv",
     DATA_DIR / "refunds_policy.yaml",
     DATA_DIR / "complaints_policy.yaml",
+    DATA_DIR / "accounts_policy.yaml",
 ]
 
 RETAIL_DATA_FILES = [
