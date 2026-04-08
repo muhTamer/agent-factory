@@ -142,11 +142,14 @@ export function WelcomeStep() {
   }
 
   async function handleQuickstart() {
+    if (quickLoading) return; // guard against double tap
     setQuickLoading(true);
     setError(null);
+    setQuickStatus("Starting quickstart...");
+    // Let React render the loading state before starting fetch
+    await new Promise((r) => setTimeout(r, 100));
     try {
-      // Step 1: Start quickstart job (inline fetch to avoid any module issues)
-      setQuickStatus("Starting quickstart...");
+      // Step 1: Start quickstart job
       const startRes = await authFetch("/api/concierge/quickstart-fintech", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
