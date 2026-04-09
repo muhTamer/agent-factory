@@ -183,7 +183,10 @@ export const handlers: { GET: any; POST: any } = IS_DEV_NO_AUTH
 
 export const auth: any = IS_DEV_NO_AUTH
   ? devAuth
-  : async (req?: any) => (await getProd()).auth(req);
+  : async (req?: any) => {
+      const na = await getProd();
+      return req ? na.auth(req) : na.auth();
+    };
 
 export const signIn: any = IS_DEV_NO_AUTH
   ? async () => {}
