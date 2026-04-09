@@ -16,7 +16,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { Vertical } from "@/types/concierge";
-import { useAuthStore } from "@/store/authStore";
 import { authFetch } from "@/lib/auth-fetch";
 
 const DOMAINS: {
@@ -65,82 +64,6 @@ export function WelcomeStep() {
   const [quickLoading, setQuickLoading] = useState(false);
   const [quickStatus, setQuickStatus] = useState("");
   const [quickstartOpen, setQuickstartOpen] = useState(false);
-
-  const [postTest, setPostTest] = useState<string>("");
-
-  async function testPost() {
-    setPostTest("Testing POST...");
-    try {
-      const res = await fetch("/api/concierge/cors-test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test: true }),
-      });
-      const data = await res.json();
-      setPostTest(`POST OK: ${res.status} ${JSON.stringify(data)}`);
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setPostTest(`POST FAIL: name=${e.name} msg=${e.message} cause=${String((e as unknown as Record<string,unknown>).cause ?? "none")}`);
-    }
-  }
-
-  async function testGet() {
-    setPostTest("Testing GET...");
-    try {
-      const res = await fetch("/api/concierge/debug");
-      const data = await res.json();
-      setPostTest(`GET OK: ${res.status} keys=${Object.keys(data).join(",")}`);
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setPostTest(`GET FAIL: name=${e.name} msg=${e.message}`);
-    }
-  }
-
-  async function testQuickstartDirect() {
-    setPostTest("Testing quickstart POST (async job)...");
-    try {
-      const t0 = Date.now();
-      const res = await authFetch("/api/concierge/quickstart-fintech", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ use_llm: true, model: "gpt-5-mini" }),
-      });
-      const elapsed = Date.now() - t0;
-      const data = await res.json();
-      if (data.job_id) {
-        setPostTest(`JOB STARTED: ${res.status} (${elapsed}ms) job_id=${data.job_id} — now polling...`);
-        // Poll once to verify
-        await new Promise((r) => setTimeout(r, 2000));
-        const poll = await authFetch(`/api/concierge/job/${data.job_id}`);
-        const pollData = await poll.json();
-        setPostTest(`JOB: ${res.status} (${elapsed}ms) job_id=${data.job_id} poll=${JSON.stringify(pollData).slice(0, 200)}`);
-      } else {
-        setPostTest(`QS OK: ${res.status} (${elapsed}ms) ${JSON.stringify(data).slice(0, 200)}`);
-      }
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setPostTest(`QS FAIL: name=${e.name} msg=${e.message}`);
-    }
-  }
-
-  async function testAuthFetch() {
-    const token = useAuthStore.getState().backendToken;
-    setPostTest(`Token: ${token ? `present (${token.length} chars, starts: ${token.slice(0, 20)}...)` : "NULL/undefined"}\nTesting authFetch POST...`);
-    try {
-      const t0 = Date.now();
-      const res = await authFetch("/api/concierge/cors-test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test: true }),
-      });
-      const elapsed = Date.now() - t0;
-      const data = await res.json();
-      setPostTest(`Token: ${token ? `yes (${token.length} chars)` : "NO"} | authFetch POST OK: ${res.status} (${elapsed}ms) ${JSON.stringify(data)}`);
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setPostTest(`Token: ${token ? `yes (${token.length} chars)` : "NO"} | authFetch FAIL: name=${e.name} msg=${e.message}`);
-    }
-  }
 
   async function handleQuickstart(variant: "fintech" | "retail") {
     if (quickLoading) return; // guard against double tap
@@ -406,27 +329,6 @@ export function WelcomeStep() {
         </Button>
       </div>
 
-      {/* Debug — remove after fixing deploy */}
-      <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <p className="text-xs font-semibold text-slate-500">Debug Panel (v2)</p>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={testGet} className="text-xs text-blue-500 underline">
-            Test GET
-          </button>
-          <button onClick={testPost} className="text-xs text-blue-500 underline">
-            Test POST
-          </button>
-          <button onClick={testQuickstartDirect} className="text-xs text-blue-500 underline">
-            Test Quickstart (with auth)
-          </button>
-          <button onClick={testAuthFetch} className="text-xs text-red-500 underline font-bold">
-            Test authFetch POST
-          </button>
-        </div>
-        {postTest && (
-          <p className="text-xs text-slate-600 break-all font-mono bg-white rounded p-2">{postTest}</p>
-        )}
-      </div>
     </div>
   );
 }

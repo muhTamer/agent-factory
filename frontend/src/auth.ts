@@ -167,10 +167,10 @@ async function buildProdAuth() {
 
 // ── Exports ────────────────────────────────────────────────────────────
 
-let _prod: Awaited<ReturnType<typeof buildProdAuth>> | null = null;
-async function getProd() {
-  if (!_prod) _prod = await buildProdAuth();
-  return _prod;
+let _prodPromise: Promise<Awaited<ReturnType<typeof buildProdAuth>>> | null = null;
+function getProd() {
+  if (!_prodPromise) _prodPromise = buildProdAuth();
+  return _prodPromise;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

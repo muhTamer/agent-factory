@@ -8,7 +8,17 @@ const SECRET = new TextEncoder().encode(
 );
 
 export async function GET() {
-  const session = await auth();
+  let session;
+  try {
+    session = await auth();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[TOKEN] auth() threw:", msg);
+    return NextResponse.json(
+      { error: "Auth error", detail: msg },
+      { status: 500 }
+    );
+  }
 
   // In dev mode without auth, return a dev token immediately
   if (IS_DEV && session?.user?.email) {
