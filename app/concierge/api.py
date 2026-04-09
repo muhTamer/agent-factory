@@ -431,23 +431,52 @@ def quickstart_fintech(
 def quickstart_retail(
     req: QuickstartRequest, user: AuthUser = Depends(get_current_user)
 ):
+    """Start retail quickstart as a background job. Returns job_id for polling."""
+    logger.info(
+        "[quickstart-retail] tenant=%s model=%s use_llm=%s",
+        user.tenant_id,
+        req.model,
+        req.use_llm,
+    )
     ts = _get_tenant(user.tenant_id)
     ts.workspace.mkdir(parents=True, exist_ok=True)
-    # Copy preset files
+    # Copy preset files (fast, do synchronously)
     for src in RETAIL_DATA_FILES:
         if not src.exists():
+            logger.error("[quickstart-retail] preset file missing: %s", src)
             return {"error": f"Preset file not found: {src}"}
         shutil.copy2(src, ts.workspace / src.name)
+        logger.info("[quickstart-retail] copied %s", src.name)
 
-    agent = ts.get_or_create_agent(vertical="retail", model=req.model)
-    result = agent.handle_event(
-        {
-            "type": "upload_docs",
-            "use_llm": req.use_llm,
-            "model": req.model,
-        }
-    )
-    return result
+    job_id = _create_job(user.tenant_id, "quickstart-retail")
+
+    def _run():
+        t0 = time.time()
+        try:
+            agent = ts.get_or_create_agent(vertical="retail", model=req.model)
+            logger.info(
+                "[quickstart-retail] tenant=%s agent ready, calling handle_event...",
+                ts.tenant_id,
+            )
+            result = agent.handle_event(
+                {"type": "upload_docs", "use_llm": req.use_llm, "model": req.model}
+            )
+            elapsed = time.time() - t0
+            logger.info(
+                "[quickstart-retail] tenant=%s done in %.1fs", ts.tenant_id, elapsed
+            )
+            _finish_job(job_id, result=result)
+        except Exception as exc:
+            logger.error(
+                "[quickstart-retail] tenant=%s FAILED: %s",
+                ts.tenant_id,
+                exc,
+                exc_info=True,
+            )
+            _finish_job(job_id, error=str(exc))
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"job_id": job_id, "status": "processing"}
 
 
 @app.post("/concierge/analyze")

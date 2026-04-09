@@ -88,26 +88,31 @@ export function WelcomeStep() {
       }
       const startData = await startRes.json();
 
-      // Step 2: Poll until quickstart completes
+      // Step 2: Poll until quickstart completes (or use synchronous result)
+      let qsResult: Record<string, unknown>;
       if (startData.job_id) {
-        let qsResult: Record<string, unknown> | null = null;
-        while (!qsResult) {
+        let polled: Record<string, unknown> | null = null;
+        while (!polled) {
           await new Promise((r) => setTimeout(r, 2000));
           const pollRes = await authFetch(`/api/concierge/job/${startData.job_id}`);
           const pollData = await pollRes.json();
           if (pollData.status === "done") {
-            qsResult = pollData.result;
+            polled = pollData.result;
           } else if (pollData.status === "error") {
             throw new Error(`Quickstart: ${pollData.error}`);
           } else {
             setQuickStatus(`Analyzing preset documents... (${Math.round(pollData.elapsed ?? 0)}s)`);
           }
         }
-        setVertical(variant);
-        setQuickstart(true);
-        setPlan((qsResult as Record<string, never>).plan);
-        setAnalysisSummaryText((qsResult as Record<string, never>).text);
+        qsResult = polled;
+      } else {
+        // Synchronous response (fallback)
+        qsResult = startData;
       }
+      setVertical(variant);
+      setQuickstart(true);
+      setPlan((qsResult as Record<string, never>).plan);
+      setAnalysisSummaryText((qsResult as Record<string, never>).text);
 
       // Step 3: Start deploy job
       setQuickStatus("Generating agents & deploying...");
