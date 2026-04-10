@@ -90,7 +90,8 @@ export async function quickstartFintech(
 
 export async function quickstartRetail(
   useLlm = true,
-  model = "gpt-5-mini"
+  model = "gpt-5-mini",
+  onProgress?: (elapsed: number) => void
 ): Promise<AnalysisResponse> {
   const res = await authFetch(`/api/concierge/quickstart-retail`, {
     method: "POST",
@@ -98,7 +99,11 @@ export async function quickstartRetail(
     body: JSON.stringify({ use_llm: useLlm, model }),
   });
   if (!res.ok) throw await apiError("Quickstart failed", res);
-  return res.json();
+  const data = await res.json();
+  if (data.job_id) {
+    return pollJob<AnalysisResponse>(data.job_id, "Quickstart failed", 2000, onProgress);
+  }
+  return data;
 }
 
 export async function analyzeDocuments(
