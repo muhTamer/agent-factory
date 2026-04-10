@@ -547,6 +547,8 @@ def deploy_factory(req: DeployRequest, user: AuthUser = Depends(get_current_user
                 time.time() - t0,
             )
             _trigger_backend_reload(ts)
+            # Save session metadata so the user can resume later
+            _save_session(ts, result)
             _finish_job(job_id, result=result)
         except Exception as exc:
             logger.error(
@@ -695,6 +697,63 @@ def _trigger_backend_reload(ts: TenantSession):
         )
     except Exception as exc:
         logger.error("[reload] tenant=%s backend unreachable: %s", ts.tenant_id, exc)
+
+
+def _save_session(ts: TenantSession, deploy_result: Dict[str, Any]):
+    """Persist session metadata so the user can resume on next login."""
+    factory_dir = ts.workspace / ".factory"
+    factory_dir.mkdir(parents=True, exist_ok=True)
+    dep = deploy_result.get("deployment_request", {})
+    session_data = {
+        "vertical": ts.vertical,
+        "deployed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "agents": dep.get("agents", []),
+        "spec_path": dep.get("spec_path", ""),
+        "deploy_text": deploy_result.get("text", ""),
+        "deployment_request": dep,
+    }
+    session_path = factory_dir / "session.json"
+    session_path.write_text(
+        json.dumps(session_data, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    logger.info(
+        "[session] saved for tenant=%s agents=%s", ts.tenant_id, dep.get("agents")
+    )
+
+
+# ---------------------------------------------------------------------------
+# Session persistence & reset
+# ---------------------------------------------------------------------------
+
+
+@app.get("/concierge/session")
+def get_session(user: AuthUser = Depends(get_current_user)):
+    """Return the user's last deployment session, or {status: 'new'} if none."""
+    ts = _get_tenant(user.tenant_id)
+    session_path = ts.workspace / ".factory" / "session.json"
+    if not session_path.exists():
+        return {"status": "new"}
+    try:
+        data = json.loads(session_path.read_text(encoding="utf-8"))
+        return {"status": "deployed", **data}
+    except Exception as exc:
+        logger.warning("[session] failed to read for tenant=%s: %s", ts.tenant_id, exc)
+        return {"status": "new"}
+
+
+@app.post("/concierge/reset")
+def reset_session(user: AuthUser = Depends(get_current_user)):
+    """Delete all data for this tenant and start fresh."""
+    ts = _get_tenant(user.tenant_id)
+    logger.info("[reset] tenant=%s workspace=%s", user.tenant_id, ts.workspace)
+    # Remove the workspace directory
+    if ts.workspace.exists():
+        shutil.rmtree(ts.workspace, ignore_errors=True)
+        logger.info("[reset] tenant=%s workspace deleted", user.tenant_id)
+    # Clear in-memory agent
+    ts.agent = None
+    return {"status": "reset"}
 
 
 @app.get("/concierge/workspace/files")

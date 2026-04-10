@@ -2,11 +2,15 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, User } from "lucide-react";
+import { useSetupStore } from "@/store/setupStore";
+import { resetSession } from "@/lib/concierge-api";
+import { LogOut, RotateCcw, User, Loader2 } from "lucide-react";
 
 export function UserMenu() {
   const { session, logout } = useAuth();
+  const reset = useSetupStore((s) => s.reset);
   const [open, setOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   // Close on click outside
@@ -30,6 +34,21 @@ export function UserMenu() {
     .slice(0, 2)
     .toUpperCase();
 
+  async function handleReset() {
+    if (!confirm("This will delete all your agents, chats, and uploaded data. Start over?")) return;
+    setResetting(true);
+    try {
+      await resetSession();
+      reset();
+      setOpen(false);
+    } catch (err) {
+      console.error("[Reset] failed:", err);
+      alert("Reset failed. Please try again.");
+    } finally {
+      setResetting(false);
+    }
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -48,6 +67,14 @@ export function UserMenu() {
             </p>
             <p className="text-xs text-slate-400 truncate">{user.email}</p>
           </div>
+          <button
+            onClick={handleReset}
+            disabled={resetting}
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
+          >
+            {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+            Start Over
+          </button>
           <button
             onClick={() => {
               setOpen(false);

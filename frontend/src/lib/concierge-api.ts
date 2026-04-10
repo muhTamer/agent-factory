@@ -237,3 +237,25 @@ export async function deleteMcpTool(toolName: string) {
   if (!res.ok) throw await apiError("MCP tool delete failed", res);
   return res.json();
 }
+
+// ── Session persistence ────────────────────────────────────────────
+
+export interface SessionData {
+  status: "new" | "deployed";
+  vertical?: string;
+  deployed_at?: string;
+  agents?: string[];
+  deploy_text?: string;
+  deployment_request?: DeployResponse["deployment_request"];
+}
+
+export async function getSession(): Promise<SessionData> {
+  const res = await authFetch(`/api/concierge/session`);
+  if (!res.ok) throw await apiError("Session fetch failed", res);
+  return res.json();
+}
+
+export async function resetSession(): Promise<void> {
+  const res = await authFetch(`/api/concierge/reset`, { method: "POST" });
+  if (!res.ok) throw await apiError("Reset failed", res);
+}
