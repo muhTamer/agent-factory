@@ -259,3 +259,33 @@ export async function resetSession(): Promise<void> {
   const res = await authFetch(`/api/concierge/reset`, { method: "POST" });
   if (!res.ok) throw await apiError("Reset failed", res);
 }
+
+// ── Chat history persistence ───────────────────────────────────────
+
+export interface ChatHistoryData {
+  threads: Array<{
+    id: string;
+    title: string;
+    preview: string;
+    createdAt: number;
+    updatedAt: number;
+    backendThreadId: string | null;
+  }>;
+  messagesMap: Record<string, unknown[]>;
+  activeThreadId: string | null;
+}
+
+export async function getChatHistory(): Promise<ChatHistoryData> {
+  const res = await authFetch(`/api/concierge/chat-history`);
+  if (!res.ok) throw await apiError("Chat history fetch failed", res);
+  return res.json();
+}
+
+export async function saveChatHistory(data: ChatHistoryData): Promise<void> {
+  const res = await authFetch(`/api/concierge/chat-history`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw await apiError("Chat history save failed", res);
+}

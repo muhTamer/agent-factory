@@ -756,6 +756,54 @@ def reset_session(user: AuthUser = Depends(get_current_user)):
     return {"status": "reset"}
 
 
+# ---------------------------------------------------------------------------
+# Chat history persistence
+# ---------------------------------------------------------------------------
+
+
+@app.get("/concierge/chat-history")
+def get_chat_history(user: AuthUser = Depends(get_current_user)):
+    """Return saved chat threads and messages, or empty if none."""
+    ts = _get_tenant(user.tenant_id)
+    history_path = ts.workspace / ".factory" / "chat_history.json"
+    if not history_path.exists():
+        return {"threads": [], "messagesMap": {}, "activeThreadId": None}
+    try:
+        data = json.loads(history_path.read_text(encoding="utf-8"))
+        return data
+    except Exception as exc:
+        logger.warning(
+            "[chat-history] failed to read for tenant=%s: %s", ts.tenant_id, exc
+        )
+        return {"threads": [], "messagesMap": {}, "activeThreadId": None}
+
+
+@app.put("/concierge/chat-history")
+def save_chat_history(request: Request, user: AuthUser = Depends(get_current_user)):
+    """Save chat threads and messages."""
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    body = loop.run_until_complete(request.json())
+    ts = _get_tenant(user.tenant_id)
+    factory_dir = ts.workspace / ".factory"
+    factory_dir.mkdir(parents=True, exist_ok=True)
+    history_path = factory_dir / "chat_history.json"
+    history_path.write_text(
+        json.dumps(body, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    thread_count = len(body.get("threads", []))
+    msg_count = sum(len(v) for v in body.get("messagesMap", {}).values())
+    logger.info(
+        "[chat-history] saved for tenant=%s threads=%d messages=%d",
+        ts.tenant_id,
+        thread_count,
+        msg_count,
+    )
+    return {"status": "saved", "threads": thread_count, "messages": msg_count}
+
+
 @app.get("/concierge/workspace/files")
 def list_workspace_files(user: AuthUser = Depends(get_current_user)):
     ts = _get_tenant(user.tenant_id)

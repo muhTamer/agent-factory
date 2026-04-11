@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ChatMessage } from "@/types/chat";
+import { saveChatHistory, getChatHistory } from "@/lib/concierge-api";
 
 export interface Thread {
   id: string;
@@ -31,6 +32,9 @@ interface ThreadState {
     threadId: string,
     patch: Partial<Pick<Thread, "title" | "preview" | "backendThreadId">>
   ) => void;
+
+  /** Load chat history from backend and merge into store */
+  loadFromBackend: () => Promise<void>;
 }
 
 function makeId(): string {
@@ -121,11 +125,26 @@ export const useThreadStore = create<ThreadState>()(
           ),
         }));
       },
+
+      loadFromBackend: async () => {
+        try {
+          const data = await getChatHistory();
+          if (data.threads && data.threads.length > 0) {
+            set({
+              threads: data.threads as Thread[],
+              messagesMap: data.messagesMap as Record<string, ChatMessage[]>,
+              activeThreadId: data.activeThreadId,
+            });
+          }
+        } catch (err) {
+          console.warn("[ThreadStore] Failed to load from backend:", err);
+        }
+      },
     }),
     {
       name: "af-threads",
       version: 3,
-      migrate: (persisted) => persisted as any,
+      migrate: (persisted) => persisted as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       partialize: (state) => ({
         threads: state.threads,
         activeThreadId: state.activeThreadId,
@@ -134,3 +153,29 @@ export const useThreadStore = create<ThreadState>()(
     }
   )
 );
+
+// ── Debounced sync to backend ──────────────────────────────────────
+// Saves chat history to the backend 2s after the last state change.
+let _syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+function _scheduleSync() {
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(() => {
+    const { threads, activeThreadId, messagesMap } = useThreadStore.getState();
+    if (threads.length === 0) return;
+    saveChatHistory({ threads, activeThreadId, messagesMap }).catch((err) =>
+      console.warn("[ThreadStore] Backend sync failed:", err)
+    );
+  }, 2000);
+}
+
+// Subscribe to store changes — fires on every state update
+useThreadStore.subscribe((state, prevState) => {
+  // Only sync when threads or messages actually changed
+  if (
+    state.threads !== prevState.threads ||
+    state.messagesMap !== prevState.messagesMap
+  ) {
+    _scheduleSync();
+  }
+});

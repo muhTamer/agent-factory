@@ -3,12 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSetupStore } from "@/store/setupStore";
+import { useThreadStore } from "@/store/threadStore";
 import { resetSession } from "@/lib/concierge-api";
 import { LogOut, RotateCcw, User, Loader2 } from "lucide-react";
 
 export function UserMenu() {
   const { session, logout } = useAuth();
   const reset = useSetupStore((s) => s.reset);
+  const clearAllThreads = useThreadStore((s) => s.clearAllThreads);
   const [open, setOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -40,6 +42,7 @@ export function UserMenu() {
     try {
       await resetSession();
       reset();
+      clearAllThreads();
       setOpen(false);
     } catch (err) {
       console.error("[Reset] failed:", err);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSetupStore } from "@/store/setupStore";
+import { useThreadStore } from "@/store/threadStore";
 import { getSession } from "@/lib/concierge-api";
 import type { Vertical } from "@/types/concierge";
 import { WizardProgressBar } from "./WizardProgressBar";
@@ -36,6 +37,8 @@ export function SetupWizard() {
           setDeployment(session.deployment_request);
           setDeployMessage(session.deploy_text ?? "");
           setStep("runtime");
+          // Load chat history from backend
+          useThreadStore.getState().loadFromBackend();
         }
       } catch (err) {
         console.warn("[Session] restore failed:", err);
