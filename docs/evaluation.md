@@ -123,10 +123,22 @@ Runs all 60 scenarios at three governance levels (LOW, MEDIUM, HIGH) and measure
 ## Solvability Comparison
 
 ```powershell
-python -m evaluation.solvability_comparison
+python -m evaluation.run_solvability_comparison
+python -m evaluation.run_solvability_comparison --detailed   # per-scenario output
+python -m evaluation.run_solvability_comparison --dry-run    # 5 scenarios only
 ```
 
-Compares TF-IDF baseline vs Neural (MiniLM + MLP) solvability estimator on classification accuracy, precision/recall, and latency.
+Three-way comparison of TF-IDF, Neural (MiniLM + MLP), and LLM (gpt-5-mini) solvability estimators on 45 ground-truth subtask scenarios. Measures classification accuracy, per-category breakdown, McNemar's paired significance tests, and latency.
+
+**Latest results (v4, 2026-04-11):**
+
+| Estimator | Accuracy | Standard (n=21) | Lexical Gap (n=24) | Latency |
+|-----------|:--------:|:---------------:|:------------------:|:-------:|
+| TF-IDF | 73.3% (33/45) | **90.5%** | 58.3% | **0.9 ms** |
+| Neural | 75.6% (34/45) | 76.2% | 75.0% | 145.8 ms |
+| LLM | **86.7% (39/45)** | 76.2% | **95.8%** | 20,459 ms |
+
+McNemar's tests: No pairwise comparison reaches statistical significance at p<0.05 (TF-IDF vs Neural p=1.0, LLM vs TF-IDF p=0.24, LLM vs Neural p=0.33).
 
 ---
 

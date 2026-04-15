@@ -150,25 +150,34 @@ Compares TF-IDF and Neural estimators on 45 ground-truth subtask scenarios
 - **Confusion matrices** — Per-estimator misclassification patterns
 - **Latency** — Per-query inference time comparison
 
-**Results (45 scenarios, 3 agents) — after BANKING77 contrastive training:**
+**Results (v4, 45 scenarios, 4 agents, 2026-04-11) — TF-IDF vs Neural vs LLM:**
 
-| Metric | TF-IDF | Neural (before) | Neural (after) |
-|--------|--------|-----------------|----------------|
-| Overall Accuracy | **73.3%** | 33.3% | 68.9% |
-| Standard Match | **76.2%** | 23.8% | 66.7% |
-| Lexical Gap | **70.8%** | 41.7% | **70.8%** |
-| Complaint Accuracy | 0.0% | 0.0% | **33.3%** |
-| Avg Latency | **8.6ms** | 190.9ms | 177.4ms |
-| McNemar's p-value | 0.0001 (sig.) | — | 0.7728 (not sig.) |
+| Metric | TF-IDF | Neural | LLM (gpt-5-mini) |
+|--------|:------:|:------:|:-----------------:|
+| Overall Accuracy | 73.3% (33/45) | 75.6% (34/45) | **86.7% (39/45)** |
+| Standard Match (n=21) | **90.5%** | 76.2% | 76.2% |
+| Lexical Gap (n=24) | 58.3% | 75.0% | **95.8%** |
+| FAQ Accuracy (n=18) | **100%** | **100%** | 66.7% |
+| Complaint Accuracy (n=12) | 75.0% | 16.7% | **100%** |
+| Refund Accuracy (n=15) | 40.0% | **93.3%** | **100%** |
+| Avg Latency | **0.9 ms** | 145.8 ms | 20,459 ms |
+
+**McNemar's pairwise significance tests:**
+
+| Pair | p-value | Significant? |
+|------|:-------:|:------------:|
+| TF-IDF vs Neural | 1.0000 | No |
+| LLM vs TF-IDF | 0.2386 | No |
+| LLM vs Neural | 0.3320 | No |
 
 **Key findings:**
-- TF-IDF with intent-aware scoring achieves 100% on FAQ and refund categories
-- Contrastive training on BANKING77 (Casanueva et al., 2020) improved Neural from 33.3% to 68.9% overall — now competitive with TF-IDF
-- Neural matches TF-IDF on lexical gap scenarios (70.8% each), confirming embeddings capture semantic similarity where TF-IDF relies on exact word overlap
-- Neural is the only estimator that routes any complaints correctly (33.3% vs TF-IDF 0%) — embeddings can partially distinguish "complaint" from "refund" semantics
-- McNemar's test is no longer significant (p=0.77), meaning the two estimators perform comparably
-- TF-IDF remains ~21x faster (8.6ms vs 177ms per query)
-- Remaining complaint failures stem from overlapping agent capability descriptions (both refunds and complaints agents mention escalation, case management, investigation)
+- **TF-IDF dominates standard match** (90.5%) — exact keyword overlap provides a strong signal for straightforward queries. It achieves 100% on all FAQ categories
+- **Neural dominates refund routing** (93.3%, esp. 88.9% lexical gap) — BANKING77 contrastive training produced strong financial-domain embeddings
+- **LLM dominates lexical gap** (95.8%) and complaints (100%) — semantic reasoning handles emotive, informal phrasing that surface-level methods miss
+- **No pairwise comparison is statistically significant** — each estimator has complementary strengths rather than one being uniformly superior
+- **TF-IDF is 160x faster** than Neural (0.9ms vs 146ms) and 22,000x faster than LLM (0.9ms vs 20.5s)
+- **Neural's weak spot is complaints** (16.7%) — the MLP confuses complaint scenarios with refunds due to overlapping agent descriptions (both mention escalation, case management)
+- **LLM's weak spot is FAQ** (66.7%) — it routes informational queries about accounts/refunds to the corresponding action agents rather than the FAQ agent
 
 Results are saved to `evaluation/results/solvability/`.
 
