@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 
 /** Re-fetch the backend token if older than 20 hours (token has 24h TTL). */
 const TOKEN_REFRESH_MS = 20 * 60 * 60 * 1000;
+const MAX_TOKEN_RETRIES = 3;
 
 async function fetchBackendToken(): Promise<string> {
   console.info("[AUTH] Fetching backend JWT from /api/token...");
@@ -13,7 +14,7 @@ async function fetchBackendToken(): Promise<string> {
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     console.error(`[AUTH] Token fetch failed: ${res.status} ${body}`);
-    throw new Error(`Token fetch failed: ${res.status} ${body}`);
+    throw new Error(`Token fetch failed (${res.status}): ${body}`);
   }
   const { token } = await res.json();
   console.info("[AUTH] Backend JWT acquired (length=%d)", token?.length ?? 0);
@@ -32,31 +33,45 @@ export function useAuth() {
     backendToken,
     tokenFetchedAt,
     isFetchingToken,
+    tokenRetries,
+    tokenError,
     setBackendToken,
     clearBackendToken,
     setFetchingToken,
+    setTokenError,
   } = useAuthStore();
 
   const refreshToken = useCallback(async () => {
     if (isFetchingToken) return;
+    const currentRetries = useAuthStore.getState().tokenRetries;
+    if (currentRetries >= MAX_TOKEN_RETRIES) return;
+
     setFetchingToken(true);
     try {
       const token = await fetchBackendToken();
       setBackendToken(token);
     } catch (err) {
-      console.error("[AUTH] Token refresh failed:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[AUTH] Token refresh failed:", msg);
+      const nextRetry = currentRetries + 1;
+      setTokenError(msg, nextRetry);
       clearBackendToken();
     } finally {
       setFetchingToken(false);
     }
-  }, [isFetchingToken, setBackendToken, clearBackendToken, setFetchingToken]);
+  }, [isFetchingToken, setBackendToken, clearBackendToken, setFetchingToken, setTokenError]);
 
   // Fetch token when user signs in
   useEffect(() => {
-    if (status === "authenticated" && !backendToken && !isFetchingToken) {
+    if (
+      status === "authenticated" &&
+      !backendToken &&
+      !isFetchingToken &&
+      tokenRetries < MAX_TOKEN_RETRIES
+    ) {
       refreshToken();
     }
-  }, [status, backendToken, isFetchingToken, refreshToken]);
+  }, [status, backendToken, isFetchingToken, tokenRetries, refreshToken]);
 
   // Auto-refresh token before expiry
   useEffect(() => {
@@ -72,14 +87,21 @@ export function useAuth() {
     await signOut({ callbackUrl: "/login" });
   }, [clearBackendToken]);
 
+  const retryToken = useCallback(() => {
+    setTokenError(null, 0);
+  }, [setTokenError]);
+
   return {
     session,
     status,
     isAuthenticated: status === "authenticated",
     isLoading: status === "loading",
     backendToken,
+    tokenError,
+    tokenRetries,
     logout,
     refreshToken,
+    retryToken,
   };
 }
 

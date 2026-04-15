@@ -65,12 +65,27 @@ function getAvailableProviders(): string[] {
   return available;
 }
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
+}) {
   const available = getAvailableProviders();
+  const params = await searchParams;
+  const error = params?.error;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
       <div className="w-full max-w-md space-y-6 sm:space-y-8 rounded-2xl bg-white p-6 sm:p-8 shadow-lg">
+        {/* Error display */}
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <p className="font-semibold">Auth Error: {error}</p>
+            <p className="mt-1 text-xs text-red-500">
+              Check server logs or /api/auth/debug for details.
+            </p>
+          </div>
+        )}
         {/* Logo */}
         <div className="text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-blue-500 text-white">

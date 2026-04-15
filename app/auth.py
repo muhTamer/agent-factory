@@ -21,7 +21,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 logger = logging.getLogger("auth")
 
 AUTH_SECRET = os.getenv("AUTH_SECRET", "")
-AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() == "true"
+# Default to disabled when no AUTH_SECRET is set (local dev)
+AUTH_ENABLED = (
+    os.getenv("AUTH_ENABLED", "true" if AUTH_SECRET else "false").lower() == "true"
+)
 
 logger.info(
     "Auth module loaded: enabled=%s, secret_set=%s", AUTH_ENABLED, bool(AUTH_SECRET)

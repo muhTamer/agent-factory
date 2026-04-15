@@ -1,7 +1,6 @@
 "use client";
 
 import { useSetupStore } from "@/store/setupStore";
-import { quickstartFintech, deployFactory } from "@/lib/concierge-api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,11 +11,11 @@ import {
   Zap,
   ArrowRight,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { Vertical } from "@/types/concierge";
-import { useAuthStore } from "@/store/authStore";
 import { authFetch } from "@/lib/auth-fetch";
 
 const DOMAINS: {
@@ -64,104 +63,93 @@ export function WelcomeStep() {
 
   const [quickLoading, setQuickLoading] = useState(false);
   const [quickStatus, setQuickStatus] = useState("");
+  const [quickstartOpen, setQuickstartOpen] = useState(false);
 
-  const [postTest, setPostTest] = useState<string>("");
-
-  async function testPost() {
-    setPostTest("Testing POST...");
+  async function handleQuickstart(variant: "fintech" | "retail") {
+    if (quickLoading) return; // guard against double tap
+    setQuickLoading(true);
+    setError(null);
+    setQuickStatus("Starting quickstart...");
+    // Let React render the loading state before starting fetch
+    await new Promise((r) => setTimeout(r, 100));
     try {
-      const res = await fetch("/api/concierge/cors-test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test: true }),
-      });
-      const data = await res.json();
-      setPostTest(`POST OK: ${res.status} ${JSON.stringify(data)}`);
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setPostTest(`POST FAIL: name=${e.name} msg=${e.message} cause=${String((e as unknown as Record<string,unknown>).cause ?? "none")}`);
-    }
-  }
-
-  async function testGet() {
-    setPostTest("Testing GET...");
-    try {
-      const res = await fetch("/api/concierge/debug");
-      const data = await res.json();
-      setPostTest(`GET OK: ${res.status} keys=${Object.keys(data).join(",")}`);
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setPostTest(`GET FAIL: name=${e.name} msg=${e.message}`);
-    }
-  }
-
-  async function testQuickstartDirect() {
-    setPostTest("Testing quickstart POST WITH auth...");
-    try {
-      const t0 = Date.now();
-      const res = await authFetch("/api/concierge/quickstart-fintech", {
+      // Step 1: Start quickstart job
+      const endpoint = variant === "retail"
+        ? "/api/concierge/quickstart-retail"
+        : "/api/concierge/quickstart-fintech";
+      const startRes = await authFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ use_llm: true, model: "gpt-5-mini" }),
       });
-      const elapsed = Date.now() - t0;
-      if (res.ok) {
-        const data = await res.json();
-        setPostTest(`QS OK: ${res.status} (${elapsed}ms) plan_agents=${data?.plan?.agents?.length ?? "?"}`);
-      } else {
-        const text = await res.text().catch(() => "no body");
-        setPostTest(`QS HTTP ${res.status} (${elapsed}ms): ${text.slice(0, 300)}`);
+      if (!startRes.ok) {
+        const errText = await startRes.text().catch(() => startRes.statusText);
+        throw new Error(`Quickstart failed (${startRes.status}): ${errText}`);
       }
-    } catch (err) {
-      const elapsed = "?";
-      const e = err instanceof Error ? err : new Error(String(err));
-      setPostTest(`QS FAIL: name=${e.name} msg=${e.message}`);
-    }
-  }
+      const startData = await startRes.json();
 
-  async function testAuthFetch() {
-    const token = useAuthStore.getState().backendToken;
-    setPostTest(`Token: ${token ? `present (${token.length} chars, starts: ${token.slice(0, 20)}...)` : "NULL/undefined"}\nTesting authFetch POST...`);
-    try {
-      const t0 = Date.now();
-      const res = await authFetch("/api/concierge/cors-test", {
+      // Step 2: Poll until quickstart completes (or use synchronous result)
+      let qsResult: Record<string, unknown>;
+      if (startData.job_id) {
+        let polled: Record<string, unknown> | null = null;
+        while (!polled) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const pollRes = await authFetch(`/api/concierge/job/${startData.job_id}`);
+          const pollData = await pollRes.json();
+          if (pollData.status === "done") {
+            polled = pollData.result;
+          } else if (pollData.status === "error") {
+            throw new Error(`Quickstart: ${pollData.error}`);
+          } else {
+            setQuickStatus(`Analyzing preset documents... (${Math.round(pollData.elapsed ?? 0)}s)`);
+          }
+        }
+        qsResult = polled;
+      } else {
+        // Synchronous response (fallback)
+        qsResult = startData;
+      }
+      setVertical(variant);
+      setQuickstart(true);
+      setPlan((qsResult as Record<string, never>).plan);
+      setAnalysisSummaryText((qsResult as Record<string, never>).text);
+
+      // Step 3: Start deploy job
+      setQuickStatus("Generating agents & deploying...");
+      const depRes = await authFetch("/api/concierge/deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test: true }),
+        body: JSON.stringify({ mode: "dry", doc_visibility: null }),
       });
-      const elapsed = Date.now() - t0;
-      const data = await res.json();
-      setPostTest(`Token: ${token ? `yes (${token.length} chars)` : "NO"} | authFetch POST OK: ${res.status} (${elapsed}ms) ${JSON.stringify(data)}`);
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setPostTest(`Token: ${token ? `yes (${token.length} chars)` : "NO"} | authFetch FAIL: name=${e.name} msg=${e.message}`);
-    }
-  }
+      if (!depRes.ok) {
+        const errText = await depRes.text().catch(() => depRes.statusText);
+        throw new Error(`Deploy failed (${depRes.status}): ${errText}`);
+      }
+      const depStart = await depRes.json();
 
-  async function handleQuickstart() {
-    setQuickLoading(true);
-    setError(null);
-    try {
-      // Step 1: Analyze
-      setQuickStatus("Analyzing preset documents...");
-      const res = await quickstartFintech();
-      setVertical("fintech");
-      setQuickstart(true);
-      setPlan(res.plan);
-      setAnalysisSummaryText(res.text);
-
-      // Step 2: Auto-deploy
-      setQuickStatus("Generating agents & deploying...");
-      const dep = await deployFactory("dry");
-      setDeployment(dep.deployment_request);
-      setDeployMessage(dep.text);
+      // Step 4: Poll until deploy completes
+      if (depStart.job_id) {
+        let depResult: Record<string, unknown> | null = null;
+        while (!depResult) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const pollRes = await authFetch(`/api/concierge/job/${depStart.job_id}`);
+          const pollData = await pollRes.json();
+          if (pollData.status === "done") {
+            depResult = pollData.result;
+          } else if (pollData.status === "error") {
+            throw new Error(`Deploy: ${pollData.error}`);
+          } else {
+            setQuickStatus(`Generating agents & deploying... (${Math.round(pollData.elapsed ?? 0)}s)`);
+          }
+        }
+        setDeployment((depResult as Record<string, never>).deployment_request);
+        setDeployMessage((depResult as Record<string, never>).text);
+      }
 
       // Jump straight to runtime step
       setStep("runtime");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Quickstart failed"
-      );
+      setError(err instanceof Error ? err.message : "Quickstart failed");
     } finally {
       setQuickLoading(false);
       setQuickStatus("");
@@ -223,50 +211,120 @@ export function WelcomeStep() {
       </div>
 
       {/* Quickstart */}
-      <Card className="border-amber-200 bg-amber-50/50">
-        <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
-              <Zap size={20} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">
-                Quickstart: Fintech
-              </p>
-              <p className="text-xs text-slate-500">
-                Load preset bank FAQs & refund policy, analyze & deploy in one
-                click
-              </p>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            onClick={handleQuickstart}
-            disabled={quickLoading}
-            className="shrink-0 w-full sm:w-auto"
+      <div className="space-y-3">
+        <Card className="border-slate-200">
+          <button
+            type="button"
+            onClick={() => setQuickstartOpen((o) => !o)}
+            className="flex w-full items-center justify-between p-4 text-left"
           >
-            {quickLoading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <>
-                <Zap size={14} />
-                Launch
-              </>
-            )}
-          </Button>
-        </CardContent>
-        {quickLoading && quickStatus && (
-          <div className="border-t border-amber-200 px-4 py-2">
-            <div className="flex items-center gap-2 text-sm text-amber-700">
-              <Loader2 size={14} className="animate-spin" />
-              {quickStatus}
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500 text-white">
+                <Zap size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">
+                  Quickstart with Preset Data
+                </p>
+                <p className="text-xs text-slate-500">
+                  Test the system instantly using built-in sample documents
+                </p>
+              </div>
             </div>
+            <ChevronDown
+              size={18}
+              className={cn(
+                "text-slate-400 transition-transform",
+                quickstartOpen && "rotate-180"
+              )}
+            />
+          </button>
+
+          {quickstartOpen && (
+            <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-4">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Quickstart uses preset data so you can explore the full pipeline
+                without uploading anything. <strong>Fintech</strong> loads
+                synthetic bank FAQs and a refund policy.{" "}
+                <strong>Retail</strong> loads FAQs scraped from IKEA alongside
+                auto-generated refund and complaint policies.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Fintech */}
+                <Card className="border-amber-200 bg-amber-50/50">
+                  <CardContent className="flex flex-col gap-3 p-4">
+                    <div className="flex items-center gap-3">
+                      <Landmark size={18} className="text-amber-600 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">Fintech</p>
+                        <p className="text-xs text-slate-500">
+                          Bank FAQs & refund policy
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleQuickstart("fintech")}
+                      disabled={quickLoading}
+                      className="w-full"
+                    >
+                      {quickLoading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <>
+                          <Zap size={14} />
+                          Launch
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Retail */}
+                <Card className="border-emerald-200 bg-emerald-50/50">
+                  <CardContent className="flex flex-col gap-3 p-4">
+                    <div className="flex items-center gap-3">
+                      <ShoppingBag size={18} className="text-emerald-600 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">Retail</p>
+                        <p className="text-xs text-slate-500">
+                          IKEA FAQs, refund & complaint policies
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleQuickstart("retail")}
+                      disabled={quickLoading}
+                      className="w-full"
+                    >
+                      {quickLoading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <>
+                          <ShoppingBag size={14} />
+                          Launch
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {quickLoading && quickStatus && (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
+            <Loader2 size={14} className="animate-spin" />
+            {quickStatus}
             <p className="mt-1 text-xs text-amber-600">
-              Please keep this tab in the foreground — switching apps may cancel the request.
+              You can switch apps — progress won&apos;t be lost.
             </p>
           </div>
         )}
-      </Card>
+      </div>
 
       {/* Continue */}
       <div className="flex justify-end">
@@ -276,27 +334,6 @@ export function WelcomeStep() {
         </Button>
       </div>
 
-      {/* Debug — remove after fixing deploy */}
-      <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <p className="text-xs font-semibold text-slate-500">Debug Panel (v2)</p>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={testGet} className="text-xs text-blue-500 underline">
-            Test GET
-          </button>
-          <button onClick={testPost} className="text-xs text-blue-500 underline">
-            Test POST
-          </button>
-          <button onClick={testQuickstartDirect} className="text-xs text-blue-500 underline">
-            Test Quickstart (with auth)
-          </button>
-          <button onClick={testAuthFetch} className="text-xs text-red-500 underline font-bold">
-            Test authFetch POST
-          </button>
-        </div>
-        {postTest && (
-          <p className="text-xs text-slate-600 break-all font-mono bg-white rounded p-2">{postTest}</p>
-        )}
-      </div>
     </div>
   );
 }

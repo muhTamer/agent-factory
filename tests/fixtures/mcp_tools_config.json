@@ -409,6 +409,626 @@
           }
         }
       ]
+    },
+
+    {
+      "_comment": "── ACCOUNT TOOLS ───────────────────────────────────────────────",
+      "name": "get_account_details",
+      "description": "Retrieve full account details including type, status, balance, and linked services. Returns account information for the authenticated customer.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "account_id": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "response": {
+        "account_id": "{{account_id}}",
+        "customer_id": "{{customer_id}}",
+        "account_type": "individual_current",
+        "account_status": "active",
+        "balance": 12450.75,
+        "currency": "EUR",
+        "opened_date": "2024-06-15",
+        "branch": "Amsterdam Central",
+        "kyc_status": "verified",
+        "kyc_expiry": "2034-06-15",
+        "linked_services": ["debit_card", "digital_wallet", "online_banking"]
+      },
+      "scenarios": [
+        {
+          "_comment": "Account not found",
+          "when": {
+            "account_id": {
+              "starts_with": "FAIL"
+            }
+          },
+          "response": {
+            "account_found": false,
+            "message": "Account not found in system."
+          }
+        },
+        {
+          "_comment": "Restricted account (KYC expired)",
+          "when": {
+            "account_id": {
+              "starts_with": "EXPIRED"
+            }
+          },
+          "response": {
+            "account_id": "{{account_id}}",
+            "account_status": "restricted",
+            "kyc_status": "expired",
+            "kyc_expiry": "2025-01-01",
+            "message": "Account restricted — KYC re-verification required."
+          }
+        },
+        {
+          "_comment": "Dormant account",
+          "when": {
+            "account_id": {
+              "starts_with": "DORMANT"
+            }
+          },
+          "response": {
+            "account_id": "{{account_id}}",
+            "account_status": "dormant",
+            "balance": 0,
+            "message": "Account is dormant due to inactivity. Visit branch to reactivate."
+          }
+        }
+      ]
+    },
+    {
+      "name": "submit_kyc_documents",
+      "description": "Submit KYC documents for verification. Accepts document type and initiates the verification process. Returns submission status and expected timeline.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "document_type": {
+          "type": "string",
+          "required": true,
+          "description": "One of: government_id, proof_of_address, company_registration, partnership_deed, board_resolution"
+        },
+        "verification_method": {
+          "type": "string",
+          "default": "digital",
+          "description": "One of: in_branch, video_kyc, digital"
+        }
+      },
+      "response": {
+        "submission_id": "KYC-{{customer_id}}-001",
+        "status": "submitted",
+        "document_type": "{{document_type}}",
+        "verification_method": "{{verification_method:digital}}",
+        "estimated_completion": "1-2 business days",
+        "message": "KYC documents submitted for {{verification_method:digital}} verification. Expected completion in 1-2 business days."
+      },
+      "scenarios": [
+        {
+          "_comment": "In-branch verification — immediate",
+          "when": {
+            "verification_method": {
+              "equals": "in_branch"
+            }
+          },
+          "response": {
+            "submission_id": "KYC-{{customer_id}}-001",
+            "status": "verified",
+            "estimated_completion": "immediate",
+            "message": "KYC verified in-branch. Account will be activated within 24 hours."
+          }
+        },
+        {
+          "_comment": "Video KYC",
+          "when": {
+            "verification_method": {
+              "equals": "video_kyc"
+            }
+          },
+          "response": {
+            "submission_id": "KYC-{{customer_id}}-001",
+            "status": "scheduled",
+            "estimated_completion": "same day",
+            "message": "Video KYC session scheduled. You will receive a link via email within 1 hour."
+          }
+        }
+      ]
+    },
+    {
+      "name": "open_account",
+      "description": "Initiate account opening for a new or existing customer. Validates eligibility and required documents based on account type.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "account_type": {
+          "type": "string",
+          "required": true,
+          "description": "One of: individual_current, sole_proprietorship, partnership, llp, private_limited, public_limited"
+        },
+        "channel": {
+          "type": "string",
+          "default": "online_portal",
+          "description": "One of: branch, online_portal, mobile_app"
+        }
+      },
+      "response": {
+        "application_id": "APP-{{customer_id}}-001",
+        "status": "pending_kyc",
+        "account_type": "{{account_type}}",
+        "channel": "{{channel:online_portal}}",
+        "required_documents": ["government_issued_photo_id", "proof_of_address"],
+        "estimated_activation": "2-5 business days",
+        "message": "Account opening initiated. Please submit required KYC documents to proceed."
+      },
+      "scenarios": [
+        {
+          "_comment": "Company account — more documents needed",
+          "when": {
+            "account_type": {
+              "in": ["private_limited", "public_limited"]
+            }
+          },
+          "response": {
+            "application_id": "APP-{{customer_id}}-001",
+            "status": "pending_documentation",
+            "required_documents": ["memorandum_of_association", "articles_of_association", "certificate_of_incorporation", "board_resolution", "director_kyc"],
+            "estimated_activation": "5-7 business days",
+            "message": "Company account opening initiated. Additional corporate documents required."
+          }
+        },
+        {
+          "_comment": "Branch channel — express processing",
+          "when": {
+            "channel": {
+              "equals": "branch"
+            }
+          },
+          "response": {
+            "application_id": "APP-{{customer_id}}-001",
+            "status": "in_progress",
+            "estimated_activation": "same day",
+            "message": "In-branch account opening. Activation possible same day with complete documentation."
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_account_details",
+      "description": "Update account information such as address, contact details, or signatories. Returns update status and required follow-up actions.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "account_id": {
+          "type": "string",
+          "required": true
+        },
+        "update_type": {
+          "type": "string",
+          "required": true,
+          "description": "One of: address_change, signatory_change, contact_update, branch_transfer"
+        }
+      },
+      "response": {
+        "update_id": "UPD-{{account_id}}-001",
+        "status": "submitted",
+        "update_type": "{{update_type}}",
+        "processing_time": "1-3 business days",
+        "message": "Account update request submitted. Processing in 1-3 business days."
+      },
+      "scenarios": [
+        {
+          "_comment": "Signatory change requires additional docs",
+          "when": {
+            "update_type": {
+              "equals": "signatory_change"
+            }
+          },
+          "response": {
+            "update_id": "UPD-{{account_id}}-001",
+            "status": "pending_documentation",
+            "required_documents": ["board_resolution_or_partner_consent", "new_signatory_kyc"],
+            "processing_time": "3-5 business days",
+            "message": "Signatory change requires board resolution and KYC of new signatory."
+          }
+        },
+        {
+          "_comment": "Branch transfer",
+          "when": {
+            "update_type": {
+              "equals": "branch_transfer"
+            }
+          },
+          "response": {
+            "update_id": "UPD-{{account_id}}-001",
+            "status": "initiated",
+            "processing_time": "5-7 business days",
+            "message": "Branch transfer initiated. Please visit your current branch to complete the process."
+          }
+        }
+      ]
+    },
+    {
+      "name": "close_account",
+      "description": "Initiate account closure. Checks for outstanding liabilities and pending transactions before processing.",
+      "parameters": {
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "account_id": {
+          "type": "string",
+          "required": true
+        },
+        "final_balance_method": {
+          "type": "string",
+          "default": "transfer",
+          "description": "One of: transfer, cheque"
+        }
+      },
+      "response": {
+        "closure_id": "CLO-{{account_id}}-001",
+        "status": "processing",
+        "final_balance": 12450.75,
+        "disbursement_method": "{{final_balance_method:transfer}}",
+        "estimated_completion": "7-10 business days",
+        "message": "Account closure initiated. Final balance of EUR 12,450.75 will be disbursed via {{final_balance_method:transfer}}."
+      },
+      "scenarios": [
+        {
+          "_comment": "Outstanding liabilities block closure",
+          "when": {
+            "account_id": {
+              "starts_with": "DUES"
+            }
+          },
+          "response": {
+            "closure_id": "CLO-{{account_id}}-001",
+            "status": "blocked",
+            "outstanding_amount": 350.00,
+            "message": "Account closure blocked. Outstanding dues of EUR 350.00 must be cleared before closure."
+          }
+        }
+      ]
+    },
+    {
+      "_comment": "── RETAIL TOOLS ────────────────────────────────────────────────",
+      "name": "lookup_order",
+      "description": "Look up a retail order by order number. Returns order details including items, purchase date, payment method, delivery status, and order total.",
+      "parameters": {
+        "order_id": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "response": {
+        "order_id": "{{order_id}}",
+        "order_found": true,
+        "customer_id": "CUST-12345",
+        "order_date": "2026-02-15",
+        "order_age_days": 30,
+        "order_total": 349.99,
+        "payment_method": "visa_ending_4242",
+        "delivery_status": "delivered",
+        "items": [
+          {
+            "item_id": "ITEM-001",
+            "name": "KALLAX Shelf unit",
+            "quantity": 1,
+            "price": 89.99,
+            "category": "furniture"
+          },
+          {
+            "item_id": "ITEM-002",
+            "name": "MALM Desk",
+            "quantity": 1,
+            "price": 199.00,
+            "category": "furniture"
+          },
+          {
+            "item_id": "ITEM-003",
+            "name": "LED Desk lamp",
+            "quantity": 1,
+            "price": 29.99,
+            "category": "lighting"
+          }
+        ]
+      },
+      "scenarios": [
+        {
+          "_comment": "Order not found",
+          "when": {
+            "order_id": {
+              "starts_with": "FAIL"
+            }
+          },
+          "response": {
+            "order_found": false,
+            "message": "Order not found in system."
+          }
+        },
+        {
+          "_comment": "Old order (outside 365-day window)",
+          "when": {
+            "order_id": {
+              "starts_with": "OLD"
+            }
+          },
+          "response": {
+            "order_id": "{{order_id}}",
+            "order_found": true,
+            "order_date": "2024-08-10",
+            "order_age_days": 400,
+            "order_total": 149.99,
+            "delivery_status": "delivered"
+          }
+        },
+        {
+          "_comment": "Order with non-returnable items",
+          "when": {
+            "order_id": {
+              "starts_with": "ASIS"
+            }
+          },
+          "response": {
+            "order_id": "{{order_id}}",
+            "order_found": true,
+            "order_date": "2026-03-01",
+            "order_age_days": 15,
+            "order_total": 59.99,
+            "items": [
+              {
+                "item_id": "ITEM-AS1",
+                "name": "As-Is Bookcase",
+                "quantity": 1,
+                "price": 59.99,
+                "category": "as_is"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "check_return_eligibility",
+      "description": "Check if an item from an order is eligible for return. Evaluates return window, product category, and item condition against the return policy.",
+      "parameters": {
+        "order_id": {
+          "type": "string",
+          "required": true
+        },
+        "item_id": {
+          "type": "string",
+          "required": true
+        },
+        "product_condition": {
+          "type": "string",
+          "required": true,
+          "description": "One of: unopened, opened, damaged, modified"
+        }
+      },
+      "response": {
+        "order_id": "{{order_id}}",
+        "item_id": "{{item_id}}",
+        "eligible": true,
+        "return_window_days": 365,
+        "days_remaining": 335,
+        "refund_amount": 89.99,
+        "refund_method": "original_payment_method",
+        "message": "Item is eligible for return. Refund of $89.99 to original payment method."
+      },
+      "scenarios": [
+        {
+          "_comment": "Opened item — 180-day window",
+          "when": {
+            "product_condition": {
+              "equals": "opened"
+            }
+          },
+          "response": {
+            "eligible": true,
+            "return_window_days": 180,
+            "days_remaining": 150,
+            "message": "Opened item eligible for return within 180-day window. Item must be clean, undamaged, and complete."
+          }
+        },
+        {
+          "_comment": "Damaged/modified — not eligible",
+          "when": {
+            "product_condition": {
+              "in": ["damaged", "modified"]
+            }
+          },
+          "response": {
+            "eligible": false,
+            "message": "Item is not eligible for return. Items that are modified, dirty, stained, or damaged by the customer cannot be returned."
+          }
+        }
+      ]
+    },
+    {
+      "name": "initiate_return",
+      "description": "Initiate a return for a retail order item. Processes the return and schedules the refund to the original payment method.",
+      "parameters": {
+        "order_id": {
+          "type": "string",
+          "required": true
+        },
+        "item_id": {
+          "type": "string",
+          "required": true
+        },
+        "reason": {
+          "type": "string",
+          "default": ""
+        },
+        "return_method": {
+          "type": "string",
+          "default": "in_store",
+          "description": "One of: in_store, mail, pickup"
+        }
+      },
+      "response": {
+        "return_id": "RET-{{order_id}}-{{item_id}}",
+        "return_status": "approved",
+        "refund_amount": 89.99,
+        "refund_method": "original_payment_method",
+        "estimated_refund_timeline": "3-10 business days",
+        "message": "Return approved. Refund of $89.99 will be processed to original payment method within 3-10 business days."
+      },
+      "scenarios": [
+        {
+          "_comment": "Large item pickup — fee applies",
+          "when": {
+            "return_method": {
+              "equals": "pickup"
+            }
+          },
+          "response": {
+            "return_id": "RET-{{order_id}}-{{item_id}}",
+            "return_status": "approved",
+            "pickup_fee": 49.00,
+            "refund_amount": 150.00,
+            "refund_method": "original_payment_method",
+            "estimated_refund_timeline": "5-7 business days",
+            "message": "Return approved with pickup. A $49 pickup fee will be deducted. Net refund: $150.00."
+          }
+        },
+        {
+          "_comment": "Mail return",
+          "when": {
+            "return_method": {
+              "equals": "mail"
+            }
+          },
+          "response": {
+            "return_id": "RET-{{order_id}}-{{item_id}}",
+            "return_status": "approved",
+            "refund_method": "original_payment_method",
+            "estimated_refund_timeline": "approximately 2 weeks after item received",
+            "message": "Return approved. Ship the item to your closest store with the return slip. Refund will be processed approximately 2 weeks after the item is received."
+          }
+        }
+      ]
+    },
+    {
+      "name": "order_replacement_part",
+      "description": "Order a replacement part for a product. Hardware parts (screws, slides, etc.) with a 6-digit part number can be ordered free of charge.",
+      "parameters": {
+        "order_id": {
+          "type": "string",
+          "required": true
+        },
+        "item_id": {
+          "type": "string",
+          "required": true
+        },
+        "part_number": {
+          "type": "string",
+          "required": true,
+          "description": "The 6-digit part number from the assembly instructions"
+        },
+        "part_type": {
+          "type": "string",
+          "default": "hardware",
+          "description": "One of: hardware, large_component"
+        }
+      },
+      "response": {
+        "replacement_order_id": "RPL-{{order_id}}-{{part_number}}",
+        "status": "ordered",
+        "part_number": "{{part_number}}",
+        "cost": 0,
+        "estimated_delivery": "5-7 business days",
+        "message": "Replacement part {{part_number}} ordered free of charge. Expected delivery in 5-7 business days."
+      },
+      "scenarios": [
+        {
+          "_comment": "Large component — store discretion, fee may apply",
+          "when": {
+            "part_type": {
+              "equals": "large_component"
+            }
+          },
+          "response": {
+            "replacement_order_id": "RPL-{{order_id}}-{{part_number}}",
+            "status": "pending_store_approval",
+            "cost": "to_be_determined",
+            "message": "Large component replacement requests are handled at the store's discretion. Please visit your local store with the product and receipt for assistance."
+          }
+        }
+      ]
+    },
+    {
+      "name": "check_product_availability",
+      "description": "Check if a product is currently in stock at a specific store or for online ordering.",
+      "parameters": {
+        "product_id": {
+          "type": "string",
+          "required": true
+        },
+        "store_id": {
+          "type": "string",
+          "default": "online"
+        }
+      },
+      "response": {
+        "product_id": "{{product_id}}",
+        "store_id": "{{store_id:online}}",
+        "in_stock": true,
+        "quantity_available": 25,
+        "message": "Product is in stock and available."
+      },
+      "scenarios": [
+        {
+          "_comment": "Out of stock",
+          "when": {
+            "product_id": {
+              "starts_with": "OOS"
+            }
+          },
+          "response": {
+            "in_stock": false,
+            "quantity_available": 0,
+            "message": "Product is currently out of stock. You can sign up for stock alerts on the product page."
+          }
+        }
+      ]
+    },
+    {
+      "name": "schedule_delivery",
+      "description": "Schedule or reschedule a delivery for an order. Options: standard, doorstep, in_home, express.",
+      "parameters": {
+        "order_id": {
+          "type": "string",
+          "required": true
+        },
+        "delivery_type": {
+          "type": "string",
+          "default": "standard",
+          "description": "One of: standard, doorstep, in_home, express"
+        },
+        "preferred_date": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "response": {
+        "order_id": "{{order_id}}",
+        "delivery_scheduled": true,
+        "delivery_type": "{{delivery_type:standard}}",
+        "scheduled_date": "{{preferred_date}}",
+        "message": "Delivery scheduled for {{preferred_date}}. You will receive a confirmation via email/SMS."
+      }
     }
   ]
 }

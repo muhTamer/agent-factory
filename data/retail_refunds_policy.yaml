@@ -1,0 +1,318 @@
+# ============================================================
+# Retail Refunds & Returns Policy
+# Organization: IKEA-Style Retail Store
+# Version: 1.0
+# Last Updated: 2026-03-01
+# Owner: Head of Customer Operations
+# Domain: retail
+# ============================================================
+
+metadata:
+  policy_id: retail_refunds_policy
+  jurisdiction: US
+  regulatory_framework:
+    - FTC Consumer Protection Guidelines
+    - State Consumer Protection Laws
+  internal_references:
+    - Return Processing SOP v1.0
+    - Loss Prevention Handbook 2026
+
+overview: >
+  This policy defines the eligibility criteria, approval workflow,
+  and execution standards for handling return, refund, and exchange
+  requests initiated by customers for in-store and online purchases.
+
+scope:
+  channels:
+    - in_store
+    - online
+    - phone
+  product_categories:
+    - furniture
+    - home_accessories
+    - kitchen
+    - lighting
+    - textiles
+    - outdoor
+  exclusions:
+    - plants
+    - cut_fabric
+    - custom_countertops
+    - as_is_products
+    - items modified from original form
+    - items that are dirty, stained, or damaged by the customer
+
+# ============================================================
+# SECTION 1 — ELIGIBILITY RULES
+# ============================================================
+
+eligibility:
+
+  - id: unopened_return_window
+    description: >
+      New and unopened products may be returned within 365 days
+      from the date of purchase with proof of purchase for a full refund.
+    conditions:
+      - product_condition == "unopened"
+      - return_age_days <= 365
+      - has_proof_of_purchase == true
+    outcome: eligible
+
+  - id: opened_return_window
+    description: >
+      Opened products may be returned within 180 days from the date
+      of purchase with proof of purchase for a full refund, provided
+      the item is clean, undamaged, and complete with all parts.
+    conditions:
+      - product_condition == "opened"
+      - return_age_days <= 180
+      - has_proof_of_purchase == true
+      - item_is_clean == true
+      - item_is_complete == true
+    outcome: eligible
+
+  - id: mattress_exchange_window
+    description: >
+      Mattresses may be exchanged once within 90 days of purchase.
+      The mattress must be clean, free of stains, and accompanied
+      by proof of purchase. Refunds for downgrades are issued as
+      store credit only.
+    conditions:
+      - product_category == "mattress"
+      - return_age_days <= 90
+      - mattress_is_clean == true
+      - has_proof_of_purchase == true
+    outcome: exchange_only
+
+  - id: no_proof_of_purchase
+    description: >
+      Customers without proof of purchase may have their receipt
+      looked up using the last 4 digits of the card used, store
+      location, approximate date, and exact transaction amount.
+      IKEA Family members can retrieve purchase history from their account.
+    conditions:
+      - has_proof_of_purchase == false
+    outcome: attempt_receipt_lookup
+    rationale: Receipt lookup required before processing return.
+
+  - id: non_returnable_items
+    description: >
+      Plants, cut fabric, custom countertops, and as-is products
+      are not eligible for return under any circumstances.
+    conditions:
+      - product_category in ["plants", "cut_fabric", "custom_countertop", "as_is"]
+    outcome: ineligible
+    rationale: These product categories are excluded from the return policy.
+
+  - id: damaged_or_modified_block
+    description: >
+      Items that have been modified from their original form, are
+      dirty, stained, or damaged by the customer are not eligible
+      for return or exchange.
+    conditions:
+      - item_condition in ["modified", "dirty", "stained", "customer_damaged"]
+    outcome: ineligible
+    rationale: Item condition does not meet return eligibility requirements.
+
+  - id: expired_return_window
+    description: >
+      Returns submitted beyond the applicable return window
+      (365 days for unopened, 180 days for opened) are not eligible.
+    conditions:
+      - product_condition == "unopened" and return_age_days > 365
+      - product_condition == "opened" and return_age_days > 180
+    outcome: ineligible
+    rationale: Return request exceeds the allowed return window.
+
+# ============================================================
+# SECTION 2 — REFUND AMOUNT RULES
+# ============================================================
+
+amount_rules:
+
+  - id: full_refund_standard
+    description: >
+      Eligible returns receive a full refund of the net purchase price
+      as shown on the receipt, excluding delivery and service fees.
+    conditions:
+      - eligibility_outcome == "eligible"
+    refund_amount: net_purchase_price
+    approval: auto
+
+  - id: promotional_item_deduction
+    description: >
+      When a promotional item included in the original transaction
+      is not returned along with the qualifying purchase, the value
+      of the promotional item is deducted from the refund amount.
+    conditions:
+      - promotional_item_not_returned == true
+    refund_amount: net_purchase_price - promotional_item_value
+    approval: auto
+
+  - id: large_item_return_fee
+    description: >
+      Large item returns arranged for pickup from the customer's
+      location incur a pickup fee starting at $49, deducted from
+      the refund. Fee may be waived if the return is due to a
+      store error or damaged delivery.
+    conditions:
+      - return_method == "pickup"
+      - item_size == "large"
+    fee: 49
+    fee_waiver_conditions:
+      - reason in ["store_error", "damaged_delivery"]
+    approval: auto
+
+  - id: manager_approval_high_value
+    description: >
+      Refunds exceeding $500 require manager approval before processing.
+    threshold: 500
+    currency: USD
+    approval: manager_required
+
+# ============================================================
+# SECTION 3 — RISK CONTROLS
+# ============================================================
+
+risk_controls:
+
+  - id: return_velocity_check
+    description: >
+      Customers requesting more than 5 returns within a rolling 30-day
+      window must be flagged for review by the loss prevention team.
+    condition:
+      - returns_last_30_days > 5
+    action: escalate_loss_prevention
+
+  - id: receipt_lookup_abuse
+    description: >
+      Customers making more than 3 no-receipt returns within a
+      rolling 90-day period are flagged for potential return fraud.
+    condition:
+      - no_receipt_returns_last_90_days > 3
+    action: escalate_loss_prevention
+
+# ============================================================
+# SECTION 4 — EXECUTION RULES
+# ============================================================
+
+execution:
+
+  - id: refund_method
+    description: >
+      Refunds must be returned to the original payment method used
+      for the purchase. If the original method is unavailable, a store
+      credit or gift card is issued.
+    rules:
+      - if original_payment_method_available == true:
+          action: refund_to_original_method
+      - else:
+          action: issue_store_credit
+
+  - id: in_store_refund_timeline
+    description: >
+      In-store returns are processed immediately at the returns desk.
+      Refund should appear on the customer's account within 3-10
+      business days depending on their bank.
+    sla:
+      in_store: "immediate processing, 3-10 business days to account"
+
+  - id: online_return_refund_timeline
+    description: >
+      Online/mail returns are reimbursed approximately 2 weeks after
+      the returned item arrives at the store.
+    sla:
+      online: "approximately 2 weeks after item received"
+
+  - id: return_location_restrictions
+    description: >
+      Returns are only accepted at full IKEA store locations.
+      Planning Studio and Pick Up Point locations do not accept returns.
+    restrictions:
+      - not_accepted_at: ["planning_studio", "pick_up_point"]
+
+# ============================================================
+# SECTION 5 — PRIVACY & DATA PROTECTION
+# ============================================================
+
+privacy:
+
+  - id: redact_pii
+    description: >
+      Personally identifiable information (name, address, card details)
+      must not be exposed in customer-facing communications or logs.
+    action: redact_before_output
+
+  - id: receipt_lookup_data_minimization
+    description: >
+      When performing receipt lookups, only the last 4 digits of the
+      payment card should be collected. Full card numbers must never
+      be stored or displayed.
+
+# ============================================================
+# SECTION 6 — ESCALATION CONDITIONS
+# ============================================================
+
+escalation:
+
+  - id: ambiguous_return_request
+    description: >
+      If the return request is unclear or the item condition is
+      disputed, request clarification or inspection before proceeding.
+
+  - id: customer_dispute
+    description: >
+      If the customer disputes the eligibility decision, escalate
+      to store manager or senior customer service representative.
+
+  - id: repeated_return_failures
+    description: >
+      If automated return processing fails more than once, create a
+      support ticket and notify the operations team.
+
+# ============================================================
+# AGENT INSTRUCTIONS
+# ============================================================
+
+agent_instructions:
+  role: >
+    You are a Refund Agent for a retail store. Your job is to help
+    customers with return and refund requests by following this policy.
+
+  workflow:
+    - step: 1
+      action: >
+        Greet the customer and ask for their order number or customer ID
+        to look up the purchase.
+    - step: 2
+      action: >
+        Use the lookup_order tool to retrieve order details including
+        purchase date, items, and payment method.
+    - step: 3
+      action: >
+        Verify return eligibility based on the return window (365 days
+        unopened, 180 days opened), product category exclusions, and
+        item condition.
+    - step: 4
+      action: >
+        If eligible, use the initiate_return tool to process the return.
+        Inform the customer of the refund method and expected timeline.
+    - step: 5
+      action: >
+        If not eligible, clearly explain why citing the specific policy
+        rule, and offer alternatives (e.g., warranty claim, exchange).
+    - step: 6
+      action: >
+        If the refund exceeds $500, inform the customer that manager
+        approval is required and create a ticket.
+
+  guardrails:
+    - Never promise a refund before verifying eligibility.
+    - Never override policy rules without manager approval.
+    - Always verify proof of purchase before processing returns.
+    - Do not share internal policy IDs or system details with customers.
+    - If in doubt, escalate to a human agent rather than guessing.
+
+# ============================================================
+# END OF POLICY
+# ============================================================

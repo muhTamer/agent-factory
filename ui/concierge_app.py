@@ -24,6 +24,12 @@ FINTECH_DATA_FILES = [
     DATA_DIR / "refunds_policy.yaml",
 ]
 
+RETAIL_DATA_FILES = [
+    DATA_DIR / "RetailFAQs.csv",
+    DATA_DIR / "retail_refunds_policy.yaml",
+    DATA_DIR / "retail_complaints_policy.yaml",
+]
+
 
 def _load_quickstart_fintech_into_workspace(work_dir: Path) -> list[Path]:
     """Copies existing /data files into workspace and returns the created workspace paths."""
@@ -35,6 +41,22 @@ def _load_quickstart_fintech_into_workspace(work_dir: Path) -> list[Path]:
     work_dir.mkdir(exist_ok=True)
     written = []
     for src in FINTECH_DATA_FILES:
+        dst = work_dir / src.name
+        dst.write_bytes(src.read_bytes())
+        written.append(dst)
+    return written
+
+
+def _load_quickstart_retail_into_workspace(work_dir: Path) -> list[Path]:
+    """Copies existing /data retail files into workspace and returns the created workspace paths."""
+    missing = [p for p in RETAIL_DATA_FILES if not p.exists()]
+    if missing:
+        raise FileNotFoundError(
+            "Missing preset file(s): " + ", ".join(str(p) for p in missing)
+        )
+    work_dir.mkdir(exist_ok=True)
+    written = []
+    for src in RETAIL_DATA_FILES:
         dst = work_dir / src.name
         dst.write_bytes(src.read_bytes())
         written.append(dst)
@@ -114,10 +136,24 @@ with st.expander("⚡ Quickstart (optional)", expanded=False):
             "Loads `data/bankFAQs.md` + `data/refund_policy.yaml` into `.workspace`."
         )
 
+    qs_col3, qs_col4 = st.columns([1, 2])
+    with qs_col3:
+        qs_retail = st.button("🛒 Quickstart: Retail", key="qs_retail_btn")
+    with qs_col4:
+        st.caption(
+            "Loads `data/RetailFAQs.csv` + `data/retail_refunds_policy.yaml` + `data/retail_complaints_policy.yaml` into `.workspace`."
+        )
+
     if qs_fintech:
         st.session_state["quickstart_active"] = True
         st.session_state["quickstart_vertical"] = "fintech"
         # Trigger the same analysis path as pressing the Analyze button
+        st.session_state["quickstart_stage"] = "analyze"
+        st.rerun()
+
+    if qs_retail:
+        st.session_state["quickstart_active"] = True
+        st.session_state["quickstart_vertical"] = "retail"
         st.session_state["quickstart_stage"] = "analyze"
         st.rerun()
 
@@ -154,12 +190,13 @@ work_dir = Path(".workspace")
 work_dir.mkdir(exist_ok=True)
 
 # If quickstart is active, populate workspace with preset docs (acts like uploaded files)
-if (
-    st.session_state.get("quickstart_active")
-    and st.session_state.get("quickstart_vertical") == "fintech"
-):
+if st.session_state.get("quickstart_active"):
+    qs_vertical = st.session_state.get("quickstart_vertical")
     try:
-        _load_quickstart_fintech_into_workspace(work_dir)
+        if qs_vertical == "fintech":
+            _load_quickstart_fintech_into_workspace(work_dir)
+        elif qs_vertical == "retail":
+            _load_quickstart_retail_into_workspace(work_dir)
     except Exception as e:
         st.error(f"Quickstart failed to load preset files: {e}")
         st.session_state["quickstart_active"] = False

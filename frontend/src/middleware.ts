@@ -1,28 +1,35 @@
-import { auth } from "@/auth";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 /**
  * Next.js middleware — protects all routes behind auth.
  * When AUTH_SECRET is not set (local dev), skip auth entirely.
  */
-export default auth((req) => {
-  // If no AUTH_SECRET configured, allow all requests (local dev)
-  if (!process.env.AUTH_SECRET) return;
+export default async function middleware(req: NextRequest) {
+  // No AUTH_SECRET = local dev, allow everything
+  if (!process.env.AUTH_SECRET) return NextResponse.next();
 
   const { pathname } = req.nextUrl;
-  const isLoggedIn = !!req.auth?.user;
   const isOnLogin = pathname.startsWith("/login");
   const isAuthRoute = pathname.startsWith("/api/auth");
-  // Proxy routes handle their own auth via Authorization header
   const isProxyRoute =
     pathname.startsWith("/api/concierge") ||
     pathname.startsWith("/api/runtime");
 
-  if (isAuthRoute || isOnLogin || isProxyRoute) return;
+  // Public routes — no auth check needed
+  if (isAuthRoute || isOnLogin || isProxyRoute) return NextResponse.next();
 
-  if (!isLoggedIn) {
-    return Response.redirect(new URL("/login", req.nextUrl.origin));
+  // Check for next-auth session cookie
+  const sessionCookie =
+    req.cookies.get("__Secure-authjs.session-token") ??
+    req.cookies.get("authjs.session-token");
+
+  if (!sessionCookie?.value) {
+    return NextResponse.redirect(new URL("/login", req.nextUrl.origin));
   }
-});
+
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [
