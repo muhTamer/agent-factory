@@ -13,14 +13,16 @@ interface EstimatorResponse {
 const KIND_LABELS: Record<string, string> = {
   neural: "Neural (MLP)",
   tfidf: "TF-IDF",
+  llm: "LLM",
 };
 
 const KIND_COLORS: Record<string, string> = {
   neural: "bg-purple-100 text-purple-700 border-purple-300",
   tfidf: "bg-slate-100 text-slate-600 border-slate-300",
+  llm: "bg-blue-100 text-blue-700 border-blue-300",
 };
 
-const DEFAULT_OPTIONS = ["neural", "tfidf"];
+const DEFAULT_OPTIONS = ["neural", "tfidf", "llm"];
 
 export function EstimatorTogglePanel() {
   const [activeKind, setActiveKind] = useState<string>("neural");
@@ -79,7 +81,7 @@ export function EstimatorTogglePanel() {
     <CollapsibleSection
       icon={<Brain size={14} className="text-purple-500" />}
       title="Solvability Estimator"
-      tooltip="Switch between Neural (MLP + embeddings) and TF-IDF solvability estimators. Changes take effect immediately."
+      tooltip="Switch between Neural, TF-IDF, and LLM solvability estimators. Changes take effect immediately."
       status={error ? "warning" : "info"}
       defaultOpen={true}
       badge={
@@ -156,6 +158,9 @@ export function EstimatorTogglePanel() {
           <br />
           <strong className="text-slate-500">TF-IDF:</strong> Token-based
           cosine similarity. Faster, fully deterministic.
+          <br />
+          <strong className="text-slate-500">LLM:</strong> Uses the language
+          model to score agent-task fit. Most accurate, higher latency.
         </div>
       </div>
     </CollapsibleSection>

@@ -434,3 +434,265 @@ class TestExternalSlots:
         )
         assert result["slots"]["customer_id"] == "C-999"
         assert result["slots"]["verified"] is True
+
+
+# ── New feature tests ──────────────────────────────────────────────
+
+
+class TestJSONSalvage:
+    """Test JSON extraction from malformed LLM output."""
+
+    def test_markdown_fenced_json_salvaged(self):
+        """LLM wraps JSON in markdown code fences → salvaged."""
+        fenced = '```json\n{"thought": "thinking", "action": "respond", "action_input": {"answer": "hello"}}\n```'
+        engine = _make_engine(llm_responses=[{"raw": fenced}])
+        result = engine.handle("Test")
+        assert result["answer"] == "hello"
+        assert result["step_count"] == 1
+
+    def test_preamble_before_json_salvaged(self):
+        """LLM adds text before the JSON object → salvaged."""
+        preamble = 'Here is my response:\n{"thought": "ok", "action": "respond", "action_input": {"answer": "hi"}}'
+        engine = _make_engine(llm_responses=[{"raw": preamble}])
+        result = engine.handle("Test")
+        assert result["answer"] == "hi"
+
+    def test_unparseable_output_triggers_retry(self):
+        """Garbage text triggers retry; second attempt succeeds."""
+        call_count = {"n": 0}
+
+        def mock_llm(messages, model=None, temperature=None):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return {"raw": "I cannot parse this as JSON at all!!!"}
+            # Retry message should contain error feedback
+            if call_count["n"] == 2:
+                return {
+                    "thought": "Retry succeeded.",
+                    "action": "respond",
+                    "action_input": {"answer": "Recovered."},
+                }
+            return {"raw": "still broken"}
+
+        corpus = _build_corpus()
+        index = build_index(corpus)
+        config = DomainAgentConfig(
+            agent_id="test", domain="test", goal="Test", max_steps=3
+        )
+        engine = DomainAgentEngine(
+            config=config, index=index, tools={}, llm_fn=mock_llm
+        )
+        result = engine.handle("Test")
+        assert result["answer"] == "Recovered."
+        assert call_count["n"] == 2
+
+    def test_double_parse_failure_escalates(self):
+        """Both attempts return garbage → escalate (not silent respond)."""
+
+        def always_raw(messages, model=None, temperature=None):
+            return {"raw": "not json"}
+
+        corpus = _build_corpus()
+        index = build_index(corpus)
+        config = DomainAgentConfig(
+            agent_id="test", domain="test", goal="Test", max_steps=3
+        )
+        eng = DomainAgentEngine(config=config, index=index, tools={}, llm_fn=always_raw)
+        result = eng.handle("Test")
+        assert result["escalation"] is True
+
+
+class TestDuplicateRetrievalPrevention:
+    """Test programmatic duplicate retrieval blocking."""
+
+    def test_exact_duplicate_blocked(self):
+        """Same retrieval query repeated → blocked with DUPLICATE observation."""
+        engine = _make_engine(
+            llm_responses=[
+                {
+                    "thought": "Search refund policy.",
+                    "action": "retrieve_knowledge",
+                    "action_input": {"query": "refund policy"},
+                },
+                {
+                    "thought": "Search refund policy again.",
+                    "action": "retrieve_knowledge",
+                    "action_input": {"query": "refund policy"},
+                },
+                {
+                    "thought": "OK, respond.",
+                    "action": "respond",
+                    "action_input": {"answer": "Done."},
+                },
+            ]
+        )
+        result = engine.handle("Refund info?")
+        assert result["step_count"] == 3
+        trace = result["react_trace"]
+        assert "DUPLICATE" in trace[1]["observation"]
+
+    def test_similar_query_blocked(self):
+        """Queries with >80% token overlap → blocked."""
+        engine = _make_engine(
+            llm_responses=[
+                {
+                    "thought": "Search.",
+                    "action": "retrieve_knowledge",
+                    "action_input": {
+                        "query": "refund policy details for customers today"
+                    },
+                },
+                {
+                    "thought": "Try again.",
+                    "action": "retrieve_knowledge",
+                    "action_input": {"query": "refund policy details for customers"},
+                },
+                {
+                    "thought": "OK.",
+                    "action": "respond",
+                    "action_input": {"answer": "Done."},
+                },
+            ]
+        )
+        result = engine.handle("Question")
+        trace = result["react_trace"]
+        assert "DUPLICATE" in trace[1]["observation"]
+
+    def test_different_queries_not_blocked(self):
+        """Genuinely different queries → not blocked."""
+        engine = _make_engine(
+            llm_responses=[
+                {
+                    "thought": "Search refunds.",
+                    "action": "retrieve_knowledge",
+                    "action_input": {"query": "refund policy"},
+                },
+                {
+                    "thought": "Search accounts.",
+                    "action": "retrieve_knowledge",
+                    "action_input": {"query": "password reset steps"},
+                },
+                {
+                    "thought": "Respond.",
+                    "action": "respond",
+                    "action_input": {"answer": "Done."},
+                },
+            ]
+        )
+        result = engine.handle("Question")
+        trace = result["react_trace"]
+        assert "DUPLICATE" not in trace[1]["observation"]
+
+
+class TestToolCallingNudge:
+    """Test the tool-calling nudge mechanism."""
+
+    def test_nudge_fires_when_tools_available_but_not_called(self):
+        """Agent tries to respond with tools available → nudge fires."""
+        tool = _mock_tool("initiate_refund", {"refund_id": "REF-1"})
+        engine = _make_engine(
+            llm_responses=[
+                {
+                    "thought": "I'll tell them about refunds.",
+                    "action": "respond",
+                    "action_input": {"answer": "Your refund has been processed."},
+                },
+                # After nudge, agent calls tool
+                {
+                    "thought": "Right, I should actually call the tool.",
+                    "action": "call_tool",
+                    "action_input": {"tool": "initiate_refund", "args": {}},
+                },
+                {
+                    "thought": "Confirm.",
+                    "action": "respond",
+                    "action_input": {"answer": "Refund initiated."},
+                },
+            ],
+            tools={"initiate_refund": tool},
+        )
+        result = engine.handle("Process my refund")
+        trace = result["react_trace"]
+        assert "NUDGE" in trace[0]["observation"]
+        assert "initiate_refund" in result["tools_used"]
+
+    def test_no_nudge_when_no_tools(self):
+        """Agent with no tools → no nudge on respond."""
+        engine = _make_engine(
+            llm_responses=[
+                {
+                    "thought": "Answer directly.",
+                    "action": "respond",
+                    "action_input": {"answer": "Here is the info."},
+                },
+            ]
+        )
+        result = engine.handle("What is the policy?")
+        assert result["step_count"] == 1
+        assert "NUDGE" not in result["react_trace"][0].get("observation", "")
+
+    def test_no_nudge_when_tool_already_called(self):
+        """Agent called a tool → no nudge on subsequent respond."""
+        tool = _mock_tool("lookup", {"status": "ok"})
+        engine = _make_engine(
+            llm_responses=[
+                {
+                    "thought": "Look it up.",
+                    "action": "call_tool",
+                    "action_input": {"tool": "lookup", "args": {}},
+                },
+                {
+                    "thought": "Done.",
+                    "action": "respond",
+                    "action_input": {"answer": "Status: ok"},
+                },
+            ],
+            tools={"lookup": tool},
+        )
+        result = engine.handle("Check status")
+        assert result["step_count"] == 2
+        # No nudge on the respond step
+        assert "NUDGE" not in result["react_trace"][1].get("observation", "")
+
+    def test_nudge_skipped_for_pure_info_query(self):
+        """Agent responds with purely informational answer → no nudge."""
+        tool = _mock_tool("lookup", {"status": "ok"})
+        engine = _make_engine(
+            llm_responses=[
+                {
+                    "thought": "FAQ answer.",
+                    "action": "respond",
+                    "action_input": {"answer": "The office is open Monday to Friday."},
+                },
+            ],
+            tools={"lookup": tool},
+        )
+        result = engine.handle("What are your hours?")
+        assert result["step_count"] == 1
+        # Pure info → no nudge
+        assert "NUDGE" not in result["react_trace"][0].get("observation", "")
+
+
+class TestLatencyTracking:
+    """Test per-step latency tracking."""
+
+    def test_latency_ms_in_trace(self):
+        """Each trace entry has a latency_ms field >= 0."""
+        engine = _make_engine(
+            llm_responses=[
+                {
+                    "thought": "Retrieve.",
+                    "action": "retrieve_knowledge",
+                    "action_input": {"query": "refund"},
+                },
+                {
+                    "thought": "Respond.",
+                    "action": "respond",
+                    "action_input": {"answer": "Done."},
+                },
+            ]
+        )
+        result = engine.handle("Question")
+        for step in result["react_trace"]:
+            assert "latency_ms" in step
+            assert step["latency_ms"] >= 0

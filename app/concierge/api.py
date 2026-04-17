@@ -61,11 +61,26 @@ FINTECH_DATA_FILES = [
     DATA_DIR / "accounts_policy.yaml",
 ]
 
+# Visibility for quickstart preset files: policy YAMLs are internal
+# (agent instructions only), FAQs are customer-facing (shareable).
+FINTECH_DOC_VISIBILITY: Dict[str, str] = {
+    "refunds_policy.yaml": "internal",
+    "complaints_policy.yaml": "internal",
+    "accounts_policy.yaml": "internal",
+    "BankFAQs.csv": "customer_facing",
+}
+
 RETAIL_DATA_FILES = [
     DATA_DIR / "RetailFAQs.csv",
     DATA_DIR / "retail_refunds_policy.yaml",
     DATA_DIR / "retail_complaints_policy.yaml",
 ]
+
+RETAIL_DOC_VISIBILITY: Dict[str, str] = {
+    "retail_refunds_policy.yaml": "internal",
+    "retail_complaints_policy.yaml": "internal",
+    "RetailFAQs.csv": "customer_facing",
+}
 
 # Max number of tenant sessions held in memory before evicting the oldest
 MAX_TENANTS = 200
@@ -263,6 +278,7 @@ class TenantSession:
     vertical: str = "retail"
     model: str = "gpt-5-mini"
     agent: ConciergeAgent | None = None
+    doc_visibility: Dict[str, str] | None = None
 
     @property
     def workspace(self) -> Path:
@@ -401,6 +417,9 @@ def quickstart_fintech(
         shutil.copy2(src, ts.workspace / src.name)
         logger.info("[quickstart] copied %s", src.name)
 
+    # Store preset visibility so the deploy step uses it
+    ts.doc_visibility = FINTECH_DOC_VISIBILITY
+
     job_id = _create_job(user.tenant_id, "quickstart")
 
     def _run():
@@ -447,6 +466,9 @@ def quickstart_retail(
             return {"error": f"Preset file not found: {src}"}
         shutil.copy2(src, ts.workspace / src.name)
         logger.info("[quickstart-retail] copied %s", src.name)
+
+    # Store preset visibility so the deploy step uses it
+    ts.doc_visibility = RETAIL_DOC_VISIBILITY
 
     job_id = _create_job(user.tenant_id, "quickstart-retail")
 
@@ -534,11 +556,14 @@ def deploy_factory(req: DeployRequest, user: AuthUser = Depends(get_current_user
             action = (
                 "approve_deploy_dry" if req.mode == "dry" else "approve_deploy_live"
             )
+            # Use explicit visibility from request, or fall back to
+            # visibility stored during quickstart/upload.
+            visibility = req.doc_visibility or ts.doc_visibility
             result = agent.handle_event(
                 {
                     "type": "user_action",
                     "action": action,
-                    "doc_visibility": req.doc_visibility,
+                    "doc_visibility": visibility,
                 }
             )
             logger.info(

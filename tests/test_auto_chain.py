@@ -1,352 +1,267 @@
 # tests/test_auto_chain.py
 """
-Tests for the auto-chain and policy auto-event mechanism.
+Tests for ReACT multi-step reasoning (replaces old auto-chain FSM tests).
 
-The auto-chain loop in workflow runner agents advances the FSM through
-consecutive system states without user input:
-  - tool_exec states  → pass_event fired immediately (stub always succeeds)
-  - eligibility states → policy bridge decides event
-  - approval_needed   → policy bridge checks amount threshold
+In the old architecture, the workflow runner used a policy bridge to
+auto-advance through system states. In the ReACT architecture, the agent
+autonomously reasons through retrieve → tool-call → respond steps.
 
-Tests use:
-  - Direct unit tests on _try_policy_auto_event()
-  - Minimal FSM specs with injected policy_state_map
-  - The real refunds_workflow_agent to test end-to-end auto-chain behaviour
+These tests verify that the ReACT engine correctly chains multiple
+actions in a single turn without user intervention.
 """
+from __future__ import annotations
 
-import importlib.util
-import sys
-from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
-import pytest
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-AGENT_PATH = REPO_ROOT / "generated" / "refunds_workflow" / "agent.py"
-PACK_PATH = REPO_ROOT / ".factory/compiled_policies/refunds_policy_pack.json"
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _load_refunds_agent():
-    module_name = "_test_autochain_refunds_agent"
-    spec = importlib.util.spec_from_file_location(module_name, AGENT_PATH)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = mod
-    spec.loader.exec_module(mod)
-    agent = mod.Agent()
-    agent.load({})
-    return agent
-
-
-def _mapper_json(event, slots):
-    return {"event": event, "slots": slots, "confidence": 0.99, "rationale": "test"}
-
-
-FULL_SLOTS = {
-    "customer_id": "CUST-001",
-    "payment_id": "PAY-001",
-    "amount": 1000.0,
-}
-
-# ---------------------------------------------------------------------------
-# _try_policy_auto_event() — unit tests
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.skipif(
-    not PACK_PATH.exists(),
-    reason="Compiled policy pack not found — run factory deploy first",
+from app.runtime.domain_agent_engine import (
+    DomainAgentConfig,
+    DomainAgentEngine,
 )
-class TestTryPolicyAutoEvent:
+from app.shared.rag import CorpusItem, build_index
 
-    def setup_method(self):
-        self.agent = _load_refunds_agent()
 
-    def _engine_at_state(self, state_name: str, slots=None):
-        engine = self.agent._engine_for(f"_unit_{state_name}")
-        # Force the engine into the desired state
-        engine.current_state = state_name
-        if slots:
-            engine.slots.update(slots)
-        return engine
+def _build_refund_corpus():
+    return [
+        CorpusItem(
+            text=(
+                "Refund eligibility: customer must have verified identity "
+                "and active account. Frozen or closed accounts are not eligible."
+            ),
+            source="refunds_policy.yaml",
+            kind="policy",
+            meta={"visibility": "internal"},
+        ),
+        CorpusItem(
+            text=(
+                "Refunds up to EUR 5000 are auto-approved. "
+                "Refunds above EUR 5000 require manager approval."
+            ),
+            source="refunds_policy.yaml",
+            kind="policy",
+            meta={"visibility": "internal"},
+        ),
+        CorpusItem(
+            text=(
+                "Step 1: Collect transaction reference. "
+                "Step 2: Verify eligibility. "
+                "Step 3: Execute refund via initiate_refund tool."
+            ),
+            source="refunds_policy.yaml",
+            kind="policy",
+            meta={"visibility": "internal"},
+        ),
+    ]
 
-    def test_start_returns_none(self):
-        """start is a user-input state — no auto-event."""
-        engine = self._engine_at_state("start")
-        result = self.agent._try_policy_auto_event(engine)
-        assert result is None
 
-    def test_eligibility_check_eligible_returns_eligible(self):
-        """eligibility_check with valid account → fires 'eligible'."""
-        slots = {
-            "kyc_status": "verified",
-            "account_status": "active",
-            "investigation_status": "none",
-            "amount": 1000.0,
-            "refund_amount_requested": 1000.0,
-        }
-        engine = self._engine_at_state("eligibility_check", slots)
-        result = self.agent._try_policy_auto_event(engine)
-        assert result == "eligible"
-
-    def test_eligibility_check_ineligible_frozen_account(self):
-        """eligibility_check with frozen account → ineligible."""
-        slots = {
-            "kyc_status": "verified",
-            "account_status": "frozen",
-            "investigation_status": "none",
-            "amount": 1000.0,
-        }
-        engine = self._engine_at_state("eligibility_check", slots)
-        result = self.agent._try_policy_auto_event(engine)
-        assert result == "ineligible"
-
-    def test_determine_approval_path_small_amount_auto_approves(self):
-        """determine_approval_path with amount < 5000 → auto_approve_event."""
-        slots = {
-            "kyc_status": "verified",
-            "account_status": "active",
-            "investigation_status": "none",
-            "amount": 1000.0,
-            "refund_amount_requested": 1000.0,
-        }
-        engine = self._engine_at_state("determine_approval_path", slots)
-        result = self.agent._try_policy_auto_event(engine)
-        assert result == "auto_approve_event"
-
-    def test_determine_approval_path_large_amount_requires_approval(self):
-        """determine_approval_path with amount > 5000 → needs_manual_approval."""
-        slots = {
-            "kyc_status": "verified",
-            "account_status": "active",
-            "investigation_status": "none",
-            "amount": 6000.0,
-            "refund_amount_requested": 6000.0,
-        }
-        engine = self._engine_at_state("determine_approval_path", slots)
-        result = self.agent._try_policy_auto_event(engine)
-        assert result == "needs_manual_approval"
-
-    def test_execute_refund_returns_pass_event(self):
-        """execute_refund is tool_exec → always returns success (stub)."""
-        engine = self._engine_at_state("execute_refund")
-        result = self.agent._try_policy_auto_event(engine)
-        assert result == "success"
-
-    def test_tool_exec_does_not_require_policy_bridge(self):
-        """tool_exec check type works even if policy_bridge is None."""
-        engine = self._engine_at_state("execute_refund")
-        original_bridge = self.agent.policy_bridge
-        try:
-            self.agent.policy_bridge = None
-            result = self.agent._try_policy_auto_event(engine)
-            assert result == "success"
-        finally:
-            self.agent.policy_bridge = original_bridge
+def _mock_tool(name, result):
+    tool = MagicMock()
+    tool.execute.return_value = result
+    tool.describe.return_value = {"description": f"{name} tool"}
+    return tool
 
 
 # ---------------------------------------------------------------------------
-# Auto-chain end-to-end (requires policy pack)
+# Multi-step reasoning: retrieve → tool → respond
 # ---------------------------------------------------------------------------
+class TestReActMultiStepChain:
+    """ReACT agent chains multiple actions in a single turn."""
 
-
-@pytest.mark.skipif(
-    not PACK_PATH.exists(),
-    reason="Compiled policy pack not found — run factory deploy first",
-)
-class TestAutoChainEndToEnd:
-
-    def test_auto_chain_advances_through_system_states(self):
-        """
-        After user provides all slots, the engine should auto-chain through
-        eligibility_check → determine_approval_path → execute_refund → completed.
-        """
-        agent = _load_refunds_agent()
-        with patch(
-            "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("validated", FULL_SLOTS),
-        ):
-            result = agent.handle(
-                {
-                    "query": "full refund request",
-                    "thread_id": "t-ac-001",
-                }
-            )
-        assert result["current_state"] == "completed"
-        assert result["terminal"] is True
-
-    def test_auto_chain_skips_both_system_states(self):
-        """auto_chain list shows eligibility_check and execute_refund were auto-advanced."""
-        agent = _load_refunds_agent()
-        with patch(
-            "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("validated", FULL_SLOTS),
-        ):
-            result = agent.handle(
-                {
-                    "query": "refund",
-                    "thread_id": "t-ac-002",
-                }
-            )
-        chain = result.get("mapper", {}).get("auto_chain", [])
-        assert any("execute_refund" in step for step in chain)
-
-    def test_auto_chain_does_not_advance_past_terminal(self):
-        """Auto-chain stops when it reaches a terminal state."""
-        agent = _load_refunds_agent()
-        with patch(
-            "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("validated", FULL_SLOTS),
-        ):
-            result = agent.handle(
-                {
-                    "query": "refund",
-                    "thread_id": "t-ac-003",
-                }
-            )
-        chain = result.get("mapper", {}).get("auto_chain", [])
-        assert not any(step.startswith("completed") for step in chain)
-
-    def test_auto_chain_large_amount_hits_approval_path(self):
-        """
-        Amount > 5000 → determine_approval_path fires needs_manual_approval → await_approval.
-        Auto-chain should stop at await_approval (no tool_exec config for it).
-        """
-        agent = _load_refunds_agent()
-        large_slots = {**FULL_SLOTS, "amount": 6000.0}
-        with patch(
-            "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("validated", large_slots),
-        ):
-            result = agent.handle(
-                {
-                    "query": "large refund",
-                    "thread_id": "t-ac-approval-001",
-                }
-            )
-        assert result["current_state"] == "await_approval"
-        assert result["terminal"] is False
-
-    def test_auto_chain_ineligible_terminates_at_deny_refund(self):
-        """
-        Frozen account → eligibility_check fires ineligible → deny_refund (terminal).
-        """
-        agent = _load_refunds_agent()
-        frozen_slots = {
-            "customer_id": "CUST-FROZEN",
-            "payment_id": "PAY-FROZEN",
-            "amount": 1000.0,
-        }
-        with patch(
-            "app.runtime.workflow_mapper.chat_json",
-            return_value=_mapper_json("validated", frozen_slots),
-        ):
-            original_defaults = agent.policy_slot_defaults.copy()
-            agent.policy_slot_defaults = {
-                "kyc_status": "verified",
-                "account_status": "frozen",  # frozen!
-                "investigation_status": "none",
-            }
-            try:
-                result = agent.handle(
-                    {
-                        "query": "refund for frozen account",
-                        "thread_id": "t-ac-frozen-001",
-                    }
-                )
-            finally:
-                agent.policy_slot_defaults = original_defaults
-
-        assert result["current_state"] == "deny_refund"
-        assert result["terminal"] is True
-
-
-# ---------------------------------------------------------------------------
-# Minimal FSM auto-chain (no policy bridge needed)
-# ---------------------------------------------------------------------------
-
-
-class TestAutoChainToolExecOnly:
-    """
-    Tests using a minimal FSM with only tool_exec system states.
-    These tests don't require the compiled policy pack.
-    """
-
-    def _make_tool_exec_agent(self):
-        """Build a minimal workflow agent with two consecutive tool_exec states."""
-        from app.runtime.workflow_engine import GenericWorkflowEngine
-
-        spec = {
-            "id": "tool_chain_test",
-            "description": "Two consecutive tool states",
-            "engine": "fsm",
-            "slots": {"result_a": None, "result_b": None},
-            "states": {
-                "start": {
-                    "description": "user input",
-                    "on": {"begin": "step_a"},
-                },
-                "step_a": {
-                    "description": "first tool",
-                    "on_enter": "call:tool_a",
-                    "on": {"a_done": "step_b"},
-                },
-                "step_b": {
-                    "description": "second tool",
-                    "on_enter": "call:tool_b",
-                    "on": {"b_done": "done"},
-                },
-                "done": {
-                    "description": "finished",
-                    "terminal": True,
-                },
-            },
-            "initial_state": "start",
-        }
-
-        def tool_a(slots, ctx):
-            return {"result_a": "A_ok"}
-
-        def tool_b(slots, ctx):
-            return {"result_b": "B_ok"}
-
-        engine = GenericWorkflowEngine(
-            agent_id="chain_test",
-            workflow_spec=spec,
-            tools={"tool_a": tool_a, "tool_b": tool_b},
+    def test_retrieve_then_tool_then_respond(self):
+        """Agent retrieves policy, calls tool, then responds — all in one turn."""
+        refund_tool = _mock_tool(
+            "initiate_refund",
+            {"refund_id": "REF-001", "status": "initiated", "amount": 100.0},
         )
-        return engine, spec
 
-    def test_tool_exec_chain_manual_advance(self):
-        """Manually advance through two tool_exec states."""
-        engine, _ = self._make_tool_exec_agent()
+        call_count = {"n": 0}
 
-        engine.handle({"event": "begin", "slots": {}})
-        assert engine.current_state == "step_a"
-        assert engine.slots.get("result_a") == "A_ok"
+        def mock_llm(messages, model=None, temperature=None):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return {
+                    "thought": "Retrieve refund policy first.",
+                    "action": "retrieve_knowledge",
+                    "action_input": {"query": "refund eligibility"},
+                }
+            if call_count["n"] == 2:
+                return {
+                    "thought": "Customer eligible. Initiate refund.",
+                    "action": "call_tool",
+                    "action_input": {
+                        "tool": "initiate_refund",
+                        "args": {"amount": 100.0, "order_id": "ORD-123"},
+                    },
+                }
+            return {
+                "thought": "Refund initiated. Confirm to user.",
+                "action": "respond",
+                "action_input": {
+                    "answer": "Your refund of EUR 100 has been initiated (REF-001)."
+                },
+            }
 
-        engine.handle({"event": "a_done", "slots": {}})
-        assert engine.current_state == "step_b"
-        assert engine.slots.get("result_b") == "B_ok"
+        corpus = _build_refund_corpus()
+        index = build_index(corpus)
+        config = DomainAgentConfig(
+            agent_id="refunds_agent",
+            domain="refunds",
+            goal="Process refund requests",
+            max_steps=5,
+        )
+        engine = DomainAgentEngine(
+            config=config,
+            index=index,
+            tools={"initiate_refund": refund_tool},
+            llm_fn=mock_llm,
+        )
 
-        result = engine.handle({"event": "b_done", "slots": {}})
-        assert result["current_state"] == "done"
-        assert result["terminal"] is True
+        result = engine.handle("Refund EUR 100 for order ORD-123")
 
-    @pytest.mark.skipif(
-        not AGENT_PATH.exists(),
-        reason="refunds_workflow agent not generated — run factory deploy first",
-    )
-    def test_tool_exec_state_map_returns_pass_event_directly(self):
-        """
-        _try_policy_auto_event with tool_exec config returns pass_event immediately.
-        """
-        agent = _load_refunds_agent()
-        engine = agent._engine_for("_tool_unit")
-        engine.current_state = "execute_refund"
+        assert result["step_count"] == 3
+        assert result["knowledge_retrieved"] is True
+        assert "initiate_refund" in result["tools_used"]
+        assert "REF-001" in result["answer"]
+        refund_tool.execute.assert_called_once()
 
-        event = agent._try_policy_auto_event(engine)
-        assert event == "success"
+    def test_eligible_small_amount_auto_completes(self):
+        """Small refund (< 5000) should complete without asking for approval."""
+        refund_tool = _mock_tool(
+            "initiate_refund",
+            {"refund_id": "REF-002", "status": "initiated", "amount": 500.0},
+        )
+        call_count = {"n": 0}
+
+        def mock_llm(messages, model=None, temperature=None):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return {
+                    "thought": "Retrieve policy to check eligibility.",
+                    "action": "retrieve_knowledge",
+                    "action_input": {"query": "refund eligibility auto approve"},
+                }
+            if call_count["n"] == 2:
+                return {
+                    "thought": "Amount 500 EUR is under 5000, auto-approved.",
+                    "action": "call_tool",
+                    "action_input": {
+                        "tool": "initiate_refund",
+                        "args": {"amount": 500.0},
+                    },
+                }
+            return {
+                "thought": "Confirm refund.",
+                "action": "respond",
+                "action_input": {"answer": "Refund of EUR 500 initiated."},
+            }
+
+        corpus = _build_refund_corpus()
+        index = build_index(corpus)
+        config = DomainAgentConfig(
+            agent_id="refunds_agent", domain="refunds", goal="Refunds", max_steps=5
+        )
+        engine = DomainAgentEngine(
+            config=config,
+            index=index,
+            tools={"initiate_refund": refund_tool},
+            llm_fn=mock_llm,
+        )
+
+        result = engine.handle("Refund EUR 500")
+        assert "initiate_refund" in result["tools_used"]
+        assert result.get("escalation") is not True
+
+    def test_ineligible_does_not_call_refund_tool(self):
+        """Frozen account should NOT call initiate_refund."""
+        refund_tool = _mock_tool("initiate_refund", {})
+
+        def mock_llm(messages, model=None, temperature=None):
+            return {
+                "thought": "Account is frozen per policy. Cannot refund.",
+                "action": "respond",
+                "action_input": {
+                    "answer": "I'm sorry, refunds cannot be processed for frozen accounts."
+                },
+            }
+
+        corpus = _build_refund_corpus()
+        index = build_index(corpus)
+        config = DomainAgentConfig(
+            agent_id="refunds_agent", domain="refunds", goal="Refunds", max_steps=5
+        )
+        engine = DomainAgentEngine(
+            config=config,
+            index=index,
+            tools={"initiate_refund": refund_tool},
+            llm_fn=mock_llm,
+        )
+
+        result = engine.handle(
+            "Refund for frozen account",
+            context={"_accumulated_slots": {"account_status": "frozen"}},
+        )
+        refund_tool.execute.assert_not_called()
+        assert "frozen" in result["answer"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Slot accumulation across chained steps
+# ---------------------------------------------------------------------------
+class TestReActSlotChain:
+    """Slots accumulate across tool calls within a single turn."""
+
+    def test_slots_from_multiple_tools(self):
+        """Slots from lookup + refund tools both appear in final slots."""
+        lookup_tool = _mock_tool(
+            "lookup_payment",
+            {"order_id": "ORD-1", "amount": 99.0, "status": "paid"},
+        )
+        refund_tool = _mock_tool(
+            "initiate_refund",
+            {"refund_id": "REF-99", "status": "initiated"},
+        )
+        call_count = {"n": 0}
+
+        def mock_llm(messages, model=None, temperature=None):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return {
+                    "thought": "Look up the payment first.",
+                    "action": "call_tool",
+                    "action_input": {
+                        "tool": "lookup_payment",
+                        "args": {"order_id": "ORD-1"},
+                    },
+                }
+            if call_count["n"] == 2:
+                return {
+                    "thought": "Payment found. Initiate refund.",
+                    "action": "call_tool",
+                    "action_input": {
+                        "tool": "initiate_refund",
+                        "args": {"amount": 99.0},
+                    },
+                }
+            return {
+                "thought": "Done.",
+                "action": "respond",
+                "action_input": {"answer": "Refund initiated."},
+            }
+
+        corpus = _build_refund_corpus()
+        index = build_index(corpus)
+        config = DomainAgentConfig(
+            agent_id="test", domain="refunds", goal="Refunds", max_steps=5
+        )
+        engine = DomainAgentEngine(
+            config=config,
+            index=index,
+            tools={"lookup_payment": lookup_tool, "initiate_refund": refund_tool},
+            llm_fn=mock_llm,
+        )
+
+        result = engine.handle("Refund order ORD-1")
+        slots = result["slots"]
+        assert slots["order_id"] == "ORD-1"
+        assert slots["refund_id"] == "REF-99"
+        assert "lookup_payment" in result["tools_used"]
+        assert "initiate_refund" in result["tools_used"]

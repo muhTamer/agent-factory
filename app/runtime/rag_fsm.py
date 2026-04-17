@@ -118,8 +118,8 @@ class RAGFSMConfig:
     relevance_gate: float = 0.10  # Minimum score to consider a hit relevant
     delegation_target: Optional[str] = None  # Default agent to delegate to
 
-    # Dense retrieval (off by default — needs embedding API key)
-    enable_dense_retrieval: bool = False
+    # Dense retrieval (on by default — falls back to TF-IDF if embeddings unavailable)
+    enable_dense_retrieval: bool = True
     dense_weight: float = 0.6  # Weight for dense scores in hybrid fusion
     sparse_weight: float = 0.4  # Weight for sparse (TF-IDF) scores
     embedding_model: str = "text-embedding-3-small"

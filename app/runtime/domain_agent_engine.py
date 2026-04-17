@@ -16,6 +16,7 @@ state machine.
 from __future__ import annotations
 
 import json
+import re as _re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -43,9 +44,12 @@ class DomainAgentConfig:
     top_k: int = 8
     retrieval_threshold: float = 0.10
     # Dense retrieval (hybrid fusion with TF-IDF)
-    enable_dense_retrieval: bool = False
+    enable_dense_retrieval: bool = True
     dense_weight: float = 0.6  # Weight for dense (embedding) scores
     sparse_weight: float = 0.4  # Weight for sparse (TF-IDF) scores
+    # Observation truncation limits
+    obs_limit_prompt: int = 800  # max chars for observations shown in LLM prompt
+    obs_limit_trace: int = 600  # max chars for observations in response trace
 
 
 @dataclass
@@ -58,6 +62,7 @@ class ReActStep:
     action_input: Dict[str, Any]
     observation: str
     timestamp: float = 0.0
+    latency_ms: float = 0.0  # wall-clock time for this step
 
 
 @dataclass
@@ -144,12 +149,68 @@ class DomainAgentEngine:
         steps: List[ReActStep] = []
 
         for step_num in range(1, self.config.max_steps + 1):
+            step_start = time.time()
+
             # Build prompt
             messages = self._build_react_prompt(query, state, steps, ctx)
 
-            # LLM THINKS
-            llm_response = self._call_llm(messages)
-            thought, action, action_input = self._parse_react_response(llm_response)
+            # LLM THINKS — with retry on parse failure
+            thought, action, action_input = self._call_and_parse_with_retry(
+                messages, max_retries=1
+            )
+
+            # --- Duplicate retrieval guard ---
+            if action == "retrieve_knowledge" and self._is_duplicate_retrieval(
+                action_input, steps
+            ):
+                observation = (
+                    "DUPLICATE: You already searched for this. "
+                    "Use the knowledge you already have, or try a different action."
+                )
+                step = ReActStep(
+                    step_number=step_num,
+                    thought=thought,
+                    action=action,
+                    action_input=action_input,
+                    observation=observation,
+                    timestamp=time.time(),
+                    latency_ms=round((time.time() - step_start) * 1000, 1),
+                )
+                steps.append(step)
+                state.step_history.append(step)
+                continue
+
+            # --- Tool-calling nudge ---
+            # If the LLM wants to "respond" but tools exist and none were
+            # called this turn, nudge it to reconsider (once only).
+            if (
+                action == "respond"
+                and self.tools
+                and not any(s.action == "call_tool" for s in steps)
+                and not any(
+                    s.action == "respond" and "NUDGE" in s.observation for s in steps
+                )
+                and step_num < self.config.max_steps
+                and not self._is_pure_info_query(action_input.get("answer", ""))
+            ):
+                observation = (
+                    "NUDGE: You have tools available but responded without calling any. "
+                    "If the user's request requires an ACTION (refund, ticket, lookup, "
+                    "transfer), you MUST call the appropriate tool before responding. "
+                    "If this is genuinely just an informational question, respond again."
+                )
+                step = ReActStep(
+                    step_number=step_num,
+                    thought=thought,
+                    action="respond",
+                    action_input=action_input,
+                    observation=observation,
+                    timestamp=time.time(),
+                    latency_ms=round((time.time() - step_start) * 1000, 1),
+                )
+                steps.append(step)
+                state.step_history.append(step)
+                continue
 
             # ACT
             observation = self._execute_action(action, action_input, state)
@@ -171,6 +232,7 @@ class DomainAgentEngine:
                 action_input=action_input,
                 observation=observation,
                 timestamp=time.time(),
+                latency_ms=round((time.time() - step_start) * 1000, 1),
             )
             steps.append(step)
             state.step_history.append(step)
@@ -417,6 +479,19 @@ class DomainAgentEngine:
         self, raw: Dict[str, Any]
     ) -> Tuple[str, str, Dict[str, Any]]:
         """Parse LLM response into (thought, action, action_input)."""
+
+        # Detect JSON parse failure from llm_client ({"raw": msg} pattern)
+        if "raw" in raw and len(raw) == 1:
+            salvaged = self._try_salvage_json(str(raw["raw"]))
+            if salvaged is not None:
+                raw = salvaged
+            else:
+                return (
+                    f"LLM returned unparseable output: {str(raw['raw'])[:200]}",
+                    "_parse_failure",
+                    {"raw_text": str(raw["raw"])[:500]},
+                )
+
         thought = str(raw.get("thought", "")).strip() or "No reasoning provided."
 
         action = str(raw.get("action", "")).strip().lower()
@@ -437,6 +512,120 @@ class DomainAgentEngine:
             action_input = {}
 
         return thought, action, action_input
+
+    # ------------------------------------------------------------------
+    # JSON salvage & retry
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _try_salvage_json(raw_text: str) -> Optional[Dict[str, Any]]:
+        """Attempt to extract valid JSON from malformed LLM output.
+
+        Handles common cases: markdown code fences, preamble text before JSON.
+        """
+        # Strip markdown code fences
+        fenced = _re.search(r"```(?:json)?\s*\n?(.*?)```", raw_text, _re.DOTALL)
+        if fenced:
+            try:
+                return json.loads(fenced.group(1).strip())
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # Find first { and last } and try parsing
+        first_brace = raw_text.find("{")
+        last_brace = raw_text.rfind("}")
+        if first_brace != -1 and last_brace > first_brace:
+            try:
+                return json.loads(raw_text[first_brace : last_brace + 1])
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        return None
+
+    def _call_and_parse_with_retry(
+        self,
+        messages: List[Dict[str, str]],
+        max_retries: int = 1,
+    ) -> Tuple[str, str, Dict[str, Any]]:
+        """Call LLM and parse response, retrying on parse failure."""
+        llm_response = self._call_llm(messages)
+        thought, action, action_input = self._parse_react_response(llm_response)
+
+        if action != "_parse_failure" or max_retries < 1:
+            return thought, action, action_input
+
+        # Retry: append error feedback to messages
+        retry_messages = messages + [
+            {
+                "role": "assistant",
+                "content": action_input.get("raw_text", ""),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Your previous response was not valid JSON. "
+                    "You MUST return a JSON object with exactly three fields: "
+                    '"thought", "action", "action_input". '
+                    "Try again."
+                ),
+            },
+        ]
+        llm_response = self._call_llm(retry_messages)
+        thought, action, action_input = self._parse_react_response(llm_response)
+
+        if action == "_parse_failure":
+            return (
+                "Failed to get valid response from LLM after retry.",
+                "escalate",
+                {"reason": "LLM output not parseable as valid action JSON"},
+            )
+
+        return thought, action, action_input
+
+    # ------------------------------------------------------------------
+    # Duplicate retrieval & tool-nudge helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_duplicate_retrieval(
+        action_input: Dict[str, Any], previous_steps: List["ReActStep"]
+    ) -> bool:
+        """Check if this retrieve_knowledge query duplicates a previous one."""
+        new_query = action_input.get("query", "").strip().lower()
+        if not new_query:
+            return False
+        for s in previous_steps:
+            if s.action == "retrieve_knowledge":
+                prev_query = s.action_input.get("query", "").strip().lower()
+                if new_query == prev_query:
+                    return True
+                new_tokens = set(new_query.split())
+                prev_tokens = set(prev_query.split())
+                if new_tokens and prev_tokens:
+                    overlap = len(new_tokens & prev_tokens) / max(
+                        len(new_tokens), len(prev_tokens)
+                    )
+                    if overlap > 0.8:
+                        return True
+        return False
+
+    @staticmethod
+    def _is_pure_info_query(answer: str) -> bool:
+        """Heuristic: if the answer is purely informational, don't nudge for tool use."""
+        action_indicators = [
+            "has been processed",
+            "has been initiated",
+            "has been created",
+            "has been submitted",
+            "has been filed",
+            "refund",
+            "ticket",
+            "complaint",
+            "transfer",
+            "frozen",
+            "blocked",
+        ]
+        return not any(indicator in answer.lower() for indicator in action_indicators)
 
     # ------------------------------------------------------------------
     # Prompt building
@@ -487,6 +676,7 @@ class DomainAgentEngine:
                 pass
 
         # Previous steps in this turn
+        obs_limit = self.config.obs_limit_prompt
         steps_str = ""
         if previous_steps:
             parts = []
@@ -495,7 +685,7 @@ class DomainAgentEngine:
                     f"Step {s.step_number}:\n"
                     f"  Thought: {s.thought}\n"
                     f"  Action: {s.action}({json.dumps(s.action_input)})\n"
-                    f"  Observation: {s.observation[:800]}"
+                    f"  Observation: {s.observation[:obs_limit]}"
                 )
             steps_str = "\n\nPrevious reasoning steps:\n" + "\n\n".join(parts)
 
@@ -508,135 +698,95 @@ class DomainAgentEngine:
             )
 
         system_prompt = (
-            f"You are a {self.config.domain} domain specialist agent.\n\n"
+            f"You are a {self.config.domain} domain specialist agent.\n"
             f"Goal: {self.config.goal}\n\n"
-            "You reason step-by-step using the ReAct framework (Reason + Act).\n"
-            "At each step you MUST output a JSON object with exactly three fields:\n"
-            '  "thought": your reasoning about what to do next\n'
-            '  "action": one of the available actions\n'
-            '  "action_input": parameters for that action\n\n'
-            "Available actions:\n"
-            '  1. retrieve_knowledge({"query": "search terms"})\n'
-            "     - Search your knowledge base for relevant information\n"
-            '  2. call_tool({"tool": "tool_name", "args": {"key": "value"}})\n'
-            "     - Execute a tool. Available tools:\n"
+            # ── OUTPUT FORMAT ──
+            "## Output format\n"
+            "At each step return STRICT JSON with exactly three fields:\n"
+            '  {"thought": "...", "action": "...", "action_input": {...}}\n\n'
+            # ── AVAILABLE ACTIONS ──
+            "## Available actions\n"
+            '1. retrieve_knowledge({"query": "search terms"}) — '
+            "Search your knowledge base.\n"
+            '2. call_tool({"tool": "name", "args": {...}}) — '
+            "Execute a tool. Tools:\n"
             f"{tools_str}\n"
-            '  3. respond({"answer": "your final answer to the user"})\n'
-            "     - Provide a final answer. Use this when you have enough information.\n"
-            '  4. ask_user({"question": "what you need from the user"})\n'
-            "     - Ask the user for information you need but don't have.\n"
-            '  5. escalate({"reason": "why this needs human attention"})\n'
-            "     - LAST RESORT ONLY. Use when you have NO relevant knowledge AND "
-            "no tools to help. There is no human specialist behind this action — "
-            "escalation ends the conversation.\n\n"
-            "Policy guidance (follow the spirit, not rigidly):\n"
+            '3. respond({"answer": "final answer"}) — '
+            "Provide a final answer to the user.\n"
+            '4. ask_user({"question": "..."}) — '
+            "Ask the user for missing information.\n"
+            '5. escalate({"reason": "..."}) — '
+            "LAST RESORT. Ends the conversation. No human behind this.\n\n"
+            # ── POLICIES ──
+            "## Policies\n"
             f"{policies_str}\n"
             + (
-                f"\n--- RETRIEVED POLICY (you MUST follow ONLY these steps) ---\n"
+                f"\n--- RETRIEVED POLICY (follow ONLY these steps) ---\n"
                 f"{thread_state.cached_policy_content}\n"
                 f"--- END OF POLICY ---\n\n"
                 if thread_state.cached_policy_content
                 else "\n"
             )
-            + "Guidelines:\n"
-            "- Retrieve knowledge ONCE before answering factual questions.\n"
-            "- Do NOT call retrieve_knowledge more than twice per turn. "
-            "After retrieving, use the passages you found to respond.\n"
-            "- NEVER repeat the same action with the same or similar input.\n"
-            "- If a tool fails, explain the issue and suggest next steps.\n\n"
-            "CRITICAL — Retrieval quality and honesty:\n"
-            "- After retrieving knowledge, CRITICALLY evaluate: do the passages "
-            "DIRECTLY answer the user's specific question?\n"
-            "- If YES and they all relate to ONE specific topic → use respond() "
-            "and base your answer ONLY on what the passages say.\n"
-            "- If the retrieved passages cover MULTIPLE DISTINCT topics, products, "
-            "or categories (e.g. travel insurance vs home insurance vs forex), "
-            "you MUST use ask_user() to ask the user which specific one they mean. "
-            "List the options you found. Do NOT try to summarize all of them.\n"
-            "- If the passages are about a DIFFERENT topic, or only tangentially "
-            "related, they do NOT count as relevant. Do NOT fabricate an answer "
-            "by combining unrelated passages.\n"
-            "- If the question is vague or ambiguous, use ask_user() to clarify "
-            "what specifically the user wants to know, so you can retrieve "
-            "more targeted information.\n"
-            "- If after retrieval you genuinely have NO matching content for "
-            "the user's question, HONESTLY say you don't have that specific "
+            # ── DECISION PRIORITY (most important) ──
+            + "## Decision priority (follow this order)\n"
+            "1. TOOL-FIRST: If the user gives a transaction ID, order number, or "
+            "account reference → call_tool to look it up BEFORE asking questions. "
+            "Never ask for info you could retrieve via tools.\n"
+            "2. Bias toward completing actions: Your PRIMARY goal is to COMPLETE "
+            "the user's request, not just discuss it. If they want a refund → "
+            "call initiate_refund. Complaint → call create_ticket. Transfer → "
+            "call initiate_transfer. "
+            "Do NOT just describe what you would do — actually do it.\n"
+            "3. RETRIEVE ONCE: Retrieve knowledge once before answering factual "
+            "questions. Do NOT retrieve more than twice per turn. Never repeat "
+            "the same or similar query.\n"
+            "   SEARCH TIPS: Use specific keywords, not generic phrases. "
+            "Drop filler words like 'policy', 'information', 'details'. "
+            "Example: search 'refund cancel' not 'refunds policy'.\n"
+            "4. MINIMUM QUESTIONS: Only ask for information the policy SPECIFICALLY "
+            "requires AND you cannot look up via tools. After retrieving knowledge "
+            "and gathering basic details, your NEXT step is calling the tool.\n\n"
+            "## Action patterns\n"
+            "  Refund: retrieve policy → ask for missing critical details → "
+            "call initiate_refund → respond with confirmation\n"
+            "  Complaint: retrieve policy → call create_ticket → respond\n"
+            "  Fraud: call initiate_refund + freeze_account → respond\n"
+            "  Escalation/ombudsman: call handoff_to_human → respond\n\n"
+            "## Retrieval quality\n"
+            "- After retrieving, CRITICALLY evaluate: do passages DIRECTLY "
+            "answer the user's question?\n"
+            "- ONE topic found → respond based ONLY on those passages.\n"
+            "- MULTIPLE distinct topics (e.g. travel vs home insurance) → "
+            "ask_user which one they mean. List the options.\n"
+            "- Passages about a DIFFERENT topic → they are NOT relevant. "
+            "Do not fabricate an answer from unrelated passages.\n"
+            "- Vague question → ask_user to clarify before retrieving more.\n"
+            "- No matching content → honestly say you don't have that specific "
             "information and offer to connect them with someone who can help. "
-            "Use respond() for this — do NOT use escalate.\n"
-            "  Example: 'I don't have specific details about that. "
-            "Would you like me to connect you with a specialist who can help?'\n"
-            "- NEVER make up facts, figures, timelines, or procedures that are "
-            "not in the retrieved passages. If it's not in the knowledge base, "
-            "you don't know it.\n\n"
-            "CRITICAL — Document visibility:\n"
-            "- Retrieved passages are tagged [INTERNAL — instructions only] or "
-            "[CUSTOMER-FACING].\n"
-            "- [CUSTOMER-FACING] content can be shared with the customer.\n"
-            "- [INTERNAL — instructions only] content tells YOU how to act. "
-            "It is NOT for the customer to see.\n"
-            "- NEVER mention: policy names, policy IDs, version numbers, "
-            "regulatory codes (PSD2, AMLD5, GDPR, PCI-DSS, etc.), "
-            "compliance framework names, internal process names, "
-            "approval thresholds, rule IDs, section numbers, "
-            "or any other internal/operational detail.\n"
-            "- NEVER say 'per our policy', 'our refunds policy states', "
-            "'according to the policy', 'compliance checks', "
-            "'AML/KYC requirements', or similar.\n"
-            "- Instead, translate policy requirements into PLAIN, "
-            "NATURAL customer-friendly language. For example:\n"
+            "Use respond(), not escalate.\n"
+            "- NEVER invent facts, figures, timelines, or procedures not in "
+            "the retrieved passages.\n\n"
+            "## Document visibility\n"
+            "- [CUSTOMER-FACING] content → can share with customer.\n"
+            "- [INTERNAL — instructions only] → tells YOU how to act. "
+            "NEVER share with customer.\n"
+            "- NEVER mention: policy names/IDs, version numbers, regulatory codes "
+            "(PSD2, AMLD5, GDPR, PCI-DSS), compliance frameworks, internal process "
+            "names, approval thresholds, rule IDs, or section numbers.\n"
+            "- Translate policy into PLAIN customer-friendly language:\n"
             "  BAD:  'Per our refunds policy, we must complete AML/KYC verification'\n"
-            "  GOOD: 'I just need to verify your identity before we proceed'\n"
-            "  BAD:  'We follow PSD2/AMLD5/GDPR compliance checks'\n"
-            "  GOOD: 'Let me confirm a couple of details for security'\n\n"
-            "CRITICAL — Concise, gradual responses:\n"
-            "- Ask ONE question at a time. Do NOT list multiple questions "
-            "or ask for several pieces of information in a single turn.\n"
-            "- Keep responses SHORT — 1 to 3 sentences maximum when asking questions.\n"
-            "- Do NOT preview or explain future steps, the full process, "
-            "or what you will ask next. Handle one step at a time.\n"
-            "- Do NOT add bullet lists, numbered steps, or 'what happens next' sections.\n"
+            "  GOOD: 'I just need to verify your identity before we proceed'\n\n"
+            "## Conversation style\n"
+            "- Ask ONE question at a time. Keep responses short — 1 to 3 sentences.\n"
+            "- Do NOT preview future steps or list numbered procedures.\n"
             "- Be warm and conversational, not procedural.\n\n"
-            "CRITICAL — Policy grounding:\n"
-            "- When you retrieve a policy document, FOLLOW its documented rules "
-            "and workflow step by step. Do NOT invent your own procedure.\n"
-            "- ONLY perform actions and ask questions that are EXPLICITLY listed "
-            "in the policy workflow steps. If a step is not in the policy, "
-            "do NOT add it yourself. For example, if the policy does not require "
-            "card verification, do NOT ask for the last 4 digits of a card.\n"
-            "- Your reasoning (the 'thought' field) should reference policy rules, "
-            "but your customer-facing answer must NEVER cite them.\n"
-            "- Only ask the user for information that the policy SPECIFICALLY "
-            "requires AND that you cannot look up via your tools.\n"
-            "- NEVER invent security checks, verification steps, or additional "
-            "requirements beyond what the policy document explicitly states.\n\n"
-            "CRITICAL — Tool-first approach:\n"
-            "- If the user provides a transaction ID, order number, or account "
-            "reference, use call_tool to look it up BEFORE asking for more details.\n"
-            "- Do NOT ask the user for information you could retrieve via tools "
-            "(e.g. transaction details, account status, payment history).\n"
-            "- After looking up data via tools, check the results against policy "
-            "rules before asking the user for anything else.\n\n"
-            "CRITICAL — Bias toward completing actions:\n"
-            "- Your PRIMARY goal is to COMPLETE the user's request, not just "
-            "discuss it. If the user asks for a refund, you must actually call "
-            "initiate_refund. If they file a complaint, call create_ticket.\n"
-            "- When the user has provided ENOUGH context to act (e.g. an amount, "
-            "account number, transaction reference, or description of the issue), "
-            "proceed to call the appropriate tool. Do NOT ask for optional details "
-            "that are not strictly required.\n"
-            "- If you have already retrieved knowledge AND gathered basic details "
-            "from the user, your NEXT step should be calling the relevant tool — "
-            "not asking another question.\n"
-            "- After calling a tool successfully, use respond() to confirm the "
-            "outcome to the user.\n"
-            "- Common action patterns:\n"
-            "  * Refund request → retrieve policy → (optionally ask for missing "
-            "critical details) → call initiate_refund → respond with confirmation\n"
-            "  * Complaint → retrieve policy → call create_ticket → respond\n"
-            "  * Fraud/unauthorized charge → call initiate_refund + freeze_account "
-            "→ respond\n"
-            "  * Escalation/ombudsman → call handoff_to_human → respond\n\n"
-            'Return STRICT JSON: {"thought": "...", "action": "...", "action_input": {...}}'
+            "## Policy grounding\n"
+            "- FOLLOW policy workflow step by step. Do NOT invent your own procedure.\n"
+            "- ONLY ask questions and perform actions EXPLICITLY listed in the policy.\n"
+            "- Your 'thought' field may reference policy rules; your customer answer "
+            "must NEVER cite them.\n"
+            "- NEVER invent security checks or verification steps beyond "
+            "what the policy states.\n"
         )
 
         # User content
@@ -654,15 +804,17 @@ class DomainAgentEngine:
             ]
             if prev_steps:
                 parts = []
-                for s in prev_steps[-6:]:  # last 6 steps max to avoid bloat
+                for s in prev_steps[-8:]:  # last 8 steps for better context
                     # Give retrieval observations more room so policy
                     # workflow steps aren't lost across turns.
-                    obs_limit = 600 if s.action == "retrieve_knowledge" else 200
+                    prev_obs_limit = (
+                        obs_limit if s.action == "retrieve_knowledge" else 300
+                    )
                     parts.append(
                         f"Step {s.step_number}: "
-                        f"thought={s.thought[:200]} → "
+                        f"thought={s.thought[:300]} → "
                         f"{s.action}({json.dumps(s.action_input)}) → "
-                        f"{s.observation[:obs_limit]}"
+                        f"{s.observation[:prev_obs_limit]}"
                     )
                 prev_steps_str = (
                     "\n\nPrevious reasoning from earlier turns:\n" + "\n".join(parts)
@@ -674,16 +826,23 @@ class DomainAgentEngine:
                     f"Original user question: {thread_state.original_query}\n"
                 )
 
+            # Summarize what tools are available so the LLM picks the right one
+            available_tools_hint = ""
+            if self.tools:
+                available_tools_hint = (
+                    f"\nAvailable tools: {', '.join(self.tools.keys())}\n"
+                )
+
             user_content = (
                 f"{original_ctx}"
                 f'You previously asked the user: "{thread_state.pending_question}"\n'
                 f"User responded: {query}"
-                f"{slots_str}{prev_steps_str}{steps_str}\n\n"
+                f"{slots_str}{available_tools_hint}{prev_steps_str}{steps_str}\n\n"
                 "IMPORTANT: The user has now provided the information you asked for. "
                 "Do NOT ask another question unless absolutely critical information "
                 "is still missing. Instead, proceed to call the appropriate tool "
-                "(e.g. initiate_refund, create_ticket) with whatever details you have, "
-                "then respond to confirm the outcome."
+                "(e.g. initiate_refund, create_ticket, lookup_payment) with the "
+                "details you have gathered, then respond to confirm the outcome."
             )
             thread_state.pending_question = None
 
@@ -746,13 +905,15 @@ class DomainAgentEngine:
             response["escalation_reason"] = "Max reasoning steps reached"
 
         # ---- Explainability / RQ2: Full reasoning trace ----
+        trace_limit = self.config.obs_limit_trace
         response["react_trace"] = [
             {
                 "step": s.step_number,
                 "thought": s.thought,
                 "action": s.action,
                 "action_input": s.action_input,
-                "observation": s.observation[:600],
+                "observation": s.observation[:trace_limit],
+                "latency_ms": s.latency_ms,
             }
             for s in steps
         ]
@@ -770,7 +931,7 @@ class DomainAgentEngine:
                             for k, v in s.action_input.items()
                             if k not in ("tool",)
                         },
-                        "result": s.observation[:800],
+                        "result": s.observation[: self.config.obs_limit_prompt],
                     }
                 )
         response["tool_results"] = tool_results

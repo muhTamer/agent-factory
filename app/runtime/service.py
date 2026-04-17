@@ -568,7 +568,7 @@ def get_estimator(user: AuthUser = Depends(get_current_user)):
         raise HTTPException(status_code=503, detail="AOP coordinator not initialized.")
     return {
         "kind": tr.spine.aop_coordinator.active_estimator_kind,
-        "options": ["neural", "tfidf"],
+        "options": ["neural", "tfidf", "llm"],
     }
 
 
@@ -579,10 +579,10 @@ def switch_estimator(
     tr = _get_tenant(user.tenant_id)
     if tr.spine is None or tr.spine.aop_coordinator is None:
         raise HTTPException(status_code=503, detail="AOP coordinator not initialized.")
-    if req.kind not in ("neural", "tfidf"):
+    if req.kind not in ("neural", "tfidf", "llm"):
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid kind '{req.kind}'. Use 'neural' or 'tfidf'.",
+            detail=f"Invalid kind '{req.kind}'. Use 'neural', 'tfidf', or 'llm'.",
         )
     try:
         active = tr.spine.aop_coordinator.swap_estimator(req.kind)
