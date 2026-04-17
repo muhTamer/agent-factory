@@ -535,13 +535,23 @@ class AOPCoordinator:
 
         Returns:
             The estimator kind now active.
+
+        Raises:
+            RuntimeError: If the requested estimator cannot be loaded
+                (e.g. missing ``torch`` / ``sentence-transformers``).
         """
         if kind == "neural":
-            from app.orchestration.neural_solvability_estimator import (
-                NeuralSolvabilityEstimator,
-            )
+            try:
+                from app.orchestration.neural_solvability_estimator import (
+                    NeuralSolvabilityEstimator,
+                )
 
-            self.estimator = NeuralSolvabilityEstimator(self.store)
+                self.estimator = NeuralSolvabilityEstimator(self.store)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Cannot load neural estimator: {exc}. "
+                    "Install 'sentence-transformers' and 'torch' to enable neural mode."
+                ) from exc
         elif kind == "llm":
             from app.orchestration.llm_solvability_estimator import (
                 LLMSolvabilityEstimator,
