@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { Vertical } from "@/types/concierge";
 import { authFetch } from "@/lib/auth-fetch";
+import { startRuntime } from "@/lib/concierge-api";
 
 const DOMAINS: {
   value: Vertical;
@@ -144,6 +145,14 @@ export function WelcomeStep() {
         }
         setDeployment((depResult as Record<string, never>).deployment_request);
         setDeployMessage((depResult as Record<string, never>).text);
+      }
+
+      // Start runtime automatically so user doesn't have to click "Start"
+      setQuickStatus("Starting runtime...");
+      try {
+        await startRuntime();
+      } catch {
+        // Non-fatal — RuntimeStep will show Start button as fallback
       }
 
       // Jump straight to runtime step
