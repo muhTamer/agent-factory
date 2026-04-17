@@ -718,13 +718,15 @@ def _trigger_backend_reload(ts: TenantSession):
                 continue
             embedded = []
             for doc_path in paths:
-                p = Path(doc_path)
-                if p.exists() and p.is_file():
-                    try:
+                if not isinstance(doc_path, str):
+                    continue
+                try:
+                    p = Path(doc_path)
+                    if p.exists() and p.is_file():
                         content = p.read_text(encoding="utf-8", errors="ignore")
                         embedded.append({"filename": p.name, "content": content})
-                    except Exception:
-                        pass
+                except (OSError, ValueError):
+                    pass
             if embedded:
                 inputs[f"_embedded_{key}"] = embedded
 
