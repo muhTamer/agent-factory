@@ -293,8 +293,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         path = request.url.path
 
-        # Skip rate limiting for health/meta endpoints
-        if path in _EXEMPT_PATHS:
+        # Skip rate limiting for health/meta endpoints and job polling
+        if path in _EXEMPT_PATHS or path.startswith("/chat/job/"):
             return await call_next(request)
 
         # ── Bot detection ───────────────────────────────
