@@ -66,6 +66,14 @@ def build_agent(
     # only; customer-facing docs can be shared with customers.
     doc_vis_map: Dict[str, str] = inputs.get("doc_visibility_map") or {}
 
+    # When knowledge sources are embedded in the spec (cross-container deployment),
+    # write them to gen_dir so load_corpus can access them.
+    embedded_ks = inputs.get("_embedded_knowledge_sources") or []
+    if embedded_ks:
+        for ed in embedded_ks:
+            (gen_dir / ed["filename"]).write_text(ed["content"], encoding="utf-8")
+        knowledge_sources = [str(gen_dir / ed["filename"]) for ed in embedded_ks]
+
     # ---- Build corpus from knowledge sources ----
     # Reuses app.shared.rag.load_corpus which handles CSV, MD, TXT, YAML
     corpus_items: List[CorpusItem] = []

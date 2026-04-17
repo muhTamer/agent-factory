@@ -712,7 +712,7 @@ def _trigger_backend_reload(ts: TenantSession):
     # even when it doesn't share a filesystem with the concierge container.
     for agent in spec.get("agents", []):
         inputs = agent.get("inputs") or {}
-        for key in ("docs", "policies"):
+        for key in ("docs", "policies", "knowledge_sources"):
             paths = inputs.get(key) or []
             if not paths:
                 continue
