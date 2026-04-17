@@ -297,6 +297,15 @@ def build_agent(
     if isinstance(docs, str):
         docs = [docs]
 
+    # When docs are embedded in the spec (cross-container deployment),
+    # write them to gen_dir so the rest of the pipeline can process them.
+    embedded_docs = inputs.get("_embedded_docs") or []
+    if embedded_docs:
+        for ed in embedded_docs:
+            temp_path = gen_dir / ed["filename"]
+            temp_path.write_text(ed["content"], encoding="utf-8")
+        docs = [str(gen_dir / ed["filename"]) for ed in embedded_docs]
+
     # Write config for runtime inspection/debugging
     cfg = {
         "id": agent_id,

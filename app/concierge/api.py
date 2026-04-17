@@ -652,6 +652,26 @@ def _trigger_backend_reload(ts: TenantSession):
     # Inject tenant_id into the spec so the backend knows which tenant this is for
     spec["_tenant_id"] = ts.tenant_id
 
+    # Embed doc/policy file contents so the runtime container can access them
+    # even when it doesn't share a filesystem with the concierge container.
+    for agent in spec.get("agents", []):
+        inputs = agent.get("inputs") or {}
+        for key in ("docs", "policies"):
+            paths = inputs.get(key) or []
+            if not paths:
+                continue
+            embedded = []
+            for doc_path in paths:
+                p = Path(doc_path)
+                if p.exists() and p.is_file():
+                    try:
+                        content = p.read_text(encoding="utf-8", errors="ignore")
+                        embedded.append({"filename": p.name, "content": content})
+                    except Exception:
+                        pass
+            if embedded:
+                inputs[f"_embedded_{key}"] = embedded
+
     try:
         r = http_requests.post(
             f"{RUNTIME_BACKEND_URL}/reload",
