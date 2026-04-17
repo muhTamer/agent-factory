@@ -114,10 +114,13 @@ class ToolRegistry:
                 if name not in self._tools:
                     try:
                         from app.runtime.tools.stub_tools import TOOL_DESCRIPTIONS
+
                         desc = TOOL_DESCRIPTIONS.get(name, "")
                     except ImportError:
                         desc = ""
-                    self._tools[name] = StubTool(name, lambda s, c: {}, description=desc)
+                    self._tools[name] = StubTool(
+                        name, lambda s, c: {}, description=desc
+                    )
 
             elif kind == "http":
                 self._tools[name] = HttpTool(

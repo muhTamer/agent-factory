@@ -11,6 +11,7 @@ The refunds agent is a ReACT domain agent that:
 
 Requires: generated/refunds_agent/ artifacts from a factory deploy.
 """
+
 from __future__ import annotations
 
 import importlib.util
