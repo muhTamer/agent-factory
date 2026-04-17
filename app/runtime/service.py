@@ -12,11 +12,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import time
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Dict
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,6 +56,42 @@ logging.basicConfig(
     format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+
+# ---------------------------------------------------------------------------
+# Async Job Store — same pattern as concierge for long-running chat requests
+# ---------------------------------------------------------------------------
+_chat_jobs: Dict[str, Dict[str, Any]] = {}
+_chat_jobs_lock = threading.Lock()
+_MAX_CHAT_JOBS = 500
+
+
+def _create_chat_job() -> str:
+    job_id = uuid.uuid4().hex[:12]
+    with _chat_jobs_lock:
+        if len(_chat_jobs) >= _MAX_CHAT_JOBS:
+            oldest = next(iter(_chat_jobs))
+            del _chat_jobs[oldest]
+        _chat_jobs[job_id] = {
+            "status": "processing",
+            "created": time.time(),
+            "result": None,
+            "error": None,
+        }
+    return job_id
+
+
+def _finish_chat_job(job_id: str, result: Any = None, error: str | None = None):
+    with _chat_jobs_lock:
+        if job_id in _chat_jobs:
+            _chat_jobs[job_id]["status"] = "error" if error else "done"
+            _chat_jobs[job_id]["result"] = result
+            _chat_jobs[job_id]["error"] = error
+
+
+def _get_chat_job(job_id: str) -> Dict[str, Any] | None:
+    with _chat_jobs_lock:
+        return _chat_jobs.get(job_id)
+
 
 app = FastAPI(title="Agent Factory Runtime", version="1.0")
 
@@ -438,7 +476,7 @@ def reload_spec(req: ReloadRequest):
 
 @app.post("/chat")
 def chat(req: ChatRequest, user: AuthUser = Depends(get_current_user)):
-    t0 = time.time()
+    """Start a chat request as a background job. Returns job_id for polling."""
     q = req.query.strip()
     if not q:
         raise HTTPException(status_code=400, detail="Query text required.")
@@ -464,27 +502,61 @@ def chat(req: ChatRequest, user: AuthUser = Depends(get_current_user)):
     # Enforce LLM usage limits
     usage = record_llm_call(session_id)
 
-    ctx = tr.thread_ctx.get(thread_id, {})
-    ctx.update(req.context or {})
-    ctx["thread_id"] = thread_id
-    ctx["tenant_id"] = user.tenant_id
+    job_id = _create_chat_job()
 
-    resp = tr.spine.handle_chat(q, request_id=req.request_id, context=ctx)
+    def _run():
+        t0 = time.time()
+        try:
+            ctx = tr.thread_ctx.get(thread_id, {})
+            ctx.update(req.context or {})
+            ctx["thread_id"] = thread_id
+            ctx["tenant_id"] = user.tenant_id
 
-    tr.thread_ctx[thread_id] = ctx
-    resp["thread_id"] = thread_id
-    resp["usage"] = usage
+            resp = tr.spine.handle_chat(q, request_id=req.request_id, context=ctx)
 
-    elapsed = time.time() - t0
-    routed_to = resp.get("agent_id", "?")
-    logger.info(
-        "[chat] tenant=%s thread=%s agent=%s elapsed=%.1fs",
-        user.tenant_id,
-        thread_id,
-        routed_to,
-        elapsed,
-    )
-    return resp
+            tr.thread_ctx[thread_id] = ctx
+            resp["thread_id"] = thread_id
+            resp["usage"] = usage
+
+            elapsed = time.time() - t0
+            routed_to = resp.get("agent_id", "?")
+            logger.info(
+                "[chat] tenant=%s thread=%s agent=%s elapsed=%.1fs",
+                user.tenant_id,
+                thread_id,
+                routed_to,
+                elapsed,
+            )
+            _finish_chat_job(job_id, result=resp)
+        except Exception as exc:
+            logger.error(
+                "[chat] tenant=%s thread=%s FAILED: %s",
+                user.tenant_id,
+                thread_id,
+                exc,
+                exc_info=True,
+            )
+            _finish_chat_job(job_id, error=str(exc))
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"job_id": job_id, "status": "processing", "thread_id": thread_id}
+
+
+@app.get("/chat/job/{job_id}")
+def get_chat_job_status(job_id: str):
+    """Poll a chat job. Returns status, and result when done."""
+    job = _get_chat_job(job_id)
+    if not job:
+        return JSONResponse(status_code=404, content={"detail": "Job not found"})
+    if job["status"] == "processing":
+        elapsed = time.time() - job["created"]
+        return {"job_id": job_id, "status": "processing", "elapsed": round(elapsed, 1)}
+    if job["status"] == "error":
+        return JSONResponse(
+            status_code=500,
+            content={"job_id": job_id, "status": "error", "error": job["error"]},
+        )
+    return {"job_id": job_id, "status": "done", "result": job["result"]}
 
 
 @app.get("/tools")

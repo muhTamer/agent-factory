@@ -27,5 +27,29 @@ export async function postChat(body: ChatRequest): Promise<ChatResponse> {
     }
     throw new Error(`Chat request failed (${res.status}): ${detail}`);
   }
-  return res.json();
+
+  const data = await res.json();
+
+  // Async job pattern: poll until done
+  if (data.job_id && data.status === "processing") {
+    return pollChatJob(data.job_id);
+  }
+
+  // Synchronous fallback
+  return data;
+}
+
+async function pollChatJob(jobId: string): Promise<ChatResponse> {
+  while (true) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const res = await authFetch(`/api/runtime/chat/job/${jobId}`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Chat poll failed (${res.status}): ${text}`);
+    }
+    const data = await res.json();
+    if (data.status === "done") return data.result;
+    if (data.status === "error") throw new Error(data.error);
+    // still processing — loop
+  }
 }
