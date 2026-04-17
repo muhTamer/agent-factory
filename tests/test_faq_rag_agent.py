@@ -8,6 +8,7 @@ responds with customer-facing answers.
 
 Requires: generated/faq_agent/ artifacts from a factory deploy.
 """
+
 from __future__ import annotations
 
 import importlib.util

@@ -9,6 +9,7 @@ autonomously reasons through retrieve → tool-call → respond steps.
 These tests verify that the ReACT engine correctly chains multiple
 actions in a single turn without user intervention.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock

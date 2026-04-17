@@ -19,7 +19,6 @@ from unittest.mock import MagicMock
 from app.runtime.domain_agent_engine import DomainAgentConfig, DomainAgentEngine
 from app.shared.rag import CorpusItem, build_index
 
-
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
@@ -99,9 +98,7 @@ def _make_refund_engine(
         ),
     }
 
-    return DomainAgentEngine(
-        config=config, index=index, tools=tools, llm_fn=mock_llm
-    )
+    return DomainAgentEngine(config=config, index=index, tools=tools, llm_fn=mock_llm)
 
 
 def _make_complaint_engine(
@@ -137,9 +134,7 @@ def _make_complaint_engine(
         ),
     }
 
-    return DomainAgentEngine(
-        config=config, index=index, tools=tools, llm_fn=mock_llm
-    )
+    return DomainAgentEngine(config=config, index=index, tools=tools, llm_fn=mock_llm)
 
 
 # ── Tests ────────────────────────────────────────────────────────────
@@ -156,13 +151,11 @@ class TestToolDescriptionsInPrompt:
         from app.runtime.tools.stub_tools import STUB_TOOLS
 
         for name in STUB_TOOLS:
-            assert name in TOOL_DESCRIPTIONS, (
-                f"Tool '{name}' missing from TOOL_DESCRIPTIONS"
-            )
+            assert (
+                name in TOOL_DESCRIPTIONS
+            ), f"Tool '{name}' missing from TOOL_DESCRIPTIONS"
             desc = TOOL_DESCRIPTIONS[name]
-            assert len(desc) > 20, (
-                f"Tool '{name}' description too short: {desc}"
-            )
+            assert len(desc) > 20, f"Tool '{name}' description too short: {desc}"
 
     def test_stub_tool_carries_description(self):
         """StubTool.describe() should return the rich description."""
@@ -184,9 +177,9 @@ class TestToolDescriptionsInPrompt:
         for name in registry.all_names():
             tool = registry.get(name)
             info = tool.describe()
-            assert "Stub implementation" not in info["description"], (
-                f"Tool '{name}' still has generic description"
-            )
+            assert (
+                "Stub implementation" not in info["description"]
+            ), f"Tool '{name}' still has generic description"
 
 
 class TestRefundToolCalling:
@@ -284,9 +277,7 @@ class TestRefundToolCalling:
             ]
         )
 
-        result = engine.handle(
-            "Refund EUR 200 unauthorized charge on ACC-123"
-        )
+        result = engine.handle("Refund EUR 200 unauthorized charge on ACC-123")
         assert "initiate_refund" in result.get("tools_used", [])
         assert "200" in result.get("answer", "")
 
@@ -309,9 +300,7 @@ class TestComplaintToolCalling:
                 {
                     "thought": "Need complaint details.",
                     "action": "ask_user",
-                    "action_input": {
-                        "question": "Could you describe the issue?"
-                    },
+                    "action_input": {"question": "Could you describe the issue?"},
                 },
                 {
                     "thought": "Have details. Creating ticket.",
@@ -407,9 +396,7 @@ class TestRetrievalThresholds:
 
     def test_domain_agent_config_defaults(self):
         """top_k should be 8 and threshold should be 0.10."""
-        config = DomainAgentConfig(
-            agent_id="test", domain="faq", goal="answer FAQ"
-        )
+        config = DomainAgentConfig(agent_id="test", domain="faq", goal="answer FAQ")
         assert config.top_k == 8
         assert config.retrieval_threshold == 0.10
 

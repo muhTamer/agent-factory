@@ -10,6 +10,7 @@ Tests the complete lifecycle using generated ReACT domain agents:
 
 Requires: generated/{faq_agent,refunds_agent}/ artifacts from factory deploy.
 """
+
 from __future__ import annotations
 
 import importlib.util
