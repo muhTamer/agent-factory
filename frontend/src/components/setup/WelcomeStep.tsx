@@ -155,19 +155,21 @@ export function WelcomeStep() {
         // Non-fatal — RuntimeStep will show Start button as fallback
       }
 
-      // Wait for runtime health to confirm agents are loaded
+      // Wait for runtime health to confirm agents are loaded.
+      // Poll the runtime directly (same path chat uses) to avoid
+      // mismatches between concierge-proxied health and direct runtime.
       setQuickStatus("Waiting for agents to come online...");
       const maxWait = 60_000;
       const t0 = Date.now();
       let ready = false;
       while (Date.now() - t0 < maxWait) {
         try {
-          const healthRes = await authFetch("/api/concierge/runtime/health", {
+          const healthRes = await authFetch("/api/runtime/health", {
             cache: "no-store",
           });
           if (healthRes.ok) {
             const h = await healthRes.json();
-            if (h.status === "ok") {
+            if (h.status === "ok" && Object.keys(h.agents || {}).length > 0) {
               ready = true;
               break;
             }

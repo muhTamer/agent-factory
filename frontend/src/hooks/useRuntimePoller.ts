@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getRuntimeHealth } from "@/lib/concierge-api";
+import { getHealth } from "@/lib/api";
 
 export function useRuntimePoller(enabled: boolean, intervalMs = 2000) {
   const [online, setOnline] = useState(false);
@@ -16,7 +16,7 @@ export function useRuntimePoller(enabled: boolean, intervalMs = 2000) {
 
     async function check() {
       try {
-        const data = await getRuntimeHealth();
+        const data = await getHealth();
         if (data.status === "ok") {
           setOnline(true);
           setAgentCount(Object.keys(data.agents || {}).length);
