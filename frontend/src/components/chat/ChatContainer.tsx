@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useSetupStore } from "@/store/setupStore";
 import {
   Bot,
+  Loader2,
   Menu,
   Plus,
   Settings,
@@ -143,11 +144,24 @@ export function ChatContainer() {
           </div>
         </header>
 
-        {/* Messages */}
-        <MessageList onMessageClick={handleMessageSelected} />
+        {/* Loading overlay when agents aren't ready */}
+        {!backendConnected ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 text-slate-500">
+            <Loader2 size={28} className="animate-spin text-blue-500" />
+            <p className="text-sm font-medium">Loading agents...</p>
+            <p className="text-xs text-slate-400">
+              Waiting for the runtime to finish initializing
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Messages */}
+            <MessageList onMessageClick={handleMessageSelected} />
 
-        {/* Quick replies */}
-        <QuickReplies replies={quickReplies} onSelect={sendMessage} />
+            {/* Quick replies */}
+            <QuickReplies replies={quickReplies} onSelect={sendMessage} />
+          </>
+        )}
 
         {/* Input */}
         <ChatInput
