@@ -382,15 +382,19 @@ def health(user: AuthUser | None = Depends(get_optional_user)):
     if user:
         tr = _get_tenant(user.tenant_id)
         agents_meta = tr.registry.all_meta()
+        ready = bool(agents_meta) and tr.loaded and tr.spine is not None
     else:
         # Unauthenticated: check if any tenant has agents (backward compat)
         if _DEV_TENANT_ID in _tenants:
-            agents_meta = _tenants[_DEV_TENANT_ID].registry.all_meta()
+            dev = _tenants[_DEV_TENANT_ID]
+            agents_meta = dev.registry.all_meta()
+            ready = bool(agents_meta) and dev.loaded and dev.spine is not None
         else:
             agents_meta = {}
+            ready = False
 
     return {
-        "status": "ok" if agents_meta else "waiting",
+        "status": "ok" if ready else "waiting",
         "agents": agents_meta,
         "dry_run": True,
         "request_id": str(uuid.uuid4()),
