@@ -148,14 +148,45 @@ export function WelcomeStep() {
       }
 
       // Start runtime automatically so user doesn't have to click "Start"
-      setQuickStatus("Starting runtime...");
+      setQuickStatus("Starting agents...");
       try {
         await startRuntime();
       } catch {
         // Non-fatal — RuntimeStep will show Start button as fallback
       }
 
-      // Jump straight to runtime step
+      // Wait for runtime health to confirm agents are loaded
+      setQuickStatus("Waiting for agents to come online...");
+      const maxWait = 60_000;
+      const t0 = Date.now();
+      let ready = false;
+      while (Date.now() - t0 < maxWait) {
+        try {
+          const healthRes = await authFetch("/api/concierge/runtime/health", {
+            cache: "no-store",
+          });
+          if (healthRes.ok) {
+            const h = await healthRes.json();
+            if (h.status === "ok") {
+              ready = true;
+              break;
+            }
+          }
+        } catch {
+          // ignore
+        }
+        await new Promise((r) => setTimeout(r, 2000));
+        const elapsed = Math.round((Date.now() - t0) / 1000);
+        setQuickStatus(`Waiting for agents to come online... (${elapsed}s)`);
+      }
+
+      if (!ready) {
+        // Fall back to RuntimeStep with manual Start button
+        setStep("runtime");
+        return;
+      }
+
+      // All done — go straight to chat
       setStep("runtime");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Quickstart failed");
