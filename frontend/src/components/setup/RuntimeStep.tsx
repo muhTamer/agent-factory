@@ -45,9 +45,10 @@ export function RuntimeStep() {
     if (online) setStarted(true);
   }, [online]);
 
-  // Quickstart: auto-navigate to chat once runtime is online
+  // Quickstart: auto-navigate to chat once runtime is online (one-shot)
   useEffect(() => {
     if (online && isQuickstart) {
+      useSetupStore.getState().setQuickstart(false);
       router.push("/chat");
     }
   }, [online, isQuickstart, router]);
