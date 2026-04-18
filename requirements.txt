@@ -23,6 +23,10 @@ PyJWT>=2.8.0
 # LLM + YAML + testing deps
 PyYAML>=6.0
 
+# Neural solvability estimator (CPU-only torch to keep image small)
+torch>=2.0.0
+sentence-transformers>=2.2.0
+
 streamlit>=1.37.0
 python-multipart>=0.0.7
 matplotlib>=3.8.0
