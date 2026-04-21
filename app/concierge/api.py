@@ -690,22 +690,46 @@ def start_runtime(
         subprocess.Popen(cmd, shell=True, cwd=str(REPO_ROOT))
         return {"status": "starting", "port": port}
     else:
-        # Cloud: runtime is a separate container — trigger reload and check health
-        logger.info("[start] tenant=%s triggering backend reload", user.tenant_id)
-        _trigger_backend_reload(ts)
+        # Cloud: runtime is a separate container
+        fwd_headers = {}
+        auth = request.headers.get("authorization")
+        if auth:
+            fwd_headers["Authorization"] = auth
+
+        # Check if agents are already loaded — skip reload if so
+        already_loaded = False
         try:
-            fwd_headers = {}
-            auth = request.headers.get("authorization")
-            if auth:
-                fwd_headers["Authorization"] = auth
             r = http_requests.get(
                 f"{RUNTIME_BACKEND_URL}/health", headers=fwd_headers, timeout=5
             )
-            logger.info("[start] backend health -> %d", r.status_code)
             if r.status_code == 200:
-                return {"status": "running", "url": RUNTIME_BACKEND_URL, **r.json()}
-        except Exception as exc:
-            logger.error("[start] backend health check failed: %s", exc)
+                h = r.json()
+                if h.get("status") == "ok" and h.get("agents"):
+                    already_loaded = True
+                    logger.info(
+                        "[start] tenant=%s agents already loaded, skipping reload",
+                        user.tenant_id,
+                    )
+                    return {"status": "running", "url": RUNTIME_BACKEND_URL, **h}
+        except Exception:
+            pass
+
+        if not already_loaded:
+            logger.info("[start] tenant=%s triggering backend reload", user.tenant_id)
+            _trigger_backend_reload(ts)
+            try:
+                r = http_requests.get(
+                    f"{RUNTIME_BACKEND_URL}/health", headers=fwd_headers, timeout=5
+                )
+                logger.info("[start] backend health -> %d", r.status_code)
+                if r.status_code == 200:
+                    return {
+                        "status": "running",
+                        "url": RUNTIME_BACKEND_URL,
+                        **r.json(),
+                    }
+            except Exception as exc:
+                logger.error("[start] backend health check failed: %s", exc)
         return {"status": "unreachable", "url": RUNTIME_BACKEND_URL}
 
 

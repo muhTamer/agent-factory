@@ -35,9 +35,6 @@ async function waitForAgents(
     await new Promise((r) => setTimeout(r, 2000));
     const elapsed = Math.round((Date.now() - t0) / 1000);
     setStatus(`Loading agents... (${elapsed}s)`);
-    if (elapsed % 10 === 0 && elapsed > 0) {
-      try { await startRuntime(); } catch { /* ignore */ }
-    }
   }
 }
 
