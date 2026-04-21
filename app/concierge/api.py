@@ -512,7 +512,9 @@ def quickstart_retail(
             )
 
             if auto_deploy:
-                logger.info("[quickstart-retail] tenant=%s auto-deploying...", ts.tenant_id)
+                logger.info(
+                    "[quickstart-retail] tenant=%s auto-deploying...", ts.tenant_id
+                )
                 deploy_result = agent.handle_event(
                     {
                         "type": "user_action",
