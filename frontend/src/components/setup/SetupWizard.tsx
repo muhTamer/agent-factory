@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSetupStore } from "@/store/setupStore";
 import { useThreadStore } from "@/store/threadStore";
-import { getSession } from "@/lib/concierge-api";
+import { getSession, startRuntime } from "@/lib/concierge-api";
+import { authFetch } from "@/lib/auth-fetch";
 import type { Vertical } from "@/types/concierge";
 import { WizardProgressBar } from "./WizardProgressBar";
 import { WelcomeStep } from "./WelcomeStep";
@@ -15,6 +17,7 @@ import { UserMenu } from "../UserMenu";
 import { AlertTriangle, X, Loader2 } from "lucide-react";
 
 export function SetupWizard() {
+  const router = useRouter();
   const currentStep = useSetupStore((s) => s.currentStep);
   const error = useSetupStore((s) => s.error);
   const setError = useSetupStore((s) => s.setError);
@@ -39,6 +42,18 @@ export function SetupWizard() {
           setStep("runtime");
           // Load chat history from backend
           useThreadStore.getState().loadFromBackend();
+
+          // Ensure runtime is up and go directly to chat
+          try { await startRuntime(); } catch { /* ignore */ }
+          try {
+            const h = await authFetch("/api/runtime/health", { cache: "no-store" });
+            if (h.ok) {
+              const data = await h.json();
+              if (data.status === "ok" && Object.keys(data.agents || {}).length > 0) {
+                if (!cancelled) router.push("/chat");
+              }
+            }
+          } catch { /* ignore — RuntimeStep will handle it */ }
         }
       } catch (err) {
         console.warn("[Session] restore failed:", err);

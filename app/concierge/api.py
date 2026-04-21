@@ -338,6 +338,7 @@ class AnalyzeRequest(BaseModel):
 class QuickstartRequest(BaseModel):
     use_llm: bool = True
     model: str = "gpt-5-mini"
+    auto_deploy: bool = False
 
 
 class DeployRequest(BaseModel):
@@ -421,6 +422,7 @@ def quickstart_fintech(
     ts.doc_visibility = FINTECH_DOC_VISIBILITY
 
     job_id = _create_job(user.tenant_id, "quickstart")
+    auto_deploy = req.auto_deploy
 
     def _run():
         t0 = time.time()
@@ -435,6 +437,26 @@ def quickstart_fintech(
             )
             elapsed = time.time() - t0
             logger.info("[quickstart] tenant=%s done in %.1fs", ts.tenant_id, elapsed)
+
+            if auto_deploy:
+                logger.info("[quickstart] tenant=%s auto-deploying...", ts.tenant_id)
+                deploy_result = agent.handle_event(
+                    {
+                        "type": "user_action",
+                        "action": "approve_deploy_dry",
+                        "doc_visibility": ts.doc_visibility,
+                    }
+                )
+                _trigger_backend_reload(ts)
+                _save_session(ts, deploy_result)
+                result["deployment_request"] = deploy_result.get("deployment_request")
+                result["deploy_text"] = deploy_result.get("text", "")
+                logger.info(
+                    "[quickstart] tenant=%s auto-deploy done in %.1fs",
+                    ts.tenant_id,
+                    time.time() - t0,
+                )
+
             _finish_job(job_id, result=result)
         except Exception as exc:
             logger.error(
@@ -471,6 +493,7 @@ def quickstart_retail(
     ts.doc_visibility = RETAIL_DOC_VISIBILITY
 
     job_id = _create_job(user.tenant_id, "quickstart-retail")
+    auto_deploy = req.auto_deploy
 
     def _run():
         t0 = time.time()
@@ -487,6 +510,26 @@ def quickstart_retail(
             logger.info(
                 "[quickstart-retail] tenant=%s done in %.1fs", ts.tenant_id, elapsed
             )
+
+            if auto_deploy:
+                logger.info("[quickstart-retail] tenant=%s auto-deploying...", ts.tenant_id)
+                deploy_result = agent.handle_event(
+                    {
+                        "type": "user_action",
+                        "action": "approve_deploy_dry",
+                        "doc_visibility": ts.doc_visibility,
+                    }
+                )
+                _trigger_backend_reload(ts)
+                _save_session(ts, deploy_result)
+                result["deployment_request"] = deploy_result.get("deployment_request")
+                result["deploy_text"] = deploy_result.get("text", "")
+                logger.info(
+                    "[quickstart-retail] tenant=%s auto-deploy done in %.1fs",
+                    ts.tenant_id,
+                    time.time() - t0,
+                )
+
             _finish_job(job_id, result=result)
         except Exception as exc:
             logger.error(

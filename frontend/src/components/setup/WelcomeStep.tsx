@@ -72,17 +72,22 @@ export function WelcomeStep() {
     if (quickLoading) return;
     setQuickLoading(true);
     setError(null);
-    setQuickStatus("Analyzing preset documents...");
+    setQuickStatus("Analyzing documents...");
     await new Promise((r) => setTimeout(r, 100));
     try {
-      // Step 1: Start quickstart job
+      // Single server-side job: analyze + deploy + reload
+      // Survives browser kills — session is saved server-side when done.
       const endpoint = variant === "retail"
         ? "/api/concierge/quickstart-retail"
         : "/api/concierge/quickstart-fintech";
       const startRes = await authFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ use_llm: true, model: "gpt-5-mini" }),
+        body: JSON.stringify({
+          use_llm: true,
+          model: "gpt-5-mini",
+          auto_deploy: true,
+        }),
       });
       if (!startRes.ok) {
         const errText = await startRes.text().catch(() => startRes.statusText);
@@ -90,8 +95,8 @@ export function WelcomeStep() {
       }
       const startData = await startRes.json();
 
-      // Step 2: Poll until quickstart completes
-      let qsResult: Record<string, unknown>;
+      // Poll until the entire pipeline completes
+      let result: Record<string, unknown>;
       if (startData.job_id) {
         let polled: Record<string, unknown> | null = null;
         while (!polled) {
@@ -103,59 +108,36 @@ export function WelcomeStep() {
           } else if (pollData.status === "error") {
             throw new Error(`Quickstart: ${pollData.error}`);
           } else {
-            setQuickStatus(`Analyzing preset documents... (${Math.round(pollData.elapsed ?? 0)}s)`);
+            const elapsed = Math.round(pollData.elapsed ?? 0);
+            setQuickStatus(
+              elapsed < 15
+                ? `Analyzing documents... (${elapsed}s)`
+                : `Generating & deploying agents... (${elapsed}s)`
+            );
           }
         }
-        qsResult = polled;
+        result = polled;
       } else {
-        qsResult = startData;
+        result = startData;
       }
+
+      // Persist state from the combined result
       setVertical(variant);
       setQuickstart(true);
-      setPlan((qsResult as Record<string, never>).plan);
-      setAnalysisSummaryText((qsResult as Record<string, never>).text);
-
-      // Step 3: Deploy
-      setQuickStatus("Generating agents...");
-      const depRes = await authFetch("/api/concierge/deploy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "dry", doc_visibility: null }),
-      });
-      if (!depRes.ok) {
-        const errText = await depRes.text().catch(() => depRes.statusText);
-        throw new Error(`Deploy failed (${depRes.status}): ${errText}`);
-      }
-      const depStart = await depRes.json();
-
-      // Step 4: Poll until deploy completes
-      if (depStart.job_id) {
-        let depResult: Record<string, unknown> | null = null;
-        while (!depResult) {
-          await new Promise((r) => setTimeout(r, 2000));
-          const pollRes = await authFetch(`/api/concierge/job/${depStart.job_id}`);
-          const pollData = await pollRes.json();
-          if (pollData.status === "done") {
-            depResult = pollData.result;
-          } else if (pollData.status === "error") {
-            throw new Error(`Deploy: ${pollData.error}`);
-          } else {
-            setQuickStatus(`Generating agents... (${Math.round(pollData.elapsed ?? 0)}s)`);
-          }
-        }
-        setDeployment((depResult as Record<string, never>).deployment_request);
-        setDeployMessage((depResult as Record<string, never>).text);
+      setPlan((result as Record<string, never>).plan);
+      setAnalysisSummaryText((result as Record<string, never>).text);
+      if (result.deployment_request) {
+        setDeployment(result.deployment_request as Record<string, never>);
+        setDeployMessage((result.deploy_text as string) ?? "");
       }
 
-      // Step 5: Start runtime
-      setQuickStatus("Starting runtime...");
+      // Start runtime (triggers reload if needed)
+      setQuickStatus("Starting agents...");
       try {
         await startRuntime();
-      } catch {
-        // Non-fatal — will retry via health polling below
-      }
+      } catch { /* ignore */ }
 
-      // Step 6: Poll runtime health until agents are fully loaded
+      // Poll runtime health until agents are fully loaded
       setQuickStatus("Loading agents...");
       const maxWait = 120_000;
       const t0 = Date.now();
@@ -172,25 +154,19 @@ export function WelcomeStep() {
               break;
             }
           }
-        } catch {
-          // Runtime may not be up yet — keep trying
-        }
+        } catch { /* runtime may not be up yet */ }
         await new Promise((r) => setTimeout(r, 2000));
         const elapsed = Math.round((Date.now() - t0) / 1000);
         setQuickStatus(`Loading agents... (${elapsed}s)`);
-
-        // Retry startRuntime periodically in case the first call didn't stick
         if (elapsed % 10 === 0 && elapsed > 0) {
           try { await startRuntime(); } catch { /* ignore */ }
         }
       }
 
       if (ready) {
-        // Go straight to chat
         setStep("runtime");
         router.push("/chat");
       } else {
-        // Fallback: show RuntimeStep with manual Start button
         setStep("runtime");
       }
     } catch (err) {
