@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Vertical } from "@/types/concierge";
+import type { Vertical, DeploymentInfo } from "@/types/concierge";
 import { authFetch } from "@/lib/auth-fetch";
 import { startRuntime } from "@/lib/concierge-api";
 
@@ -127,7 +127,7 @@ export function WelcomeStep() {
       setPlan((result as Record<string, never>).plan);
       setAnalysisSummaryText((result as Record<string, never>).text);
       if (result.deployment_request) {
-        setDeployment(result.deployment_request as Record<string, never>);
+        setDeployment(result.deployment_request as unknown as DeploymentInfo);
         setDeployMessage((result.deploy_text as string) ?? "");
       }
 
