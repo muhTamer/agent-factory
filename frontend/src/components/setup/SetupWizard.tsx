@@ -20,10 +20,10 @@ async function waitForAgents(
   cancelled: () => boolean,
   setStatus: (s: string) => void,
 ) {
-  // Single startRuntime call to trigger reload if needed (skips if already loaded)
   try { await startRuntime(); } catch { /* ignore */ }
   const maxWait = 120_000;
   const t0 = Date.now();
+  let retried = false;
   while (Date.now() - t0 < maxWait && !cancelled()) {
     try {
       const h = await authFetch("/api/runtime/health", { cache: "no-store" });
@@ -37,6 +37,10 @@ async function waitForAgents(
     await new Promise((r) => setTimeout(r, 2000));
     const elapsed = Math.round((Date.now() - t0) / 1000);
     setStatus(`Loading agents... (${elapsed}s)`);
+    if (elapsed >= 30 && !retried) {
+      retried = true;
+      try { await startRuntime(); } catch { /* ignore */ }
+    }
   }
 }
 

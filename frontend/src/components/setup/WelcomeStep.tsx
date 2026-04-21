@@ -139,6 +139,7 @@ export function WelcomeStep() {
       const maxWait = 120_000;
       const t0 = Date.now();
       let ready = false;
+      let retried = false;
       while (Date.now() - t0 < maxWait) {
         try {
           const healthRes = await authFetch("/api/runtime/health", {
@@ -155,6 +156,11 @@ export function WelcomeStep() {
         await new Promise((r) => setTimeout(r, 2000));
         const elapsed = Math.round((Date.now() - t0) / 1000);
         setQuickStatus(`Loading agents... (${elapsed}s)`);
+        // One retry after 30s in case the first reload timed out
+        if (elapsed >= 30 && !retried) {
+          retried = true;
+          try { await startRuntime(); } catch { /* ignore */ }
+        }
       }
 
       if (ready) {

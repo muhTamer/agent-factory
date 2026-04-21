@@ -841,7 +841,7 @@ def _trigger_backend_reload(ts: TenantSession):
         r = http_requests.post(
             f"{RUNTIME_BACKEND_URL}/reload",
             json={"spec": spec, "tenant_id": ts.tenant_id},
-            timeout=30,
+            timeout=90,
         )
         logger.info(
             "[reload] tenant=%s backend responded %d: %s",
