@@ -238,6 +238,23 @@ export async function deleteMcpTool(toolName: string) {
   return res.json();
 }
 
+// ── Active job check (for resuming after browser kill) ────────────
+
+export interface ActiveJobResponse {
+  active: boolean;
+  job_id?: string;
+  status?: "processing" | "done" | "error";
+  kind?: string;
+  elapsed?: number;
+  result?: Record<string, unknown>;
+}
+
+export async function getActiveJob(): Promise<ActiveJobResponse> {
+  const res = await authFetch(`/api/concierge/active-job`);
+  if (!res.ok) return { active: false };
+  return res.json();
+}
+
 // ── Session persistence ────────────────────────────────────────────
 
 export interface SessionData {

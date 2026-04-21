@@ -124,6 +124,19 @@ def _get_job(job_id: str) -> Dict[str, Any] | None:
         return _jobs.get(job_id)
 
 
+def _get_active_job(tenant_id: str) -> tuple[str, Dict[str, Any]] | None:
+    """Return the most recent processing or done job for a tenant."""
+    with _jobs_lock:
+        best: tuple[str, Dict[str, Any]] | None = None
+        for jid, job in _jobs.items():
+            if job.get("tenant_id") != tenant_id:
+                continue
+            if job["status"] in ("processing", "done"):
+                if best is None or job["created"] > best[1]["created"]:
+                    best = (jid, job)
+        return best
+
+
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
@@ -211,6 +224,31 @@ def get_job_status(job_id: str):
         )
     # Done — return the full result
     return {"job_id": job_id, "status": "done", "result": job["result"]}
+
+
+@app.get("/concierge/active-job")
+def active_job(user: AuthUser = Depends(get_current_user)):
+    """Return the most recent active (processing/done) job for this tenant."""
+    hit = _get_active_job(user.tenant_id)
+    if not hit:
+        return {"active": False}
+    jid, job = hit
+    if job["status"] == "processing":
+        elapsed = time.time() - job["created"]
+        return {
+            "active": True,
+            "job_id": jid,
+            "status": "processing",
+            "kind": job.get("kind"),
+            "elapsed": round(elapsed, 1),
+        }
+    return {
+        "active": True,
+        "job_id": jid,
+        "status": job["status"],
+        "kind": job.get("kind"),
+        "result": job.get("result"),
+    }
 
 
 # ---------------------------------------------------------------------------
