@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Vertical } from "@/types/concierge";
 import { authFetch } from "@/lib/auth-fetch";
 import { startRuntime } from "@/lib/concierge-api";
@@ -52,6 +53,7 @@ const DOMAINS: {
 ];
 
 export function WelcomeStep() {
+  const router = useRouter();
   const vertical = useSetupStore((s) => s.vertical);
   const setVertical = useSetupStore((s) => s.setVertical);
   const setStep = useSetupStore((s) => s.setStep);
@@ -67,11 +69,10 @@ export function WelcomeStep() {
   const [quickstartOpen, setQuickstartOpen] = useState(false);
 
   async function handleQuickstart(variant: "fintech" | "retail") {
-    if (quickLoading) return; // guard against double tap
+    if (quickLoading) return;
     setQuickLoading(true);
     setError(null);
-    setQuickStatus("Starting quickstart...");
-    // Let React render the loading state before starting fetch
+    setQuickStatus("Analyzing preset documents...");
     await new Promise((r) => setTimeout(r, 100));
     try {
       // Step 1: Start quickstart job
@@ -89,7 +90,7 @@ export function WelcomeStep() {
       }
       const startData = await startRes.json();
 
-      // Step 2: Poll until quickstart completes (or use synchronous result)
+      // Step 2: Poll until quickstart completes
       let qsResult: Record<string, unknown>;
       if (startData.job_id) {
         let polled: Record<string, unknown> | null = null;
@@ -107,7 +108,6 @@ export function WelcomeStep() {
         }
         qsResult = polled;
       } else {
-        // Synchronous response (fallback)
         qsResult = startData;
       }
       setVertical(variant);
@@ -115,8 +115,8 @@ export function WelcomeStep() {
       setPlan((qsResult as Record<string, never>).plan);
       setAnalysisSummaryText((qsResult as Record<string, never>).text);
 
-      // Step 3: Start deploy job
-      setQuickStatus("Generating agents & deploying...");
+      // Step 3: Deploy
+      setQuickStatus("Generating agents...");
       const depRes = await authFetch("/api/concierge/deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -140,26 +140,24 @@ export function WelcomeStep() {
           } else if (pollData.status === "error") {
             throw new Error(`Deploy: ${pollData.error}`);
           } else {
-            setQuickStatus(`Generating agents & deploying... (${Math.round(pollData.elapsed ?? 0)}s)`);
+            setQuickStatus(`Generating agents... (${Math.round(pollData.elapsed ?? 0)}s)`);
           }
         }
         setDeployment((depResult as Record<string, never>).deployment_request);
         setDeployMessage((depResult as Record<string, never>).text);
       }
 
-      // Start runtime automatically so user doesn't have to click "Start"
-      setQuickStatus("Starting agents...");
+      // Step 5: Start runtime
+      setQuickStatus("Starting runtime...");
       try {
         await startRuntime();
       } catch {
-        // Non-fatal — RuntimeStep will show Start button as fallback
+        // Non-fatal — will retry via health polling below
       }
 
-      // Wait for runtime health to confirm agents are loaded.
-      // Poll the runtime directly (same path chat uses) to avoid
-      // mismatches between concierge-proxied health and direct runtime.
-      setQuickStatus("Waiting for agents to come online...");
-      const maxWait = 60_000;
+      // Step 6: Poll runtime health until agents are fully loaded
+      setQuickStatus("Loading agents...");
+      const maxWait = 120_000;
       const t0 = Date.now();
       let ready = false;
       while (Date.now() - t0 < maxWait) {
@@ -175,27 +173,54 @@ export function WelcomeStep() {
             }
           }
         } catch {
-          // ignore
+          // Runtime may not be up yet — keep trying
         }
         await new Promise((r) => setTimeout(r, 2000));
         const elapsed = Math.round((Date.now() - t0) / 1000);
-        setQuickStatus(`Waiting for agents to come online... (${elapsed}s)`);
+        setQuickStatus(`Loading agents... (${elapsed}s)`);
+
+        // Retry startRuntime periodically in case the first call didn't stick
+        if (elapsed % 10 === 0 && elapsed > 0) {
+          try { await startRuntime(); } catch { /* ignore */ }
+        }
       }
 
-      if (!ready) {
-        // Fall back to RuntimeStep with manual Start button
+      if (ready) {
+        // Go straight to chat
         setStep("runtime");
-        return;
+        router.push("/chat");
+      } else {
+        // Fallback: show RuntimeStep with manual Start button
+        setStep("runtime");
       }
-
-      // All done — go straight to chat
-      setStep("runtime");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Quickstart failed");
     } finally {
       setQuickLoading(false);
       setQuickStatus("");
     }
+  }
+
+  // Full-screen loading overlay during quickstart
+  if (quickLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/95 backdrop-blur-sm">
+        <div className="flex flex-col items-center gap-4 text-center px-6">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+            <Loader2 size={32} className="animate-spin text-blue-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-800">
+            Setting up your system
+          </h2>
+          <p className="text-sm text-slate-500 max-w-sm">
+            {quickStatus || "Please wait..."}
+          </p>
+          <p className="text-xs text-slate-400 mt-2">
+            This usually takes 30–60 seconds
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -357,15 +382,6 @@ export function WelcomeStep() {
           )}
         </Card>
 
-        {quickLoading && quickStatus && (
-          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
-            <Loader2 size={14} className="animate-spin" />
-            {quickStatus}
-            <p className="mt-1 text-xs text-amber-600">
-              You can switch apps — progress won&apos;t be lost.
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Continue */}

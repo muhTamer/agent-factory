@@ -29,7 +29,6 @@ export function RuntimeStep() {
   const router = useRouter();
   const setStep = useSetupStore((s) => s.setStep);
   const deployment = useSetupStore((s) => s.deployment);
-  const isQuickstart = useSetupStore((s) => s.isQuickstart);
   const setError = useSetupStore((s) => s.setError);
 
   const [started, setStarted] = useState(false);
@@ -44,14 +43,6 @@ export function RuntimeStep() {
   useEffect(() => {
     if (online) setStarted(true);
   }, [online]);
-
-  // Quickstart: auto-navigate to chat once runtime is online (one-shot)
-  useEffect(() => {
-    if (online && isQuickstart) {
-      useSetupStore.getState().setQuickstart(false);
-      router.push("/chat");
-    }
-  }, [online, isQuickstart, router]);
 
   async function handleStart() {
     setError(null);
