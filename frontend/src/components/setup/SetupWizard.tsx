@@ -20,6 +20,8 @@ async function waitForAgents(
   cancelled: () => boolean,
   setStatus: (s: string) => void,
 ) {
+  // Single startRuntime call to trigger reload if needed (skips if already loaded)
+  try { await startRuntime(); } catch { /* ignore */ }
   const maxWait = 120_000;
   const t0 = Date.now();
   while (Date.now() - t0 < maxWait && !cancelled()) {
@@ -94,9 +96,7 @@ export function SetupWizard() {
       setDeployMessage((result.deploy_text as string) ?? "");
     }
 
-    // Start runtime + poll health
     setResumeStatus("Starting agents...");
-    try { await startRuntime(); } catch { /* ignore */ }
     await waitForAgents(cancelled, setResumeStatus);
     if (!cancelled()) {
       setStep("runtime");
@@ -155,7 +155,6 @@ export function SetupWizard() {
               setDeployMessage((r.deploy_text as string) ?? "");
             }
             setResumeStatus("Starting agents...");
-            try { await startRuntime(); } catch { /* ignore */ }
             await waitForAgents(isCancelled, setResumeStatus);
             if (!cancelled) {
               setStep("runtime");

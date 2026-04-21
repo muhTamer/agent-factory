@@ -18,6 +18,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Vertical, DeploymentInfo } from "@/types/concierge";
 import { authFetch } from "@/lib/auth-fetch";
+import { startRuntime } from "@/lib/concierge-api";
 
 const DOMAINS: {
   value: Vertical;
@@ -130,7 +131,10 @@ export function WelcomeStep() {
         setDeployMessage((result.deploy_text as string) ?? "");
       }
 
-      // auto_deploy already triggered backend reload — just poll health
+      // Ensure runtime has agents loaded (skips reload if already loaded)
+      setQuickStatus("Starting agents...");
+      try { await startRuntime(); } catch { /* ignore */ }
+
       setQuickStatus("Loading agents...");
       const maxWait = 120_000;
       const t0 = Date.now();
