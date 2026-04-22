@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { getHealth } from "@/lib/api";
 import { startRuntime } from "@/lib/concierge-api";
 import { useChatStore } from "@/store/chatStore";
 
 export function useHealth() {
+  const router = useRouter();
   const setAgents = useChatStore((s) => s.setAgents);
   const setConnected = useChatStore((s) => s.setBackendConnected);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -26,10 +28,13 @@ export function useHealth() {
           reloadTriggered.current = false;
         } else {
           waitingCount.current++;
-          // After 3 failed checks (~6s), trigger one reload to recover from container restart
           if (waitingCount.current >= 3 && !reloadTriggered.current) {
             reloadTriggered.current = true;
             try { await startRuntime(); } catch { /* ignore */ }
+          }
+          // After ~30s of failing, redirect to setup wizard for full restore
+          if (waitingCount.current >= 15) {
+            router.push("/");
           }
         }
       } catch {
@@ -38,6 +43,9 @@ export function useHealth() {
         if (waitingCount.current >= 3 && !reloadTriggered.current) {
           reloadTriggered.current = true;
           try { await startRuntime(); } catch { /* ignore */ }
+        }
+        if (waitingCount.current >= 15) {
+          router.push("/");
         }
       }
     }
@@ -53,5 +61,5 @@ export function useHealth() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [setAgents, setConnected]);
+  }, [setAgents, setConnected, router]);
 }
