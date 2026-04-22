@@ -750,7 +750,107 @@ def _run_quickstart_pipeline(
         _save_session(ts, deploy_result)
         result["deployment_request"] = deploy_result.get("deployment_request")
         result["deploy_text"] = deploy_result.get("text", "")
+
+        # Auto-cache artifacts so the next quickstart is instant
+        _cache_prebuilt_artifacts(ts, vertical)
+
     return result
+
+
+def _cache_prebuilt_artifacts(ts: "TenantSession", vertical: str) -> None:
+    """Save workspace artifacts as prebuilt cache for future quickstarts."""
+    try:
+        prebuilt = PREBUILT_DIR / vertical
+        prebuilt.mkdir(parents=True, exist_ok=True)
+
+        factory_dir = ts.workspace / ".factory"
+        spec_path = factory_dir / "factory_spec.json"
+        if not spec_path.exists():
+            return
+
+        # Read and relativize spec
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        ws_str = str(ts.workspace)
+        _relativize_spec_paths_for_cache(spec, ws_str)
+        (prebuilt / "factory_spec.json").write_text(
+            json.dumps(spec, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+        # Copy doc metadata
+        doc_meta = factory_dir / ".doc_metadata.json"
+        if doc_meta.exists():
+            shutil.copy2(doc_meta, prebuilt / ".doc_metadata.json")
+
+        # Copy compiled policies
+        compiled = factory_dir / "compiled_policies"
+        if compiled.exists():
+            dest = prebuilt / "compiled_policies"
+            if dest.exists():
+                shutil.rmtree(dest)
+            shutil.copytree(compiled, dest)
+
+        # Copy generated agents
+        gen_root = REPO_ROOT / "generated"
+        prebuilt_gen = prebuilt / "generated"
+        if prebuilt_gen.exists():
+            shutil.rmtree(prebuilt_gen)
+        prebuilt_gen.mkdir()
+        for agent_spec in spec.get("agents", []):
+            if agent_spec.get("type") != "autogen":
+                continue
+            a_id = agent_spec["id"]
+            src_dir = gen_root / a_id
+            if src_dir.exists():
+                shutil.copytree(src_dir, prebuilt_gen / a_id)
+
+        # Save session template
+        session_data = {
+            "vertical": vertical,
+            "deployed_at": "__PLACEHOLDER__",
+            "agents": [
+                a.get("id")
+                for a in spec.get("agents", [])
+                if isinstance(a, dict) and a.get("id")
+            ],
+            "spec_path": "__PLACEHOLDER__",
+            "deployment_request": {
+                "vertical": vertical,
+                "mode": "dry",
+                "agents": [
+                    a.get("id")
+                    for a in spec.get("agents", [])
+                    if isinstance(a, dict) and a.get("id")
+                ],
+            },
+        }
+        (prebuilt / "session.json").write_text(
+            json.dumps(session_data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+        logger.info(
+            "[prebuilt-cache] cached %s artifacts for future quickstarts", vertical
+        )
+    except Exception as exc:
+        logger.warning("[prebuilt-cache] failed to cache %s: %s", vertical, exc)
+
+
+def _relativize_spec_paths_for_cache(spec: dict, workspace: str) -> None:
+    """Replace absolute workspace paths with __WORKSPACE__ for portability."""
+    paths_block = spec.get("paths", {})
+    if isinstance(paths_block.get("base_dir"), str):
+        paths_block["base_dir"] = paths_block["base_dir"].replace(
+            workspace, "__WORKSPACE__"
+        )
+    for agent in spec.get("agents", []):
+        inputs = agent.get("inputs") or {}
+        for key in ("docs", "policies", "knowledge_sources"):
+            paths = inputs.get(key)
+            if not isinstance(paths, list):
+                continue
+            inputs[key] = [
+                p.replace(workspace, "__WORKSPACE__") if isinstance(p, str) else p
+                for p in paths
+            ]
 
 
 @app.post("/concierge/analyze")
