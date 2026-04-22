@@ -69,7 +69,7 @@ export function ChatContainer() {
       {/* ── Center: Chat area ── */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Header */}
-        <header className="flex items-center justify-between border-b px-2 py-2 sm:px-4 sm:py-3">
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-2 py-2 sm:px-4 sm:py-3 shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Burger menu — mobile only */}
             <button
