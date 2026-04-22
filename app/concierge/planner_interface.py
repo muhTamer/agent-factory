@@ -21,7 +21,10 @@ class PlannerInterface:
     from app.infer_capabilities import InferCapabilities
 
     def generate_plan_preview(
-        self, use_llm: bool = True, model: str = "gpt-5-mini"
+        self,
+        use_llm: bool = True,
+        model: str = "gpt-5-mini",
+        pre_classified_docs: list | None = None,
     ) -> dict:
         if use_llm:
             infer = InferCapabilities(model=model or "gpt-5-mini")
@@ -30,6 +33,7 @@ class PlannerInterface:
                 vertical=self.vertical,
                 user_goals=getattr(self, "user_goals", "") or "",
                 max_agents=6,
+                pre_classified_docs=pre_classified_docs,
             )
             agents = raw.get("agents", [])
         else:

@@ -85,6 +85,44 @@ RETAIL_DOC_VISIBILITY: Dict[str, str] = {
 # Max number of tenant sessions held in memory before evicting the oldest
 MAX_TENANTS = 200
 
+
+def _build_preset_doc_meta(
+    workspace: Path, files: list, vertical: str
+) -> List[Dict[str, Any]]:
+    """Pre-classified document metadata for quickstart presets.
+    Skips 6+ LLM calls (~60-90s) since we know exactly what these files are."""
+    from app.infer_capabilities import InferCapabilities
+
+    ic = InferCapabilities()
+    docs = []
+    for src in files:
+        p = workspace / src.name
+        content_analysis = ic._analyze_document_content(p)
+        ext = p.suffix.lower()
+        if ext == ".csv":
+            doc_type = "faq_kb"
+        elif ext in (".yaml", ".yml"):
+            doc_type = "policy"
+        else:
+            doc_type = "other"
+        docs.append(
+            {
+                "name": p.name,
+                "path": str(p),
+                "doc_type": doc_type,
+                "confidence": 0.99,
+                "reason": "Quickstart preset file — classification skipped",
+                "vertical_fit": 0.95,
+                "vertical_guess": vertical,
+                "vertical_fit_reason": f"Preset data for {vertical} vertical",
+                "off_vertical": False,
+                "content_categories": content_analysis.get("content_categories", []),
+                "content_topics": content_analysis.get("content_topics", []),
+            }
+        )
+    return docs
+
+
 # ---------------------------------------------------------------------------
 # Async Job Store — lets long-running endpoints return immediately
 # ---------------------------------------------------------------------------
@@ -461,6 +499,7 @@ def quickstart_fintech(
 
     job_id = _create_job(user.tenant_id, "quickstart")
     auto_deploy = req.auto_deploy
+    pre_docs = _build_preset_doc_meta(ts.workspace, FINTECH_DATA_FILES, "fintech")
 
     def _run():
         t0 = time.time()
@@ -471,7 +510,12 @@ def quickstart_fintech(
                 ts.tenant_id,
             )
             result = agent.handle_event(
-                {"type": "upload_docs", "use_llm": req.use_llm, "model": req.model}
+                {
+                    "type": "upload_docs",
+                    "use_llm": req.use_llm,
+                    "model": req.model,
+                    "pre_classified_docs": pre_docs,
+                }
             )
             elapsed = time.time() - t0
             logger.info("[quickstart] tenant=%s done in %.1fs", ts.tenant_id, elapsed)
@@ -532,6 +576,7 @@ def quickstart_retail(
 
     job_id = _create_job(user.tenant_id, "quickstart-retail")
     auto_deploy = req.auto_deploy
+    pre_docs = _build_preset_doc_meta(ts.workspace, RETAIL_DATA_FILES, "retail")
 
     def _run():
         t0 = time.time()
@@ -542,7 +587,12 @@ def quickstart_retail(
                 ts.tenant_id,
             )
             result = agent.handle_event(
-                {"type": "upload_docs", "use_llm": req.use_llm, "model": req.model}
+                {
+                    "type": "upload_docs",
+                    "use_llm": req.use_llm,
+                    "model": req.model,
+                    "pre_classified_docs": pre_docs,
+                }
             )
             elapsed = time.time() - t0
             logger.info(

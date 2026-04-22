@@ -37,7 +37,11 @@ class ConciergeAgent:
         model = event.get("model") or self.model
 
         if event_type in {"init", "upload_docs", "rerun_infer"}:
-            return self._run_infer(use_llm=use_llm, model=model)
+            return self._run_infer(
+                use_llm=use_llm,
+                model=model,
+                pre_classified_docs=event.get("pre_classified_docs"),
+            )
 
         if event_type == "user_action" and action == "ask_requirements":
             return self._explain_requirements(cap)
@@ -59,7 +63,10 @@ class ConciergeAgent:
     # Analyze current state
     # -----------------------------
     def _run_infer(
-        self, use_llm: bool = True, model: str | None = None
+        self,
+        use_llm: bool = True,
+        model: str | None = None,
+        pre_classified_docs: list | None = None,
     ) -> Dict[str, Any]:
         # Reset plan state to avoid stale docs being displayed
         self.plan = None
@@ -69,7 +76,9 @@ class ConciergeAgent:
         planner = PlannerInterface(
             self.vertical, str(self.data_dir), llm_client=self.llm_client, model=model
         )
-        plan = planner.generate_plan_preview(use_llm=use_llm)
+        plan = planner.generate_plan_preview(
+            use_llm=use_llm, pre_classified_docs=pre_classified_docs
+        )
         self.state["last_plan"] = plan
         plan = self._normalize_plan_for_ui(plan)
         self.plan = plan

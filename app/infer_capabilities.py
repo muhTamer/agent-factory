@@ -67,11 +67,15 @@ class InferCapabilities:
         vertical: str,
         user_goals: str = "",
         max_agents: int = 6,
+        pre_classified_docs: List[Dict[str, Any]] | None = None,
     ) -> Dict[str, Any]:
         base_dir = Path(data_dir).resolve()
         files = self._list_user_files(base_dir)
 
-        documents = self._classify_documents(files, vertical=vertical)
+        if pre_classified_docs:
+            documents = pre_classified_docs
+        else:
+            documents = self._classify_documents(files, vertical=vertical)
 
         # Persist document metadata for downstream components
         self._save_doc_metadata(base_dir, documents)
