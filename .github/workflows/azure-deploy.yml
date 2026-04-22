@@ -109,6 +109,26 @@ jobs:
               2>/dev/null || true
           done
 
+      # ── Pre-build quickstart artifacts (baked into concierge image) ──
+      - name: Set up Python for prebuild
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install prebuild dependencies
+        run: |
+          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet -r requirements.txt
+
+      - name: Pre-build quickstart artifacts
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AZURE_OPENAI_API_VERSION: 2024-02-01
+        run: |
+          python -m scripts.prebuild_quickstart fintech retail || echo "::warning::Prebuild failed — quickstart will use LLM pipeline at runtime"
+
       # ── Build & push backend + concierge images ──
       - name: Build and push backend image
         run: |
