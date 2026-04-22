@@ -82,6 +82,8 @@ RETAIL_DOC_VISIBILITY: Dict[str, str] = {
     "RetailFAQs.csv": "customer_facing",
 }
 
+PREBUILT_DIR = DATA_DIR / "prebuilt"
+
 # Max number of tenant sessions held in memory before evicting the oldest
 MAX_TENANTS = 200
 
@@ -121,6 +123,120 @@ def _build_preset_doc_meta(
             }
         )
     return docs
+
+
+def _deploy_prebuilt(
+    ts: "TenantSession",
+    vertical: str,
+    data_files: list,
+    doc_visibility: Dict[str, str],
+) -> Dict[str, Any]:
+    """Deploy from pre-built artifacts. Zero LLM calls.
+
+    Copies prebuilt factory_spec, generated agents, and session data into the
+    tenant workspace, fixes up paths, triggers a backend reload, and saves the
+    session.  Returns a result dict compatible with the quickstart job format.
+    """
+    prebuilt = PREBUILT_DIR / vertical
+    spec_src = prebuilt / "factory_spec.json"
+
+    factory_dir = ts.workspace / ".factory"
+    factory_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1) Copy factory_spec.json and rewrite workspace placeholders
+    spec = json.loads(spec_src.read_text(encoding="utf-8"))
+    ws_str = str(ts.workspace)
+    _rewrite_spec_paths(spec, ws_str)
+    spec_path = factory_dir / "factory_spec.json"
+    spec_path.write_text(
+        json.dumps(spec, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    logger.info("[prebuilt] wrote factory_spec.json for tenant=%s", ts.tenant_id)
+
+    # 2) Copy doc metadata
+    doc_meta_src = prebuilt / ".doc_metadata.json"
+    if doc_meta_src.exists():
+        shutil.copy2(doc_meta_src, factory_dir / ".doc_metadata.json")
+
+    # 3) Copy compiled policies
+    compiled_src = prebuilt / "compiled_policies"
+    if compiled_src.exists():
+        dest = factory_dir / "compiled_policies"
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(compiled_src, dest)
+
+    # 4) Copy pre-generated agent packages to repo-root generated/
+    prebuilt_gen = prebuilt / "generated"
+    if prebuilt_gen.exists():
+        gen_root = REPO_ROOT / "generated"
+        gen_root.mkdir(exist_ok=True)
+        for agent_dir in prebuilt_gen.iterdir():
+            if not agent_dir.is_dir():
+                continue
+            dest = gen_root / agent_dir.name
+            if dest.exists():
+                shutil.rmtree(dest)
+            shutil.copytree(agent_dir, dest)
+            logger.info("[prebuilt] copied generated/%s", agent_dir.name)
+
+    # 5) Mirror spec to repo-root .factory for runtime dev startup
+    try:
+        root_factory = REPO_ROOT / ".factory"
+        root_factory.mkdir(parents=True, exist_ok=True)
+        (root_factory / "factory_spec.json").write_text(
+            json.dumps(spec, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+    # 6) Save session
+    agent_ids = [
+        a.get("id")
+        for a in spec.get("agents", [])
+        if isinstance(a, dict) and a.get("id")
+    ]
+    deploy_result = {
+        "type": "decision_result",
+        "text": f"Deployment prepared (DRY): {len(agent_ids)} agents from prebuilt artifacts.",
+        "deployment_request": {
+            "vertical": vertical,
+            "mode": "dry",
+            "agents": agent_ids,
+            "spec_path": str(spec_path),
+        },
+    }
+    _save_session(ts, deploy_result)
+
+    # 7) Trigger backend reload
+    _trigger_backend_reload(ts)
+
+    return {
+        "type": "factory_plan_preview",
+        "text": f"Quickstart ({vertical}) deployed from prebuilt artifacts.",
+        "deployment_request": deploy_result.get("deployment_request"),
+        "deploy_text": deploy_result.get("text", ""),
+        "prebuilt": True,
+    }
+
+
+def _rewrite_spec_paths(spec: dict, workspace: str) -> None:
+    """Replace __WORKSPACE__ placeholders with actual workspace path."""
+    paths_block = spec.get("paths", {})
+    if isinstance(paths_block.get("base_dir"), str):
+        paths_block["base_dir"] = paths_block["base_dir"].replace(
+            "__WORKSPACE__", workspace
+        )
+    for agent in spec.get("agents", []):
+        inputs = agent.get("inputs") or {}
+        for key in ("docs", "policies", "knowledge_sources"):
+            paths = inputs.get(key)
+            if not isinstance(paths, list):
+                continue
+            inputs[key] = [
+                p.replace("__WORKSPACE__", workspace) if isinstance(p, str) else p
+                for p in paths
+            ]
 
 
 # ---------------------------------------------------------------------------
@@ -238,6 +354,9 @@ def _log_startup():
         logger.info("  blueprints: %s", bps)
     else:
         logger.warning("  blueprints dir MISSING: %s", bp_dir)
+    for v in ("fintech", "retail"):
+        pb = PREBUILT_DIR / v / "factory_spec.json"
+        logger.info("  prebuilt %s: %s", v, "OK" if pb.exists() else "NOT FOUND")
 
 
 # ---------------------------------------------------------------------------
@@ -486,7 +605,6 @@ def quickstart_fintech(
     )
     ts = _get_tenant(user.tenant_id)
     ts.workspace.mkdir(parents=True, exist_ok=True)
-    # Copy preset files (fast, do synchronously)
     for src in FINTECH_DATA_FILES:
         if not src.exists():
             logger.error("[quickstart] preset file missing: %s", src)
@@ -494,51 +612,35 @@ def quickstart_fintech(
         shutil.copy2(src, ts.workspace / src.name)
         logger.info("[quickstart] copied %s", src.name)
 
-    # Store preset visibility so the deploy step uses it
     ts.doc_visibility = FINTECH_DOC_VISIBILITY
+    use_prebuilt = (PREBUILT_DIR / "fintech" / "factory_spec.json").exists()
 
     job_id = _create_job(user.tenant_id, "quickstart")
-    auto_deploy = req.auto_deploy
-    pre_docs = _build_preset_doc_meta(ts.workspace, FINTECH_DATA_FILES, "fintech")
 
     def _run():
         t0 = time.time()
         try:
-            agent = ts.get_or_create_agent(vertical="fintech", model=req.model)
-            logger.info(
-                "[quickstart] tenant=%s agent ready, calling handle_event...",
-                ts.tenant_id,
-            )
-            result = agent.handle_event(
-                {
-                    "type": "upload_docs",
-                    "use_llm": req.use_llm,
-                    "model": req.model,
-                    "pre_classified_docs": pre_docs,
-                }
-            )
+            if use_prebuilt:
+                logger.info(
+                    "[quickstart] tenant=%s using PREBUILT artifacts", ts.tenant_id
+                )
+                result = _deploy_prebuilt(
+                    ts, "fintech", FINTECH_DATA_FILES, FINTECH_DOC_VISIBILITY
+                )
+            else:
+                logger.info(
+                    "[quickstart] tenant=%s no prebuilt, running full pipeline",
+                    ts.tenant_id,
+                )
+                result = _run_quickstart_pipeline(
+                    ts,
+                    "fintech",
+                    FINTECH_DATA_FILES,
+                    FINTECH_DOC_VISIBILITY,
+                    req,
+                )
             elapsed = time.time() - t0
             logger.info("[quickstart] tenant=%s done in %.1fs", ts.tenant_id, elapsed)
-
-            if auto_deploy:
-                logger.info("[quickstart] tenant=%s auto-deploying...", ts.tenant_id)
-                deploy_result = agent.handle_event(
-                    {
-                        "type": "user_action",
-                        "action": "approve_deploy_dry",
-                        "doc_visibility": ts.doc_visibility,
-                    }
-                )
-                _trigger_backend_reload(ts)
-                _save_session(ts, deploy_result)
-                result["deployment_request"] = deploy_result.get("deployment_request")
-                result["deploy_text"] = deploy_result.get("text", "")
-                logger.info(
-                    "[quickstart] tenant=%s auto-deploy done in %.1fs",
-                    ts.tenant_id,
-                    time.time() - t0,
-                )
-
             _finish_job(job_id, result=result)
         except Exception as exc:
             logger.error(
@@ -563,7 +665,6 @@ def quickstart_retail(
     )
     ts = _get_tenant(user.tenant_id)
     ts.workspace.mkdir(parents=True, exist_ok=True)
-    # Copy preset files (fast, do synchronously)
     for src in RETAIL_DATA_FILES:
         if not src.exists():
             logger.error("[quickstart-retail] preset file missing: %s", src)
@@ -571,55 +672,38 @@ def quickstart_retail(
         shutil.copy2(src, ts.workspace / src.name)
         logger.info("[quickstart-retail] copied %s", src.name)
 
-    # Store preset visibility so the deploy step uses it
     ts.doc_visibility = RETAIL_DOC_VISIBILITY
+    use_prebuilt = (PREBUILT_DIR / "retail" / "factory_spec.json").exists()
 
     job_id = _create_job(user.tenant_id, "quickstart-retail")
-    auto_deploy = req.auto_deploy
-    pre_docs = _build_preset_doc_meta(ts.workspace, RETAIL_DATA_FILES, "retail")
 
     def _run():
         t0 = time.time()
         try:
-            agent = ts.get_or_create_agent(vertical="retail", model=req.model)
-            logger.info(
-                "[quickstart-retail] tenant=%s agent ready, calling handle_event...",
-                ts.tenant_id,
-            )
-            result = agent.handle_event(
-                {
-                    "type": "upload_docs",
-                    "use_llm": req.use_llm,
-                    "model": req.model,
-                    "pre_classified_docs": pre_docs,
-                }
-            )
+            if use_prebuilt:
+                logger.info(
+                    "[quickstart-retail] tenant=%s using PREBUILT artifacts",
+                    ts.tenant_id,
+                )
+                result = _deploy_prebuilt(
+                    ts, "retail", RETAIL_DATA_FILES, RETAIL_DOC_VISIBILITY
+                )
+            else:
+                logger.info(
+                    "[quickstart-retail] tenant=%s no prebuilt, running full pipeline",
+                    ts.tenant_id,
+                )
+                result = _run_quickstart_pipeline(
+                    ts,
+                    "retail",
+                    RETAIL_DATA_FILES,
+                    RETAIL_DOC_VISIBILITY,
+                    req,
+                )
             elapsed = time.time() - t0
             logger.info(
                 "[quickstart-retail] tenant=%s done in %.1fs", ts.tenant_id, elapsed
             )
-
-            if auto_deploy:
-                logger.info(
-                    "[quickstart-retail] tenant=%s auto-deploying...", ts.tenant_id
-                )
-                deploy_result = agent.handle_event(
-                    {
-                        "type": "user_action",
-                        "action": "approve_deploy_dry",
-                        "doc_visibility": ts.doc_visibility,
-                    }
-                )
-                _trigger_backend_reload(ts)
-                _save_session(ts, deploy_result)
-                result["deployment_request"] = deploy_result.get("deployment_request")
-                result["deploy_text"] = deploy_result.get("text", "")
-                logger.info(
-                    "[quickstart-retail] tenant=%s auto-deploy done in %.1fs",
-                    ts.tenant_id,
-                    time.time() - t0,
-                )
-
             _finish_job(job_id, result=result)
         except Exception as exc:
             logger.error(
@@ -632,6 +716,41 @@ def quickstart_retail(
 
     threading.Thread(target=_run, daemon=True).start()
     return {"job_id": job_id, "status": "processing"}
+
+
+def _run_quickstart_pipeline(
+    ts: "TenantSession",
+    vertical: str,
+    data_files: list,
+    doc_visibility: Dict[str, str],
+    req: QuickstartRequest,
+) -> Dict[str, Any]:
+    """Full LLM quickstart pipeline (fallback when no prebuilt artifacts)."""
+    pre_docs = _build_preset_doc_meta(ts.workspace, data_files, vertical)
+    agent = ts.get_or_create_agent(vertical=vertical, model=req.model)
+    logger.info("[quickstart-pipeline] tenant=%s running infer...", ts.tenant_id)
+    result = agent.handle_event(
+        {
+            "type": "upload_docs",
+            "use_llm": req.use_llm,
+            "model": req.model,
+            "pre_classified_docs": pre_docs,
+        }
+    )
+    if req.auto_deploy:
+        logger.info("[quickstart-pipeline] tenant=%s auto-deploying...", ts.tenant_id)
+        deploy_result = agent.handle_event(
+            {
+                "type": "user_action",
+                "action": "approve_deploy_dry",
+                "doc_visibility": doc_visibility,
+            }
+        )
+        _trigger_backend_reload(ts)
+        _save_session(ts, deploy_result)
+        result["deployment_request"] = deploy_result.get("deployment_request")
+        result["deploy_text"] = deploy_result.get("text", "")
+    return result
 
 
 @app.post("/concierge/analyze")
