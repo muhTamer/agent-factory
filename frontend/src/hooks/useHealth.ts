@@ -33,7 +33,7 @@ export function useHealth() {
             try { await startRuntime(); } catch { /* ignore */ }
           }
           // After ~30s of failing, redirect to setup wizard for full restore
-          if (waitingCount.current >= 15) {
+          if (waitingCount.current >= 8) {
             router.push("/");
           }
         }
