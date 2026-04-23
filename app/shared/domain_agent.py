@@ -75,31 +75,33 @@ def build_agent(
         knowledge_sources = [str(gen_dir / ed["filename"]) for ed in embedded_ks]
 
     # ---- Build corpus from knowledge sources ----
-    # Reuses app.shared.rag.load_corpus which handles CSV, MD, TXT, YAML
-    corpus_items: List[CorpusItem] = []
-    if knowledge_sources:
-        corpus_items = load_corpus(knowledge_sources)
+    # Skip re-parsing if corpus.json already exists (prebuilt artifacts)
+    corpus_path = gen_dir / "corpus.json"
+    if corpus_path.exists() and not embedded_ks:
+        pass  # reuse existing corpus.json
+    else:
+        corpus_items: List[CorpusItem] = []
+        if knowledge_sources:
+            corpus_items = load_corpus(knowledge_sources)
 
-    # Serialize corpus for runtime loading, tagging each chunk with
-    # its document visibility so the agent knows what it can share.
-    corpus_data = [
-        {
-            "text": item.text,
-            "source": item.source,
-            "kind": item.kind,
-            "meta": {
-                **(item.meta or {}),
-                "visibility": doc_vis_map.get(
-                    Path(item.source).name, "customer_facing"
-                ),
-            },
-        }
-        for item in corpus_items
-    ]
-    (gen_dir / "corpus.json").write_text(
-        json.dumps(corpus_data, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+        corpus_data = [
+            {
+                "text": item.text,
+                "source": item.source,
+                "kind": item.kind,
+                "meta": {
+                    **(item.meta or {}),
+                    "visibility": doc_vis_map.get(
+                        Path(item.source).name, "customer_facing"
+                    ),
+                },
+            }
+            for item in corpus_items
+        ]
+        corpus_path.write_text(
+            json.dumps(corpus_data, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
     # ---- Write config ----
     cfg: Dict[str, Any] = {
@@ -240,7 +242,6 @@ def _generate_agent_source(agent_id: str) -> str:
 
                 # Load embedding function for dense retrieval (text-embedding-3-small)
                 embed_fn = None
-                dense_vecs = None
                 enable_dense = False
                 try:
                     from app.runtime.embeddings import get_embed_fn
@@ -253,25 +254,7 @@ def _generate_agent_source(agent_id: str) -> str:
                         self.cfg.get("id"), exc,
                     )
 
-                # Pre-compute dense embeddings at startup
-                if embed_fn and corpus_items:
-                    try:
-                        _log.info(
-                            "Pre-computing embeddings for %d corpus items...",
-                            len(corpus_items),
-                        )
-                        texts = [item.text for item in corpus_items]
-                        dense_vecs = embed_fn(texts)
-                        _log.info("Dense embeddings ready (%d vectors)", len(dense_vecs))
-                    except Exception as exc:
-                        _log.warning(
-                            "Embedding pre-computation failed for agent %s: %s",
-                            self.cfg.get("id"), exc,
-                        )
-                        dense_vecs = None
-                        enable_dense = False
-
-                # Create engine
+                # Create engine immediately (TF-IDF works without embeddings)
                 config = DomainAgentConfig(
                     agent_id=self.cfg["id"],
                     domain=self.cfg.get("domain", "general"),
@@ -289,9 +272,36 @@ def _generate_agent_source(agent_id: str) -> str:
                     llm_fn=llm_fn,
                     memory=memory,
                     embed_fn=embed_fn,
-                    dense_vecs=dense_vecs,
+                    dense_vecs=None,
                 )
                 self.ready = True
+
+                # Pre-compute embeddings in background so load() returns fast
+                if embed_fn and corpus_items:
+                    import threading
+                    engine_ref = self._engine
+                    agent_id_ref = self.cfg.get("id", "?")
+
+                    def _bg_embed():
+                        try:
+                            _log.info(
+                                "Background: computing embeddings for %d items (agent %s)...",
+                                len(corpus_items), agent_id_ref,
+                            )
+                            texts = [item.text for item in corpus_items]
+                            vecs = embed_fn(texts)
+                            engine_ref._dense_vecs = vecs
+                            _log.info(
+                                "Background: embeddings ready for agent %s (%d vectors)",
+                                agent_id_ref, len(vecs),
+                            )
+                        except Exception as exc:
+                            _log.warning(
+                                "Background: embedding failed for agent %s: %s",
+                                agent_id_ref, exc,
+                            )
+
+                    threading.Thread(target=_bg_embed, daemon=True).start()
 
             def handle(self, request: Dict[str, Any]) -> Dict[str, Any]:
                 text = (request.get("text") or request.get("query") or "").strip()
