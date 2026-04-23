@@ -74,11 +74,18 @@ def build_agent(
             (gen_dir / ed["filename"]).write_text(ed["content"], encoding="utf-8")
         knowledge_sources = [str(gen_dir / ed["filename"]) for ed in embedded_ks]
 
+    # Write cached corpus/embeddings from spec (prebuilt cross-container path)
+    cached_corpus = inputs.get("_cached_corpus")
+    cached_embeddings = inputs.get("_cached_embeddings")
+    if cached_corpus:
+        (gen_dir / "corpus.json").write_text(cached_corpus, encoding="utf-8")
+    if cached_embeddings:
+        (gen_dir / "embeddings.json").write_text(cached_embeddings, encoding="utf-8")
+
     # ---- Build corpus from knowledge sources ----
-    # Skip re-parsing if corpus.json already exists (prebuilt artifacts)
     corpus_path = gen_dir / "corpus.json"
-    if corpus_path.exists() and not embedded_ks:
-        pass  # reuse existing corpus.json
+    if corpus_path.exists():
+        pass  # reuse existing or just-written cached corpus
     else:
         corpus_items: List[CorpusItem] = []
         if knowledge_sources:

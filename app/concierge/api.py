@@ -1088,6 +1088,7 @@ def _trigger_backend_reload(ts: TenantSession):
     # even when it doesn't share a filesystem with the concierge container.
     for agent in spec.get("agents", []):
         inputs = agent.get("inputs") or {}
+        a_id = agent.get("id", "")
         for key in ("docs", "policies", "knowledge_sources"):
             paths = inputs.get(key) or []
             if not paths:
@@ -1105,6 +1106,20 @@ def _trigger_backend_reload(ts: TenantSession):
                     pass
             if embedded:
                 inputs[f"_embedded_{key}"] = embedded
+
+        # Embed pre-computed embeddings + corpus so the runtime skips
+        # CSV parsing and embedding API calls entirely.
+        if agent.get("type") == "autogen" and a_id:
+            gen_dir = REPO_ROOT / "generated" / a_id
+            for cached_file in ("embeddings.json", "corpus.json"):
+                cached_path = gen_dir / cached_file
+                if cached_path.exists():
+                    try:
+                        inputs[f"_cached_{cached_file.replace('.json', '')}"] = (
+                            cached_path.read_text(encoding="utf-8")
+                        )
+                    except (OSError, ValueError):
+                        pass
 
     try:
         r = http_requests.post(
