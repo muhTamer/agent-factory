@@ -896,7 +896,12 @@ class AOPCoordinator:
         subtasks: List[Subtask],
         context: Dict[str, Any],
     ) -> List[Subtask]:
-        """Execute each subtask by delegating to its assigned agent."""
+        """Execute subtasks by delegating to assigned agents.
+
+        Independent subtasks run in parallel via ThreadPoolExecutor.
+        """
+        # Pre-check each subtask: resolve agent, apply guardrails
+        runnable: List[Subtask] = []
         for st in subtasks:
             if not st.assigned_agent_id:
                 st.success = False
@@ -911,27 +916,12 @@ class AOPCoordinator:
                 }
                 continue
 
-            # Per-subtask guardrail: block action agents when the user hasn't provided
-            # concrete transaction details AND the decomposer didn't label it ACTION.
-            #
-            # If the decomposer explicitly labeled the subtask ACTION or INFORMATIONAL,
-            # allow it through — domain agents with ReAct loops handle both:
-            #   ACTION → collect slots via ask_user / call_tool
-            #   INFORMATIONAL → retrieve knowledge and respond
-            #
-            # Only block when there's NO label AND NO transaction context.
             if self._is_action_agent(st.assigned_agent_id):
                 _label, _ = parse_aop_label(st.description)
                 labeled_informational = _label == "INFORMATIONAL"
                 labeled_action = _label == "ACTION"
 
-                if labeled_action or labeled_informational:
-                    # Decomposer explicitly labeled the subtask — allow through.
-                    # ACTION agents will collect missing slots via ask_user;
-                    # INFORMATIONAL agents will retrieve knowledge and respond.
-                    pass
-                else:
-                    # No label — fall back to regex detection
+                if not (labeled_action or labeled_informational):
                     original_query = context.get("original_query", "") or ""
                     has_transaction = self._action_signals.search(
                         original_query if original_query else st.description
@@ -952,11 +942,14 @@ class AOPCoordinator:
                         )
                         continue
 
-            # Strip the decomposer's INFORMATIONAL:/ACTION: prefix before
-            # passing to the agent — these are internal AOP labels that add
-            # noise to TF-IDF search and confuse downstream agents.
-            _, agent_query = parse_aop_label(st.description)
+            runnable.append(st)
 
+        if not runnable:
+            return subtasks
+
+        def _run_one(st: Subtask) -> None:
+            _, agent_query = parse_aop_label(st.description)
+            agent = self.registry.get(st.assigned_agent_id)
             t0 = _now_ms()
             try:
                 result = agent.handle(
@@ -964,7 +957,6 @@ class AOPCoordinator:
                 )
                 st.result = result
                 st.success = not result.get("error")
-                # Use agent-reported score if available
                 try:
                     st.solvability_score = float(
                         result.get("score", st.solvability_score)
@@ -974,8 +966,14 @@ class AOPCoordinator:
             except Exception as e:
                 st.result = {"error": str(e)}
                 st.success = False
-
             st.latency_ms = _now_ms() - t0
+
+        if len(runnable) == 1:
+            _run_one(runnable[0])
+        else:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=len(runnable)) as pool:
+                list(pool.map(_run_one, runnable))
 
         return subtasks
 
