@@ -767,7 +767,19 @@ class RuntimeSpine:
                     except Exception:
                         pass
 
-                pattern = self._classify_orchestration_pattern(_effective_q)
+                # Run classifier and router in parallel — if the
+                # classifier returns "direct" the router result is
+                # already waiting; if "AOP" we discard it.
+                from concurrent.futures import ThreadPoolExecutor, Future
+
+                with ThreadPoolExecutor(max_workers=2) as _tp:
+                    classify_fut: Future = _tp.submit(
+                        self._classify_orchestration_pattern, _effective_q
+                    )
+                    route_fut: Future = _tp.submit(self._route, _effective_q)
+
+                    pattern = classify_fut.result()
+
                 trace.add("orchestration_pattern", pattern=pattern)
 
                 if pattern == "hierarchical_delegation":
@@ -794,10 +806,37 @@ class RuntimeSpine:
                         }
 
                     if len(aop_plan.subtasks) <= 1:
-                        # Single subtask → execute immediately (unchanged behavior)
-                        aop_resp = self.aop_coordinator.orchestrate(
-                            _effective_q, ctx, trace
+                        # Single subtask → execute directly from existing plan
+                        # (avoids re-decomposing inside orchestrate())
+                        st = aop_plan.subtasks[0]
+                        executed = self.aop_coordinator._execute_subtasks(
+                            [st], ctx
                         )
+                        self.aop_coordinator._record_feedback(executed)
+                        st = executed[0]
+                        text = self.aop_coordinator._extract_readable_text(
+                            st.result
+                        ) if st.result else ""
+                        aop_resp = {
+                            "text": text,
+                            "answer": text,
+                            "score": st.solvability_score,
+                            "orchestration_pattern": "aop_task_result",
+                            "executed_subtask": {
+                                "description": st.description,
+                                "agent_id": st.assigned_agent_id,
+                                "success": st.success,
+                            },
+                            "remaining_tasks": [],
+                            "result": st.result,
+                        }
+                        if trace:
+                            trace.add(
+                                "aop_execute_single_inline",
+                                subtask=st.description,
+                                agent=st.assigned_agent_id,
+                                success=st.success,
+                            )
                         aop_resp["request_id"] = rid
                         self._accumulate_aop_slots(aop_resp, ctx)
                     else:
@@ -838,8 +877,8 @@ class RuntimeSpine:
                     trace.add("guard_post_ok")
                     return post
 
-                # pattern == "direct" -> fall through to normal routing
-                plan = self._route(_effective_q)
+                # pattern == "direct" -> use pre-computed router result
+                plan = route_fut.result()
             else:
                 plan = self._route(_effective_q)
 
