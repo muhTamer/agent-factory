@@ -178,11 +178,21 @@ def prebuild(vertical: str) -> None:
         shutil.copytree(compiled_dir, dest_compiled)
         print("  Saved compiled_policies/")
 
-    # Save generated agents
-    print("\n[3/3] Capturing generated agent artifacts...")
+    # Save generated agents + pre-compute embeddings
+    print("\n[3/3] Capturing generated agent artifacts + computing embeddings...")
     gen_root = REPO_ROOT / "generated"
     prebuilt_gen = prebuilt / "generated"
     prebuilt_gen.mkdir(exist_ok=True)
+
+    # Pre-compute embeddings for each agent's corpus
+    embed_fn = None
+    try:
+        from app.runtime.embeddings import get_embed_fn
+
+        embed_fn = get_embed_fn()
+        print("  Embedding function loaded")
+    except Exception as exc:
+        print(f"  [WARN] Embeddings unavailable: {exc}")
 
     for agent_spec in spec.get("agents", []):
         if agent_spec.get("type") != "autogen":
@@ -190,6 +200,10 @@ def prebuild(vertical: str) -> None:
         a_id = agent_spec["id"]
         src_dir = gen_root / a_id
         if src_dir.exists():
+            # Compute embeddings from corpus.json before copying
+            if embed_fn:
+                _precompute_embeddings(src_dir, a_id, embed_fn)
+
             dest_dir = prebuilt_gen / a_id
             shutil.copytree(src_dir, dest_dir)
             files = [f.name for f in dest_dir.iterdir()]
@@ -229,6 +243,25 @@ def prebuild(vertical: str) -> None:
     elapsed = time.time() - t0
     print(f"\n[DONE] {vertical} prebuilt in {elapsed:.1f}s")
     print(f"  Artifacts: {prebuilt}")
+
+
+def _precompute_embeddings(gen_dir: Path, agent_id: str, embed_fn) -> None:
+    """Compute and cache dense embeddings for an agent's corpus."""
+    corpus_path = gen_dir / "corpus.json"
+    embeddings_path = gen_dir / "embeddings.json"
+    if not corpus_path.exists():
+        return
+    try:
+        corpus_data = json.loads(corpus_path.read_text(encoding="utf-8"))
+        texts = [item["text"] for item in corpus_data]
+        if not texts:
+            return
+        print(f"  Computing embeddings for {agent_id} ({len(texts)} items)...")
+        vecs = embed_fn(texts)
+        embeddings_path.write_text(json.dumps(vecs), encoding="utf-8")
+        print(f"  Cached embeddings.json ({len(vecs)} vectors)")
+    except Exception as exc:
+        print(f"  [WARN] Embedding failed for {agent_id}: {exc}")
 
 
 def _relativize_spec_paths(spec: dict, workspace: Path) -> None:
