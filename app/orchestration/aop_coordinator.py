@@ -972,6 +972,7 @@ class AOPCoordinator:
             _run_one(runnable[0])
         else:
             from concurrent.futures import ThreadPoolExecutor
+
             with ThreadPoolExecutor(max_workers=len(runnable)) as pool:
                 list(pool.map(_run_one, runnable))
 

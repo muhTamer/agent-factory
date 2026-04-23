@@ -809,14 +809,14 @@ class RuntimeSpine:
                         # Single subtask → execute directly from existing plan
                         # (avoids re-decomposing inside orchestrate())
                         st = aop_plan.subtasks[0]
-                        executed = self.aop_coordinator._execute_subtasks(
-                            [st], ctx
-                        )
+                        executed = self.aop_coordinator._execute_subtasks([st], ctx)
                         self.aop_coordinator._record_feedback(executed)
                         st = executed[0]
-                        text = self.aop_coordinator._extract_readable_text(
-                            st.result
-                        ) if st.result else ""
+                        text = (
+                            self.aop_coordinator._extract_readable_text(st.result)
+                            if st.result
+                            else ""
+                        )
                         aop_resp = {
                             "text": text,
                             "answer": text,
