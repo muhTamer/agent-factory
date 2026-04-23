@@ -180,38 +180,6 @@ class DomainAgentEngine:
                 state.step_history.append(step)
                 continue
 
-            # --- Tool-calling nudge ---
-            # If the LLM wants to "respond" but tools exist and none were
-            # called this turn, nudge it to reconsider (once only).
-            if (
-                action == "respond"
-                and self.tools
-                and not any(s.action == "call_tool" for s in steps)
-                and not any(
-                    s.action == "respond" and "NUDGE" in s.observation for s in steps
-                )
-                and step_num < self.config.max_steps
-                and not self._is_pure_info_query(action_input.get("answer", ""))
-            ):
-                observation = (
-                    "NUDGE: You have tools available but responded without calling any. "
-                    "If the user's request requires an ACTION (refund, ticket, lookup, "
-                    "transfer), you MUST call the appropriate tool before responding. "
-                    "If this is genuinely just an informational question, respond again."
-                )
-                step = ReActStep(
-                    step_number=step_num,
-                    thought=thought,
-                    action="respond",
-                    action_input=action_input,
-                    observation=observation,
-                    timestamp=time.time(),
-                    latency_ms=round((time.time() - step_start) * 1000, 1),
-                )
-                steps.append(step)
-                state.step_history.append(step)
-                continue
-
             # ACT
             observation = self._execute_action(action, action_input, state)
 
@@ -737,6 +705,10 @@ class DomainAgentEngine:
             "call initiate_refund. Complaint → call create_ticket. Transfer → "
             "call initiate_transfer. "
             "Do NOT just describe what you would do — actually do it.\n"
+            "   IMPORTANT: If the user's request requires an action (refund, "
+            "complaint, transfer, freeze, ticket), you MUST call the "
+            "appropriate tool before responding. Never skip tools for "
+            "action requests.\n"
             "3. RETRIEVE ONCE: Retrieve knowledge once before answering factual "
             "questions. Do NOT retrieve more than twice per turn. Never repeat "
             "the same or similar query.\n"
