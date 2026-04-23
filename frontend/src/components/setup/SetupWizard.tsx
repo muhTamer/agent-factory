@@ -93,6 +93,7 @@ export function SetupWizard() {
     const vertical = (result.vertical as string) ?? "fintech";
     setVertical(vertical as Vertical);
     setQuickstart(true);
+    try { localStorage.setItem("af_quickstart_vertical", vertical); } catch { /* SSR */ }
     if (result.plan) setPlan(result.plan as never);
     if (result.text) setAnalysisSummaryText(result.text as string);
     if (result.deployment_request) {
@@ -119,6 +120,7 @@ export function SetupWizard() {
         if (cancelled) return;
         if (session.status === "deployed" && session.deployment_request) {
           setVertical(session.vertical as Vertical);
+          try { localStorage.setItem("af_quickstart_vertical", session.vertical ?? ""); } catch { /* SSR */ }
           setDeployment(session.deployment_request);
           setDeployMessage(session.deploy_text ?? "");
           setStep("runtime");
@@ -145,6 +147,7 @@ export function SetupWizard() {
           if (activeJob.status === "processing") {
             try {
               await resumeJob(activeJob.job_id, isCancelled);
+              return;
             } catch (err) {
               console.warn("[Session] resume job failed:", err);
             }
@@ -154,6 +157,7 @@ export function SetupWizard() {
             const v = (r.vertical as string) ?? "fintech";
             setVertical(v as Vertical);
             setQuickstart(true);
+            try { localStorage.setItem("af_quickstart_vertical", v); } catch { /* SSR */ }
             if (r.deployment_request) {
               setDeployment(r.deployment_request as unknown as DeploymentInfo);
               setDeployMessage((r.deploy_text as string) ?? "");
@@ -164,6 +168,63 @@ export function SetupWizard() {
               setStep("runtime");
               router.push("/chat");
             }
+            return;
+          }
+        }
+
+        // Case 3: container restarted — session lost but we know the vertical
+        if (cancelled) return;
+        let savedVertical: string | null = null;
+        try { savedVertical = localStorage.getItem("af_quickstart_vertical"); } catch { /* SSR */ }
+        if (savedVertical === "fintech" || savedVertical === "retail") {
+          setResumeStatus("Restoring your system...");
+          try {
+            const ep = savedVertical === "retail"
+              ? "/api/concierge/quickstart-retail"
+              : "/api/concierge/quickstart-fintech";
+            const startRes = await authFetch(ep, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ use_llm: true, model: "gpt-5-mini", auto_deploy: true }),
+            });
+            if (!startRes.ok) throw new Error("Quickstart restore failed");
+            const startData = await startRes.json();
+
+            let result: Record<string, unknown> | null = null;
+            if (startData.job_id) {
+              while (!cancelled) {
+                await new Promise((r) => setTimeout(r, 2000));
+                const pollRes = await authFetch(`/api/concierge/job/${startData.job_id}`);
+                const pollData = await pollRes.json();
+                if (pollData.status === "done") { result = pollData.result; break; }
+                if (pollData.status === "error") throw new Error(pollData.error);
+                const elapsed = Math.round(pollData.elapsed ?? 0);
+                setResumeStatus(`Restoring your system... (${elapsed}s)`);
+              }
+            } else {
+              result = startData;
+            }
+            if (cancelled || !result) return;
+
+            setVertical(savedVertical as Vertical);
+            setQuickstart(true);
+            if (result.plan) setPlan(result.plan as never);
+            if (result.text) setAnalysisSummaryText(result.text as string);
+            if (result.deployment_request) {
+              setDeployment(result.deployment_request as unknown as DeploymentInfo);
+              setDeployMessage((result.deploy_text as string) ?? "");
+            }
+
+            setResumeStatus("Starting agents...");
+            await waitForAgents(isCancelled, setResumeStatus);
+            if (!cancelled) {
+              setStep("runtime");
+              router.push("/chat");
+            }
+            return;
+          } catch (err) {
+            console.warn("[Session] auto-recover failed:", err);
+            try { localStorage.removeItem("af_quickstart_vertical"); } catch { /* SSR */ }
           }
         }
       } catch (err) {

@@ -124,6 +124,7 @@ export function WelcomeStep() {
       // Persist state from the combined result
       setVertical(variant);
       setQuickstart(true);
+      try { localStorage.setItem("af_quickstart_vertical", variant); } catch { /* SSR */ }
       setPlan((result as Record<string, never>).plan);
       setAnalysisSummaryText((result as Record<string, never>).text);
       if (result.deployment_request) {
