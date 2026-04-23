@@ -47,11 +47,10 @@ export function UserMenu() {
       clearAllThreads();
       try { localStorage.removeItem("af_quickstart_vertical"); } catch { /* SSR */ }
       setOpen(false);
-      router.push("/");
+      window.location.href = "/";
     } catch (err) {
       console.error("[Reset] failed:", err);
       alert("Reset failed. Please try again.");
-    } finally {
       setResetting(false);
     }
   }
