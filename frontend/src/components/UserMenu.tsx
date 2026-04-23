@@ -5,9 +5,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSetupStore } from "@/store/setupStore";
 import { useThreadStore } from "@/store/threadStore";
 import { resetSession } from "@/lib/concierge-api";
+import { useRouter } from "next/navigation";
 import { LogOut, RotateCcw, User, Loader2 } from "lucide-react";
 
 export function UserMenu() {
+  const router = useRouter();
   const { session, logout } = useAuth();
   const reset = useSetupStore((s) => s.reset);
   const clearAllThreads = useThreadStore((s) => s.clearAllThreads);
@@ -43,7 +45,9 @@ export function UserMenu() {
       await resetSession();
       reset();
       clearAllThreads();
+      try { localStorage.removeItem("af_quickstart_vertical"); } catch { /* SSR */ }
       setOpen(false);
+      router.push("/");
     } catch (err) {
       console.error("[Reset] failed:", err);
       alert("Reset failed. Please try again.");

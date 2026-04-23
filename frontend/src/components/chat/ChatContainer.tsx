@@ -143,7 +143,7 @@ export function ChatContainer() {
             <button
               onClick={() => {
                 useSetupStore.getState().setStep("runtime");
-                router.push("/");
+                router.push("/?configure=1");
               }}
               title="Back to runtime"
               className="rounded p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"

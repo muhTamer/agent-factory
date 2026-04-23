@@ -115,6 +115,10 @@ export function SetupWizard() {
     const isCancelled = () => cancelled;
     (async () => {
       try {
+        // If user clicked "Settings" from chat, don't auto-redirect back
+        const configureMode = typeof window !== "undefined"
+          && new URLSearchParams(window.location.search).has("configure");
+
         // Case 1: session already deployed (job finished while browser was away)
         const session = await getSession();
         if (cancelled) return;
@@ -124,18 +128,20 @@ export function SetupWizard() {
           setDeployment(session.deployment_request);
           setDeployMessage(session.deploy_text ?? "");
           setStep("runtime");
-          useThreadStore.getState().loadFromBackend();
 
-          try { await startRuntime(); } catch { /* ignore */ }
-          try {
-            const h = await authFetch("/api/runtime/health", { cache: "no-store" });
-            if (h.ok) {
-              const data = await h.json();
-              if (data.status === "ok" && Object.keys(data.agents || {}).length > 0) {
-                if (!cancelled) router.push("/chat");
+          if (!configureMode) {
+            useThreadStore.getState().loadFromBackend();
+            try { await startRuntime(); } catch { /* ignore */ }
+            try {
+              const h = await authFetch("/api/runtime/health", { cache: "no-store" });
+              if (h.ok) {
+                const data = await h.json();
+                if (data.status === "ok" && Object.keys(data.agents || {}).length > 0) {
+                  if (!cancelled) router.push("/chat");
+                }
               }
-            }
-          } catch { /* ignore — RuntimeStep will handle it */ }
+            } catch { /* ignore — RuntimeStep will handle it */ }
+          }
           if (!cancelled) setRestoring(false);
           return;
         }
@@ -173,7 +179,7 @@ export function SetupWizard() {
         }
 
         // Case 3: container restarted — session lost but we know the vertical
-        if (cancelled) return;
+        if (cancelled || configureMode) return;
         let savedVertical: string | null = null;
         try { savedVertical = localStorage.getItem("af_quickstart_vertical"); } catch { /* SSR */ }
         if (savedVertical === "fintech" || savedVertical === "retail") {
