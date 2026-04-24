@@ -169,7 +169,7 @@ class VoiceAgent:
                 {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
             ],
             model="gpt-5-mini",
-            max_tokens=400,
+            max_tokens=800,
         )
 
         # Some clients return a JSON string; normalize to dict
