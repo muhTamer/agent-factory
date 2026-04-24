@@ -55,7 +55,7 @@ def _make_engine(
     call_count = {"n": 0}
     responses = llm_responses or []
 
-    def mock_llm(messages, model=None, temperature=None):
+    def mock_llm(messages, model=None, temperature=None, **kwargs):
         idx = min(call_count["n"], len(responses) - 1)
         call_count["n"] += 1
         return (
@@ -270,7 +270,7 @@ class TestMultiTurn:
         """Simulate ask_user on turn 1, then user responds on turn 2."""
         call_count = {"n": 0}
 
-        def mock_llm(messages, model=None, temperature=None):
+        def mock_llm(messages, model=None, temperature=None, **kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 return {
@@ -461,7 +461,7 @@ class TestJSONSalvage:
         """Garbage text triggers retry; second attempt succeeds."""
         call_count = {"n": 0}
 
-        def mock_llm(messages, model=None, temperature=None):
+        def mock_llm(messages, model=None, temperature=None, **kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 return {"raw": "I cannot parse this as JSON at all!!!"}
@@ -489,7 +489,7 @@ class TestJSONSalvage:
     def test_double_parse_failure_escalates(self):
         """Both attempts return garbage → escalate (not silent respond)."""
 
-        def always_raw(messages, model=None, temperature=None):
+        def always_raw(messages, model=None, temperature=None, **kwargs):
             return {"raw": "not json"}
 
         corpus = _build_corpus()

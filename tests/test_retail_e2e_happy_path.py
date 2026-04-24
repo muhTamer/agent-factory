@@ -98,7 +98,7 @@ class ScenarioLLM:
         self._fn = decision_fn
         self.calls: List[List[Dict[str, str]]] = []
 
-    def __call__(self, messages, model=None, temperature=None):
+    def __call__(self, messages, model=None, temperature=None, **kwargs):
         self.calls.append(messages)
         system = next((m["content"] for m in messages if m["role"] == "system"), "")
         user = next((m["content"] for m in messages if m["role"] == "user"), "")

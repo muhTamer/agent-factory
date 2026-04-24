@@ -76,7 +76,7 @@ class TestReActMultiStepChain:
 
         call_count = {"n": 0}
 
-        def mock_llm(messages, model=None, temperature=None):
+        def mock_llm(messages, model=None, temperature=None, **kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 return {
@@ -132,7 +132,7 @@ class TestReActMultiStepChain:
         )
         call_count = {"n": 0}
 
-        def mock_llm(messages, model=None, temperature=None):
+        def mock_llm(messages, model=None, temperature=None, **kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 return {
@@ -175,7 +175,7 @@ class TestReActMultiStepChain:
         """Frozen account should NOT call initiate_refund."""
         refund_tool = _mock_tool("initiate_refund", {})
 
-        def mock_llm(messages, model=None, temperature=None):
+        def mock_llm(messages, model=None, temperature=None, **kwargs):
             return {
                 "thought": "Account is frozen per policy. Cannot refund.",
                 "action": "respond",
@@ -222,7 +222,7 @@ class TestReActSlotChain:
         )
         call_count = {"n": 0}
 
-        def mock_llm(messages, model=None, temperature=None):
+        def mock_llm(messages, model=None, temperature=None, **kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 return {

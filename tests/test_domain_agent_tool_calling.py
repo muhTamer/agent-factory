@@ -78,7 +78,7 @@ def _make_refund_engine(
 
     call_count = {"n": 0}
 
-    def mock_llm(messages, model=None, temperature=None):
+    def mock_llm(messages, model=None, temperature=None, **kwargs):
         idx = min(call_count["n"], len(llm_responses) - 1)
         call_count["n"] += 1
         return llm_responses[idx]
@@ -118,7 +118,7 @@ def _make_complaint_engine(
 
     call_count = {"n": 0}
 
-    def mock_llm(messages, model=None, temperature=None):
+    def mock_llm(messages, model=None, temperature=None, **kwargs):
         idx = min(call_count["n"], len(llm_responses) - 1)
         call_count["n"] += 1
         return llm_responses[idx]

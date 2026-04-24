@@ -432,6 +432,7 @@ class DomainAgentEngine:
                 messages=messages,
                 model=self.config.model,
                 temperature=self.config.temperature,
+                max_tokens=500,
             )
             if isinstance(result, dict):
                 return result

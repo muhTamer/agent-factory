@@ -68,7 +68,7 @@ class ScenarioLLM:
         self._fn = decision_fn
         self.calls: List[List[Dict[str, str]]] = []
 
-    def __call__(self, messages, model=None, temperature=None):
+    def __call__(self, messages, model=None, temperature=None, **kwargs):
         self.calls.append(messages)
         system = next((m["content"] for m in messages if m["role"] == "system"), "")
         user = next((m["content"] for m in messages if m["role"] == "user"), "")
@@ -1410,7 +1410,7 @@ class TestLLMTemperature:
         """
         captured_temps = []
 
-        def capture_llm(messages, model=None, temperature=None):
+        def capture_llm(messages, model=None, temperature=None, **kwargs):
             captured_temps.append(temperature)
             return {
                 "thought": "Respond.",
@@ -1540,7 +1540,7 @@ class TestThreadIsolation:
         """ask_user in thread A must not affect thread B."""
         call_count = {"n": 0}
 
-        def thread_llm(messages, model=None, temperature=None):
+        def thread_llm(messages, model=None, temperature=None, **kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 return {
@@ -1583,7 +1583,7 @@ class TestFullMultiTurnLifecycle:
         """Full 3-turn workflow: ask → lookup+ask → execute+respond."""
         call_count = {"n": 0}
 
-        def lifecycle_llm(messages, model=None, temperature=None):
+        def lifecycle_llm(messages, model=None, temperature=None, **kwargs):
             call_count["n"] += 1
             n = call_count["n"]
             if n == 1:  # Turn 1: ask for ID
@@ -1656,7 +1656,7 @@ class TestFullMultiTurnLifecycle:
         """turn_count must increment with each call to handle()."""
         call_count = {"n": 0}
 
-        def counting_llm(messages, model=None, temperature=None):
+        def counting_llm(messages, model=None, temperature=None, **kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 return {
@@ -1680,7 +1680,7 @@ class TestFullMultiTurnLifecycle:
         """step_history must contain steps from ALL turns, not just current."""
         call_count = {"n": 0}
 
-        def history_llm(messages, model=None, temperature=None):
+        def history_llm(messages, model=None, temperature=None, **kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 return {
@@ -1719,7 +1719,7 @@ class TestLLMCallParameters:
         """Engine must pass the config's default temperature (1.0)."""
         captured = {}
 
-        def spy_llm(messages, model=None, temperature=None):
+        def spy_llm(messages, model=None, temperature=None, **kwargs):
             captured["temperature"] = temperature
             captured["model"] = model
             return {
@@ -1736,7 +1736,7 @@ class TestLLMCallParameters:
         """If config sets a custom temperature, engine must pass it through."""
         captured = {}
 
-        def spy_llm(messages, model=None, temperature=None):
+        def spy_llm(messages, model=None, temperature=None, **kwargs):
             captured["temperature"] = temperature
             return {
                 "thought": "OK",
@@ -1760,7 +1760,7 @@ class TestLLMCallParameters:
         """Engine must pass config.model to the LLM function."""
         captured = {}
 
-        def spy_llm(messages, model=None, temperature=None):
+        def spy_llm(messages, model=None, temperature=None, **kwargs):
             captured["model"] = model
             return {
                 "thought": "OK",
@@ -1783,7 +1783,7 @@ class TestLLMCallParameters:
     def test_llm_error_produces_escalation_not_crash(self):
         """If the LLM call raises, engine must escalate gracefully."""
 
-        def failing_llm(messages, model=None, temperature=None):
+        def failing_llm(messages, model=None, temperature=None, **kwargs):
             raise RuntimeError("API connection refused")
 
         engine = _build_engine(corpus_texts=["Doc."], llm_fn=failing_llm)
@@ -1796,7 +1796,7 @@ class TestLLMCallParameters:
     def test_temperature_error_explains_cause(self):
         """If the LLM rejects temperature, the escalation reason must mention it."""
 
-        def temp_rejecting_llm(messages, model=None, temperature=None):
+        def temp_rejecting_llm(messages, model=None, temperature=None, **kwargs):
             raise Exception(
                 "Unsupported value: 'temperature' does not support 0.3 "
                 "with this model. Only the default (1) value is supported."
@@ -1821,7 +1821,7 @@ class TestLLMCallParameters:
         """Every message passed to the LLM must have 'role' and 'content' keys."""
         captured = {}
 
-        def spy_llm(messages, model=None, temperature=None):
+        def spy_llm(messages, model=None, temperature=None, **kwargs):
             captured["messages"] = messages
             return {
                 "thought": "OK",

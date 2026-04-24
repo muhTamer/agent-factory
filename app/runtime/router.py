@@ -109,6 +109,7 @@ class LLMRouter:
                 {"role": "user", "content": json.dumps(user)},
             ],
             timeout=60,
+            max_tokens=200,
         )
 
         primary = raw.get("primary")

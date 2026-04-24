@@ -60,7 +60,7 @@ _llm_log = logging.getLogger("llm_perf")
 _call_seq = 0
 
 
-def chat_json(messages, model=None, temperature=None, timeout=None):
+def chat_json(messages, model=None, temperature=None, timeout=None, max_tokens=None):
     """
     Send a chat completion request and expect JSON response.
     Returns a Python dict.
@@ -69,6 +69,8 @@ def chat_json(messages, model=None, temperature=None, timeout=None):
     ``temperature`` defaults to :data:`LLM_TEMPERATURE` (0.2).
     ``timeout`` overrides the client-level default for this single call
     (useful for heavy generation steps like blueprint planning).
+    ``max_tokens`` caps generation length — set this to reduce latency
+    on calls that only need short responses (e.g. classifiers).
     """
     global _call_seq
     _call_seq += 1
@@ -107,6 +109,8 @@ def chat_json(messages, model=None, temperature=None, timeout=None):
         temperature=temperature,
         response_format={"type": "json_object"},
     )
+    if max_tokens is not None:
+        create_kwargs["max_tokens"] = max_tokens
     if timeout is not None:
         create_kwargs["timeout"] = timeout
 
