@@ -1,9 +1,12 @@
 # app/runtime/spine.py
 from __future__ import annotations
 
+import logging
 import os
 import sys
+import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 # ── Force UTF-8 stdout/stderr on Windows (avoids charmap codec errors) ──
@@ -30,6 +33,8 @@ if TYPE_CHECKING:
 # Replace with Redis/Postgres later.
 THREAD_CTX: Dict[str, Dict[str, Any]] = {}
 
+
+_perf_log = logging.getLogger("spine_perf")
 
 ORCHESTRATION_MODE = os.getenv("ORCHESTRATION_MODE", "hybrid")
 """Orchestration mode for ablation study.
@@ -529,6 +534,7 @@ class RuntimeSpine:
         request_id: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        _t_total = time.time()
         q = (query or "").strip()
         if not q:
             return {"error": "Query text required."}
@@ -545,7 +551,7 @@ class RuntimeSpine:
         self._ensure_workflow_resources(ctx)
 
         rid = request_id or str(uuid.uuid4())
-        print(f"[REQ] {rid}: {q}")
+        _perf_log.info("[HANDLE_CHAT] START rid=%s q='%s'", rid, q[:80])
 
         trace = Trace.start(query=q, request_id=rid, context=ctx)
         trace.add("request_received")
@@ -767,19 +773,18 @@ class RuntimeSpine:
                     except Exception:
                         pass
 
-                # Run classifier and router in parallel — if the
-                # classifier returns "direct" the router result is
-                # already waiting; if "AOP" we discard it.
-                from concurrent.futures import ThreadPoolExecutor, Future
-
+                _t_classify = time.time()
                 with ThreadPoolExecutor(max_workers=2) as _tp:
-                    classify_fut: Future = _tp.submit(
+                    classify_fut = _tp.submit(
                         self._classify_orchestration_pattern, _effective_q
                     )
-                    route_fut: Future = _tp.submit(self._route, _effective_q)
-
+                    route_fut = _tp.submit(self._route, _effective_q)
                     pattern = classify_fut.result()
-
+                _perf_log.info(
+                    "  [CLASSIFY+ROUTE] %.1fs pattern=%s",
+                    time.time() - _t_classify,
+                    pattern,
+                )
                 trace.add("orchestration_pattern", pattern=pattern)
 
                 if pattern == "hierarchical_delegation":
@@ -793,10 +798,9 @@ class RuntimeSpine:
                         return pre_result
                     trace.add("guard_pre_ok", intent="hierarchical_delegation")
 
-                    print(f"[AOP] hierarchical delegation for: {q[:80]}")
+                    _perf_log.info("  [AOP] hierarchical delegation for: %s", q[:80])
 
-                    # Plan first (decompose + solvability + completeness, NO execution)
-
+                    _t_aop = time.time()
                     aop_plan = self.aop_coordinator.plan_only(_effective_q, ctx, trace)
                     if aop_plan is None:
                         return {
@@ -806,37 +810,19 @@ class RuntimeSpine:
                         }
 
                     if len(aop_plan.subtasks) <= 1:
-                        # Single subtask → execute directly from existing plan
-                        # (avoids re-decomposing inside orchestrate())
+                        # Single subtask — execute directly from the existing
+                        # plan instead of calling orchestrate() which would
+                        # re-decompose the query (saving one LLM round-trip).
                         st = aop_plan.subtasks[0]
                         executed = self.aop_coordinator._execute_subtasks([st], ctx)
                         self.aop_coordinator._record_feedback(executed)
-                        st = executed[0]
-                        text = (
-                            self.aop_coordinator._extract_readable_text(st.result)
-                            if st.result
-                            else ""
+                        aop_resp = self.aop_coordinator._assemble_composite_response(
+                            _effective_q,
+                            aop_plan.subtasks,
+                            aop_plan.completeness,
+                            aop_plan.solvability,
+                            0,
                         )
-                        aop_resp = {
-                            "text": text,
-                            "answer": text,
-                            "score": st.solvability_score,
-                            "orchestration_pattern": "aop_task_result",
-                            "executed_subtask": {
-                                "description": st.description,
-                                "agent_id": st.assigned_agent_id,
-                                "success": st.success,
-                            },
-                            "remaining_tasks": [],
-                            "result": st.result,
-                        }
-                        if trace:
-                            trace.add(
-                                "aop_execute_single_inline",
-                                subtask=st.description,
-                                agent=st.assigned_agent_id,
-                                success=st.success,
-                            )
                         aop_resp["request_id"] = rid
                         self._accumulate_aop_slots(aop_resp, ctx)
                     else:
@@ -848,7 +834,10 @@ class RuntimeSpine:
                         )
                         aop_resp = self._build_task_menu_response(aop_plan, rid)
 
+                    _perf_log.info("  [AOP TOTAL] %.1fs", time.time() - _t_aop)
+
                     # Voice rendering — produce customer-friendly chat text
+                    _t_voice = time.time()
                     try:
                         voice_thread = str(ctx.get("thread_id") or "default")
                         vertical = ctx.get("domain") or ctx.get("vertical")
@@ -864,6 +853,7 @@ class RuntimeSpine:
                                 aop_resp["text"] = chat["messages"][0]
                     except Exception as e:
                         trace.add("voice_chat_failed", error=str(e))
+                    _perf_log.info("  [AOP VOICE] %.1fs", time.time() - _t_voice)
 
                     # Run through guardrails (post) and return
                     ok, post = self._guard_post(aop_resp, ctx)
@@ -875,9 +865,12 @@ class RuntimeSpine:
                         )
                         return post
                     trace.add("guard_post_ok")
+                    _perf_log.info(
+                        "[HANDLE_CHAT] END %.1fs (AOP)", time.time() - _t_total
+                    )
                     return post
 
-                # pattern == "direct" -> use pre-computed router result
+                # pattern == "direct" → use the pre-fetched route result
                 plan = route_fut.result()
             else:
                 plan = self._route(_effective_q)
@@ -925,7 +918,9 @@ class RuntimeSpine:
             trace.add("guard_pre_ok", intent=ctx.get("intent"))
 
             # 4️⃣ EXECUTE
+            _t_exec = time.time()
             results = self._execute_candidates(plan, _effective_q, ctx)
+            _perf_log.info("  [EXECUTE] %.1fs", time.time() - _t_exec)
             trace.add(
                 "execute",
                 results=[
@@ -1211,6 +1206,7 @@ class RuntimeSpine:
             )
 
             # 6.5️⃣ VOICE (chat rendering) — for workflow-style structured outputs
+            _t_voice_d = time.time()
             try:
                 candidate = resp
                 if isinstance(resp, dict) and isinstance(resp.get("result"), dict):
@@ -1263,6 +1259,7 @@ class RuntimeSpine:
                 trace.add("voice_chat_failed", error=str(e))
                 if isinstance(resp, dict):
                     resp["voice_error"] = str(e)
+            _perf_log.info("  [VOICE] %.1fs", time.time() - _t_voice_d)
 
             # 7️⃣ GUARDRAILS (POST)
             ok, post = self._guard_post(resp, ctx)
@@ -1289,6 +1286,7 @@ class RuntimeSpine:
                 return post
 
             trace.add("guard_post_ok")
+            _perf_log.info("[HANDLE_CHAT] END %.1fs (direct)", time.time() - _t_total)
             return post
 
         finally:
@@ -1330,6 +1328,7 @@ class RuntimeSpine:
             # RQ2 Governance enrichment — generate UMF envelope, explanations,
             # and IEEE compliance report, then attach to the trace before audit.
             if self._governance_enabled:
+                _t_gov = time.time()
                 try:
                     _final_resp = (
                         post
@@ -1340,9 +1339,6 @@ class RuntimeSpine:
                     _final_resp = {}
                 try:
                     self._enrich_governance(trace, _final_resp, ctx)
-                    # Attach governance summary to the response for the UI.
-                    # Strip envelope.payload to avoid circular reference
-                    # (payload IS the response dict itself).
                     if trace.governance and isinstance(_final_resp, dict):
                         import copy
 
@@ -1354,6 +1350,7 @@ class RuntimeSpine:
                         _final_resp["governance"] = gov
                 except Exception as e:
                     print(f"[GOVERNANCE] enrichment failed: {e}")
+                _perf_log.info("  [GOVERNANCE] %.1fs", time.time() - _t_gov)
 
             try:
                 self.audit_writer.write(trace)

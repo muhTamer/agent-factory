@@ -758,7 +758,11 @@ class DomainAgentEngine:
             "- Your 'thought' field may reference policy rules; your customer answer "
             "must NEVER cite them.\n"
             "- NEVER invent security checks or verification steps beyond "
-            "what the policy states.\n"
+            "what the policy states.\n\n"
+            "   IMPORTANT: If the user's request requires an action (refund, "
+            "complaint, transfer, freeze, ticket), you MUST call the "
+            "appropriate tool before responding. Never skip tools for "
+            "action requests.\n"
         )
 
         # User content

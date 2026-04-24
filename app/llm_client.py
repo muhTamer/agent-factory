@@ -7,6 +7,8 @@ Usage:
 
 import os
 import json
+import time
+import logging
 from openai import AzureOpenAI, OpenAI
 from dotenv import load_dotenv
 
@@ -52,6 +54,12 @@ def get_client():
     return _cached_client
 
 
+_llm_log = logging.getLogger("llm_perf")
+
+# Auto-incrementing call counter per request for waterfall tracing
+_call_seq = 0
+
+
 def chat_json(messages, model=None, temperature=None, timeout=None):
     """
     Send a chat completion request and expect JSON response.
@@ -62,10 +70,36 @@ def chat_json(messages, model=None, temperature=None, timeout=None):
     ``timeout`` overrides the client-level default for this single call
     (useful for heavy generation steps like blueprint planning).
     """
+    global _call_seq
+    _call_seq += 1
+    seq = _call_seq
+
     client = get_client()
     deployment = model or LLM_MODEL
     if temperature is None:
         temperature = LLM_TEMPERATURE
+
+    # Identify caller for the trace log
+    import traceback
+
+    caller = "unknown"
+    for frame in traceback.extract_stack()[-3:-1]:
+        caller = f"{os.path.basename(frame.filename)}:{frame.lineno}"
+
+    sys_preview = ""
+    if messages and messages[0].get("role") == "system":
+        sys_preview = messages[0]["content"][:80].replace("\n", " ")
+
+    prompt_chars = sum(len(m.get("content", "")) for m in messages)
+    _llm_log.info(
+        "[LLM #%d] START  caller=%s model=%s prompt=%d chars sys='%s...'",
+        seq,
+        caller,
+        deployment,
+        prompt_chars,
+        sys_preview,
+    )
+    t0 = time.time()
 
     create_kwargs = dict(
         model=deployment,
@@ -85,7 +119,22 @@ def chat_json(messages, model=None, temperature=None, timeout=None):
             create_kwargs.pop("temperature", None)
             response = client.chat.completions.create(**create_kwargs)
         else:
+            elapsed = time.time() - t0
+            _llm_log.warning(
+                "[LLM #%d] FAIL   %.1fs caller=%s err=%s", seq, elapsed, caller, exc
+            )
             raise
+
+    elapsed = time.time() - t0
+    usage = response.usage
+    _llm_log.info(
+        "[LLM #%d] DONE   %.1fs caller=%s tokens=%s/%s",
+        seq,
+        elapsed,
+        caller,
+        usage.prompt_tokens if usage else "?",
+        usage.completion_tokens if usage else "?",
+    )
 
     msg = response.choices[0].message.content
     try:

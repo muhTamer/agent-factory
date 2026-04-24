@@ -896,12 +896,13 @@ class AOPCoordinator:
         subtasks: List[Subtask],
         context: Dict[str, Any],
     ) -> List[Subtask]:
-        """Execute subtasks by delegating to assigned agents.
+        """Execute each subtask by delegating to its assigned agent.
 
-        Independent subtasks run in parallel via ThreadPoolExecutor.
+        Pre-checks (agent resolution, guardrails) run first; then all
+        runnable subtasks execute concurrently via ThreadPoolExecutor.
         """
-        # Pre-check each subtask: resolve agent, apply guardrails
         runnable: List[Subtask] = []
+
         for st in subtasks:
             if not st.assigned_agent_id:
                 st.success = False
@@ -921,7 +922,9 @@ class AOPCoordinator:
                 labeled_informational = _label == "INFORMATIONAL"
                 labeled_action = _label == "ACTION"
 
-                if not (labeled_action or labeled_informational):
+                if labeled_action or labeled_informational:
+                    pass
+                else:
                     original_query = context.get("original_query", "") or ""
                     has_transaction = self._action_signals.search(
                         original_query if original_query else st.description
@@ -942,17 +945,14 @@ class AOPCoordinator:
                         )
                         continue
 
+            st._agent_ref = agent
             runnable.append(st)
-
-        if not runnable:
-            return subtasks
 
         def _run_one(st: Subtask) -> None:
             _, agent_query = parse_aop_label(st.description)
-            agent = self.registry.get(st.assigned_agent_id)
             t0 = _now_ms()
             try:
-                result = agent.handle(
+                result = st._agent_ref.handle(
                     {"query": agent_query, "text": agent_query, "context": context}
                 )
                 st.result = result
@@ -970,7 +970,7 @@ class AOPCoordinator:
 
         if len(runnable) == 1:
             _run_one(runnable[0])
-        else:
+        elif runnable:
             from concurrent.futures import ThreadPoolExecutor
 
             with ThreadPoolExecutor(max_workers=len(runnable)) as pool:

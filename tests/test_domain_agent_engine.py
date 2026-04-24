@@ -585,10 +585,10 @@ class TestDuplicateRetrievalPrevention:
 
 
 class TestToolCallingNudge:
-    """Test that tool-first guidance works via system prompt (nudge removed)."""
+    """Test tool-calling behaviour (nudge removed, prompt-driven)."""
 
     def test_agent_responds_directly_without_nudge(self):
-        """Agent responds without nudge — tool-first is now prompt-driven."""
+        """Agent responds in one step without a nudge mechanism."""
         tool = _mock_tool("initiate_refund", {"refund_id": "REF-1"})
         engine = _make_engine(
             llm_responses=[
