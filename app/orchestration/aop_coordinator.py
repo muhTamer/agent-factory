@@ -387,27 +387,20 @@ class AOPCoordinator:
         ]
 
         # Step 3: Completeness
-        # Skip the LLM completeness check for small plans (≤3 subtasks) —
-        # the extra LLM round-trip (+ potential re-decompose) adds 20-60s
-        # for minimal benefit on simple queries.
-        if len(subtask_strs) <= 3 or self._all_informational(subtask_strs):
+        if self._all_informational(subtask_strs):
             comp_result = CompletenessResult(
                 complete=True,
                 missing=[],
                 redundant=[],
                 coverage_ratio=1.0,
-                reasoning=(
-                    "informational query — action coverage not required"
-                    if self._all_informational(subtask_strs)
-                    else "small plan — completeness check skipped"
-                ),
+                reasoning="informational query — action coverage not required",
             )
             if trace:
                 trace.add(
                     "aop_completeness",
                     complete=True,
                     missing=[],
-                    info="bypass",
+                    info="informational_bypass",
                 )
         else:
             comp_result = self._check_completeness(
@@ -420,7 +413,7 @@ class AOPCoordinator:
                     missing=comp_result.missing,
                 )
 
-        # Re-decompose if incomplete (only for large plans that ran the check)
+        # Re-decompose if incomplete
         if not comp_result.complete and self.max_retries > 0:
             subtask_strs = self._re_decompose(query, agent_catalog, comp_result.missing)
             if subtask_strs:
