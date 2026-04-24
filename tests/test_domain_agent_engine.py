@@ -585,10 +585,10 @@ class TestDuplicateRetrievalPrevention:
 
 
 class TestToolCallingNudge:
-    """Test the tool-calling nudge mechanism."""
+    """Test tool-calling behaviour (nudge removed, prompt-driven)."""
 
-    def test_nudge_fires_when_tools_available_but_not_called(self):
-        """Agent tries to respond with tools available → nudge fires."""
+    def test_agent_responds_directly_without_nudge(self):
+        """Agent responds in one step without a nudge mechanism."""
         tool = _mock_tool("initiate_refund", {"refund_id": "REF-1"})
         engine = _make_engine(
             llm_responses=[
@@ -597,24 +597,12 @@ class TestToolCallingNudge:
                     "action": "respond",
                     "action_input": {"answer": "Your refund has been processed."},
                 },
-                # After nudge, agent calls tool
-                {
-                    "thought": "Right, I should actually call the tool.",
-                    "action": "call_tool",
-                    "action_input": {"tool": "initiate_refund", "args": {}},
-                },
-                {
-                    "thought": "Confirm.",
-                    "action": "respond",
-                    "action_input": {"answer": "Refund initiated."},
-                },
             ],
             tools={"initiate_refund": tool},
         )
         result = engine.handle("Process my refund")
-        trace = result["react_trace"]
-        assert "NUDGE" in trace[0]["observation"]
-        assert "initiate_refund" in result["tools_used"]
+        assert result["step_count"] == 1
+        assert "NUDGE" not in result["react_trace"][0].get("observation", "")
 
     def test_no_nudge_when_no_tools(self):
         """Agent with no tools → no nudge on respond."""
