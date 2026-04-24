@@ -773,15 +773,21 @@ class RuntimeSpine:
                     except Exception:
                         pass
 
+                # Run classify + route + speculative decompose in parallel.
+                # If the classifier returns "direct" the decompose result is
+                # discarded — a small waste that saves ~25s on AOP queries.
                 _t_classify = time.time()
-                with ThreadPoolExecutor(max_workers=2) as _tp:
+                with ThreadPoolExecutor(max_workers=3) as _tp:
                     classify_fut = _tp.submit(
                         self._classify_orchestration_pattern, _effective_q
                     )
                     route_fut = _tp.submit(self._route, _effective_q)
+                    decompose_fut = _tp.submit(
+                        self.aop_coordinator.plan_only, _effective_q, ctx, trace
+                    )
                     pattern = classify_fut.result()
                 _perf_log.info(
-                    "  [CLASSIFY+ROUTE] %.1fs pattern=%s",
+                    "  [CLASSIFY+ROUTE+DECOMPOSE] %.1fs pattern=%s",
                     time.time() - _t_classify,
                     pattern,
                 )
@@ -801,7 +807,7 @@ class RuntimeSpine:
                     _perf_log.info("  [AOP] hierarchical delegation for: %s", q[:80])
 
                     _t_aop = time.time()
-                    aop_plan = self.aop_coordinator.plan_only(_effective_q, ctx, trace)
+                    aop_plan = decompose_fut.result()
                     if aop_plan is None:
                         return {
                             "error": "Failed to plan subtasks.",
@@ -836,23 +842,45 @@ class RuntimeSpine:
 
                     _perf_log.info("  [AOP TOTAL] %.1fs", time.time() - _t_aop)
 
-                    # Voice rendering — produce customer-friendly chat text
+                    # Voice rendering for task menus uses a template
+                    # (no LLM call) to avoid a ~25s round-trip.
+                    # Only single-subtask execution responses use LLM voice.
                     _t_voice = time.time()
-                    try:
-                        voice_thread = str(ctx.get("thread_id") or "default")
-                        vertical = ctx.get("domain") or ctx.get("vertical")
-                        chat = self.voice.render(
-                            user_query=q,
-                            thread_id=voice_thread,
-                            vertical=vertical,
-                            structured=aop_resp,
-                        )
-                        if isinstance(aop_resp, dict):
-                            aop_resp["chat"] = chat
-                            if isinstance(chat, dict) and chat.get("messages"):
-                                aop_resp["text"] = chat["messages"][0]
-                    except Exception as e:
-                        trace.add("voice_chat_failed", error=str(e))
+                    _is_task_menu = (
+                        aop_resp.get("orchestration_pattern") == "aop_task_menu"
+                    )
+                    if _is_task_menu:
+                        _menu_items = aop_resp.get("task_menu", [])
+                        _lines = [
+                            "I can see your request has a few parts. "
+                            "Which would you like me to help with first?"
+                        ]
+                        _qr = []
+                        for i, item in enumerate(_menu_items):
+                            _, desc = parse_aop_label(item.get("subtask", ""))
+                            _qr.append(f"{i + 1}. {desc[:60]}")
+                        _qr.append("No thanks")
+                        aop_resp["text"] = _lines[0]
+                        aop_resp["chat"] = {
+                            "messages": _lines,
+                            "quick_replies": _qr,
+                        }
+                    else:
+                        try:
+                            voice_thread = str(ctx.get("thread_id") or "default")
+                            vertical = ctx.get("domain") or ctx.get("vertical")
+                            chat = self.voice.render(
+                                user_query=q,
+                                thread_id=voice_thread,
+                                vertical=vertical,
+                                structured=aop_resp,
+                            )
+                            if isinstance(aop_resp, dict):
+                                aop_resp["chat"] = chat
+                                if isinstance(chat, dict) and chat.get("messages"):
+                                    aop_resp["text"] = chat["messages"][0]
+                        except Exception as e:
+                            trace.add("voice_chat_failed", error=str(e))
                     _perf_log.info("  [AOP VOICE] %.1fs", time.time() - _t_voice)
 
                     # Run through guardrails (post) and return
