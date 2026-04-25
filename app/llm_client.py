@@ -117,10 +117,15 @@ def chat_json(messages, model=None, temperature=None, timeout=None, max_tokens=N
     try:
         response = client.chat.completions.create(**create_kwargs)
     except Exception as exc:
+        exc_str = str(exc).lower()
         # Some models (o-series, reasoning models) reject non-default temperature.
         # Retry once with temperature removed if the error mentions it.
-        if "temperature" in str(exc).lower() and temperature != 1.0:
+        if "temperature" in exc_str and temperature != 1.0:
             create_kwargs.pop("temperature", None)
+            response = client.chat.completions.create(**create_kwargs)
+        # Some models/API versions reject max_tokens (want max_completion_tokens).
+        elif "max_tokens" in exc_str or "max_completion_tokens" in exc_str:
+            create_kwargs.pop("max_tokens", None)
             response = client.chat.completions.create(**create_kwargs)
         else:
             elapsed = time.time() - t0

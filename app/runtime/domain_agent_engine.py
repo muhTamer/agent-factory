@@ -438,6 +438,11 @@ class DomainAgentEngine:
                 return result
             return {"raw": result}
         except Exception as e:
+            import logging
+
+            logging.getLogger("domain_agent").error(
+                "LLM call failed for %s: %s", self.config.agent_id, e
+            )
             return {
                 "thought": f"LLM call failed: {e}",
                 "action": "escalate",
