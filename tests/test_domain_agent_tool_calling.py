@@ -362,9 +362,8 @@ class TestBiasTowardActionPrompt:
         msgs = engine._build_react_prompt("refund request", state, [], {})
         system = msgs[0]["content"]
 
-        assert "Bias toward completing actions" in system
-        assert "initiate_refund" in system
-        assert "create_ticket" in system
+        assert "RETRIEVE-THEN-ACT" in system
+        assert "action tool" in system
 
     def test_multi_turn_resume_prompt_encourages_action(self):
         """After ask_user, resume prompt should push toward tool calls."""
