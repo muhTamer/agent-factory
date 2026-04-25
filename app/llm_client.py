@@ -18,7 +18,7 @@ load_dotenv()
 # ── Global LLM configuration ─────────────────────────────────────────
 # All components should import these instead of hardcoding values.
 LLM_MODEL: str = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini")
-LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "1.0"))
 
 _cached_client = None
 
