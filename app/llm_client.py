@@ -60,17 +60,15 @@ _llm_log = logging.getLogger("llm_perf")
 _call_seq = 0
 
 
-def chat_json(messages, model=None, temperature=None, timeout=None, max_tokens=None):
+def chat_json(messages, model=None, temperature=None, timeout=None):
     """
     Send a chat completion request and expect JSON response.
     Returns a Python dict.
 
     ``model`` defaults to :data:`LLM_MODEL`.
-    ``temperature`` defaults to :data:`LLM_TEMPERATURE` (0.2).
+    ``temperature`` defaults to :data:`LLM_TEMPERATURE` (1.0).
     ``timeout`` overrides the client-level default for this single call
     (useful for heavy generation steps like blueprint planning).
-    ``max_tokens`` caps generation length — set this to reduce latency
-    on calls that only need short responses (e.g. classifiers).
     """
     global _call_seq
     _call_seq += 1
@@ -109,23 +107,16 @@ def chat_json(messages, model=None, temperature=None, timeout=None, max_tokens=N
         temperature=temperature,
         response_format={"type": "json_object"},
     )
-    if max_tokens is not None:
-        create_kwargs["max_tokens"] = max_tokens
     if timeout is not None:
         create_kwargs["timeout"] = timeout
 
     try:
         response = client.chat.completions.create(**create_kwargs)
     except Exception as exc:
-        exc_str = str(exc).lower()
         # Some models (o-series, reasoning models) reject non-default temperature.
         # Retry once with temperature removed if the error mentions it.
-        if "temperature" in exc_str and temperature != 1.0:
+        if "temperature" in str(exc).lower() and temperature != 1.0:
             create_kwargs.pop("temperature", None)
-            response = client.chat.completions.create(**create_kwargs)
-        # Some models/API versions reject max_tokens (want max_completion_tokens).
-        elif "max_tokens" in exc_str or "max_completion_tokens" in exc_str:
-            create_kwargs.pop("max_tokens", None)
             response = client.chat.completions.create(**create_kwargs)
         else:
             elapsed = time.time() - t0

@@ -669,7 +669,7 @@ class AOPCoordinator:
         ]
 
         try:
-            raw = chat_json(messages=messages, model=self.model, max_tokens=300)
+            raw = chat_json(messages=messages, model=self.model)
             subtasks = raw.get("subtasks", [])
             if isinstance(subtasks, list):
                 cleaned = [self._clean_subtask(str(s), agent_catalog) for s in subtasks]
@@ -725,7 +725,7 @@ class AOPCoordinator:
         ]
 
         try:
-            raw = chat_json(messages=messages, model=self.model, max_tokens=300)
+            raw = chat_json(messages=messages, model=self.model)
             subtasks = raw.get("subtasks", [])
             if isinstance(subtasks, list):
                 result = [str(s).strip() for s in subtasks if str(s).strip()]
