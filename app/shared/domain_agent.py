@@ -231,6 +231,13 @@ def _generate_agent_source(agent_id: str) -> str:
                 except Exception as exc:
                     _log.warning("MCP tools unavailable: %s", exc)
 
+                # Filter tools to only those declared in available_tools.
+                # Without this, every agent would have access to every tool
+                # (e.g. Complaints agent could call initiate_refund).
+                _allowed = set(self.cfg.get("available_tools", []))
+                if _allowed and tools:
+                    tools = {{name: t for name, t in tools.items() if name in _allowed}}
+
                 # Load LLM function
                 llm_fn = None
                 try:
