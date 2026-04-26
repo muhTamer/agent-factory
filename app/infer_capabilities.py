@@ -41,6 +41,7 @@ def _discover_tool_names(data_dir: Path | None = None) -> List[str]:
                     continue
                 try:
                     from app.runtime.tools.mcp_manager import MCPManager
+
                     mgr = MCPManager.get_instance()
                     if not mgr.is_connected():
                         mgr.connect_servers([srv])
@@ -51,6 +52,7 @@ def _discover_tool_names(data_dir: Path | None = None) -> List[str]:
         except Exception:
             pass
     return sorted(names)
+
 
 MODEL = "gpt-5-mini"
 
