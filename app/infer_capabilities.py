@@ -11,6 +11,7 @@ from typing import Any, Dict, List
 import yaml as _yaml
 
 from app.llm_client import chat_json
+from app.runtime.tools.stub_tools import STUB_TOOLS
 
 MODEL = "gpt-5-mini"
 
@@ -520,9 +521,13 @@ class InferCapabilities:
             "REQUIRED FIELDS per agent:\n"
             "  - domain: string (e.g. 'refunds', 'orders', 'faq', 'accounts')\n"
             "  - goal: string (e.g. 'Help customers with refund requests')\n"
-            "  - required_tools: list of tool names the agent needs\n"
+            "  - required_tools: list of tool names the agent needs "
+            "(MUST use exact names from the available tools list below)\n"
             "  - policies_text: list of natural language policy constraints\n\n"
+            "AVAILABLE TOOLS (use these exact names in required_tools):\n"
+            f"  {', '.join(sorted(STUB_TOOLS.keys()))}\n\n"
             "IMPORTANT CONSTRAINTS:\n"
+            "- Do NOT invent tool names. Use ONLY names from the list above.\n"
             "- Do NOT invent documents. Use only the provided document names.\n"
             "- Keep it minimal (<= max_agents). Prefer reusable agents.\n"
             "- Each agent must specify inputs by DOC TYPE buckets:\n"

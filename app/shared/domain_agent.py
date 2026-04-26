@@ -236,7 +236,14 @@ def _generate_agent_source(agent_id: str) -> str:
                 # (e.g. Complaints agent could call initiate_refund).
                 _allowed = set(self.cfg.get("available_tools", []))
                 if _allowed and tools:
+                    _before = set(tools.keys())
                     tools = {{name: t for name, t in tools.items() if name in _allowed}}
+                    if not tools:
+                        _log.warning(
+                            "Tool isolation: available_tools %s matched none of "
+                            "loaded tools %s for agent %s — check tool names in config",
+                            _allowed, _before, self.cfg.get("id"),
+                        )
 
                 # Load LLM function
                 llm_fn = None
