@@ -13,6 +13,45 @@ import yaml as _yaml
 from app.llm_client import chat_json
 from app.runtime.tools.stub_tools import STUB_TOOLS
 
+import logging as _logging
+
+_log = _logging.getLogger(__name__)
+
+
+def _discover_tool_names(data_dir: Path | None = None) -> List[str]:
+    """Return canonical tool names from stubs + tools_config (HTTP/MCP)."""
+    names = set(STUB_TOOLS.keys())
+
+    cfg_paths = []
+    if data_dir:
+        cfg_paths.append(Path(data_dir) / ".factory" / "tools_config.json")
+    cfg_paths.append(Path(".factory") / "tools_config.json")
+
+    for cfg_path in cfg_paths:
+        if not cfg_path.exists():
+            continue
+        try:
+            tc = json.loads(cfg_path.read_text(encoding="utf-8"))
+            for tool in tc.get("tools", []):
+                if tool.get("_disabled") or not tool.get("name"):
+                    continue
+                names.add(tool["name"])
+            for srv in tc.get("mcp_servers", []):
+                if not srv.get("enabled", True) or srv.get("_disabled"):
+                    continue
+                try:
+                    from app.runtime.tools.mcp_manager import MCPManager
+                    mgr = MCPManager.get_instance()
+                    if not mgr.is_connected():
+                        mgr.connect_servers([srv])
+                    for tool_name in mgr.get_tools():
+                        names.add(tool_name)
+                except Exception as exc:
+                    _log.debug("MCP discovery skipped for %s: %s", srv.get("id"), exc)
+        except Exception:
+            pass
+    return sorted(names)
+
 MODEL = "gpt-5-mini"
 
 
@@ -81,12 +120,16 @@ class InferCapabilities:
         # Persist document metadata for downstream components
         self._save_doc_metadata(base_dir, documents)
 
+        # Discover all available tool names (stubs + HTTP + MCP)
+        tool_names = _discover_tool_names(base_dir)
+
         # LLM proposes agents + uses documents (by name) as inputs
         llm_plan = self._propose_agents_llm(
             vertical=vertical,
             user_goals=user_goals,
             documents=documents,
             max_agents=max_agents,
+            tool_names=tool_names,
         )
 
         agents = self._normalize_agents_plan(
@@ -502,6 +545,7 @@ class InferCapabilities:
         user_goals: str,
         documents: List[Dict[str, Any]],
         max_agents: int,
+        tool_names: List[str] | None = None,
     ) -> Dict[str, Any]:
         """
         LLM proposes the agent set and per-agent doc usage, without hardcoding
@@ -525,7 +569,7 @@ class InferCapabilities:
             "(MUST use exact names from the available tools list below)\n"
             "  - policies_text: list of natural language policy constraints\n\n"
             "AVAILABLE TOOLS (use these exact names in required_tools):\n"
-            f"  {', '.join(sorted(STUB_TOOLS.keys()))}\n\n"
+            f"  {', '.join(tool_names or sorted(STUB_TOOLS.keys()))}\n\n"
             "IMPORTANT CONSTRAINTS:\n"
             "- Do NOT invent tool names. Use ONLY names from the list above.\n"
             "- Do NOT invent documents. Use only the provided document names.\n"
