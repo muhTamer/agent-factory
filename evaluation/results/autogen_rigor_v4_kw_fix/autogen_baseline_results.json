@@ -1,0 +1,272 @@
+[
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[escalation=yes,response_present]",
+    "latency_ms": 89299.78940007277,
+    "first_agent": "complaints_agent",
+    "responding_agent": "complaints_agent",
+    "agents_involved": [
+      "refunds_agent",
+      "complaints_agent"
+    ],
+    "handling_agents": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[complaints_policy.yaml] ============================================================\nSECTION 2 — COMPENSATION AMOUNT RULES\n============================================================\n\namount_rules:\n\n  - id: max_auto_compensation_limit\n    description: >\n      Compensation up to and including EUR 500 may be auto-approved\n      by the system if eligibility conditions are met.\n    threshold: 500\n    currency: EUR\n    approval: auto\n    slot_name: compensation_amount\n\n  - id: manager_approval_requ",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_01",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: lost card report AND pending transfer inquiry (cross-agent)",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 112416.22169991024,
+    "first_agent": "accounts_agent",
+    "responding_agent": "accounts_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "complaints_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "complaints_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "I can help with both — but I need to verify your identity before I can block your card or investigate the transfer (policy requires KYC verification for card actions and transaction investigations). Quick summary of what I’ll do once you confirm and I verify you:\n\n- Lost card: I will immediately block the card and order a replacement. Per policy, replacement cards are issued within 5–7 business days; the first replacement is free. I will log the action for audit.\n- Pending transfer: I will look ",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_02",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: request refund for wrong exchange rate AND ask about supported currencies",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[knowledge=yes,response_present] fail=[tool_missing:initiate_refund]",
+    "latency_ms": 100680.69489998743,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "refunds_agent",
+      "complaints_agent"
+    ],
+    "handling_agents": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "Sorry — that shouldn’t have happened. I can investigate the FX charge and open a refund request, and I can also check which currencies your account/product supports. Quick summary and what I need so we can move fast.\n\nWhat applies (from our policy)\n- Eligibility: refunds require your account to be KYC‑verified and active. If not verified or the account is restricted, we cannot auto-issue a refund until that’s resolved.  \n- Time limit: refund requests must be made within 90 days of the transactio",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_03",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: report declined card AND request PIN change AND check balance",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 120287.87090000696,
+    "first_agent": "accounts_agent",
+    "responding_agent": "accounts_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "I can help — but per policy I must verify your identity before I can reset your PIN or view your balance. Quick checklist and options so you know what will happen next.\n\nWhy cards get declined (quick checks)\n- Insufficient available balance or pending holds.\n- Daily/transaction limits (note: increases > EUR 5,000 need manual review).\n- Card is blocked/flagged for fraud or PIN blocked after wrong attempts.\n- Merchant/terminal issue (chip vs magstripe) or expired card.\n\nPIN options (policy)\n- In‑a",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_04",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: unrecognised charge refund AND complaint about card not working",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[knowledge=yes,response_present] fail=[tool_missing:initiate_refund]",
+    "latency_ms": 103486.56290001236,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "refunds_agent",
+      "complaints_agent"
+    ],
+    "handling_agents": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[refunds_policy.yaml] ============================================================\n\neligibility:\n\n  - id: verified_customer_required\n    description: >\n      Refunds may only be processed for customers who have completed\n      KYC verification and whose account status is active.\n    conditions:\n      - kyc_status == \"verified\"\n      - account_status == \"active\"\n    outcome: eligible\n\n  - id: refund_time_limit\n    description: >\n      Refund requests must be submitted within 90 calendar days from",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_05",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: dispute top-up revert AND ask about card limits",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[knowledge=yes,response_present] fail=[tool_missing:initiate_refund]",
+    "latency_ms": 74242.25519993342,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "refunds_agent",
+      "complaints_agent"
+    ],
+    "handling_agents": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[refunds_policy.yaml] # ============================================================\nFintech Refunds & Reversal Policy\nOrganization: NovaPay Digital Banking\nVersion: 3.2\nLast Updated: 2025-01-10\nOwner: Head of Customer Operations\nDomain: fintech\n\n[refunds_policy.yaml] ============================================================\n\nmetadata:\n  policy_id: novapay_refunds_policy\n  jurisdiction: EU\n  regulatory_framework:\n    - PSD2\n    - AMLD5\n    - GDPR\n  internal_references:\n    - Risk Management P",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_06",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: report stolen card AND reverse fraudulent transactions",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account]",
+    "latency_ms": 128404.62579997256,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "refunds_agent"
+    ],
+    "handling_agents": [
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search"
+    ],
+    "answer_text": "I’m ready to act but cannot block the card or start reversals until you give explicit consent and I verify you.\n\nPlease do the following (do NOT post full card numbers, CVV or PIN):\n\n1) Type exactly: I consent — block card  \n2) Then provide EITHER:\n   - your customer ID  \n   OR  \n   - last 4 digits of the card + the email OR phone number we have on file\n\n3) Optionally, include the three disputed transaction details (date + amount + merchant) or write “please find the 3 most recent card transacti",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_07",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: failed direct debit refund AND cancel future direct debits",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:update_account]",
+    "latency_ms": 119089.59769993089,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "refunds_agent",
+      "complaints_agent"
+    ],
+    "handling_agents": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "I can do that — but I need your explicit consent and a safe identifier before I take any account actions.\n\nPlease do NOT post full card/account numbers, CVV, PIN, or other sensitive info.\n\nWhat I need now (pick one)\n1) Type exactly: I consent  \n2) Then provide EITHER:\n   - your customer ID  \n   OR  \n   - last 4 digits of the account/card + the email OR phone number we have on file\n\nAlso please provide the direct‑debit details (or say “please find the most recent direct debit from [company name]”",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_08",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: complaint about service delay AND request to update account contact details",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:create_ticket,tool_missing:update_account]; scenario:pass=[response_present]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 97469.35739996843,
+    "first_agent": "complaints_agent",
+    "responding_agent": "complaints_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "complaints_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "complaints_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[complaints_policy.yaml] ============================================================\n\nexecution:\n\n  - id: compensation_method\n    description: >\n      Compensation must be credited to the customer's active account\n      balance. If account is restricted, escalate to manual processing.\n    rules:\n      - if account_status == \"active\":\n          action: credit_account_balance\n      - else:\n          action: escalate_manual_processing\n\n  - id: resolution_sla\n    description: >\n      Standard compl",
+    "error": null
+  }
+]

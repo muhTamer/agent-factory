@@ -1,0 +1,272 @@
+[
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
+    "success": false,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[escalation_mismatch:expected=True,got=False]",
+    "latency_ms": 639366.8964998797,
+    "agent_calls": 4,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Your bank has been charging hidden fees on my account for months and I want a full refund plus I am filing a complaint with the financial ombudsman",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[escalation_mismatch:expected=True,got=False]",
+        "latency_ms": 127374.53899998218
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_01",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: lost card report AND pending transfer inquiry (cross-agent)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 230531.44429973327,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.77,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I lost my card and need a replacement, also I have a pending transfer from last week that still has not arrived",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]",
+        "latency_ms": 72866.03889986873
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_02",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: request refund for wrong exchange rate AND ask about supported currencies",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 271232.6227000449,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.79345,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I was charged the wrong exchange rate on a purchase and want a refund, also what currencies does the bank support?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False]",
+        "latency_ms": 71421.62570008077
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_03",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: report declined card AND request PIN change AND check balance",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 307237.545899814,
+    "agent_calls": 3,
+    "completeness_score": 1.0,
+    "solvability_score": 0.7765333333333334,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "My card keeps getting declined, I want to change my PIN, and also check how much is in my account",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]",
+        "latency_ms": 82462.03080005944
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_04",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: unrecognised charge refund AND complaint about card not working",
+    "success": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False]",
+    "latency_ms": 328335.44169995,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.81915,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I have a charge on my statement I do not recognise and want it refunded, also my card has stopped working in shops",
+        "pattern_correct": true,
+        "agent_correct": false,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False]",
+        "latency_ms": 80429.11379993893
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_05",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: dispute top-up revert AND ask about card limits",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 187187.16980004683,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.80705,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "My top-up was reverted for no reason and I need it fixed, also what are the daily spending limits on my card?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False]",
+        "latency_ms": 67096.97999991477
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_06",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: report stolen card AND reverse fraudulent transactions",
+    "success": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account]",
+    "latency_ms": 92532.42970001884,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 0.15,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "My card was stolen yesterday and I can see three transactions I did not make, block the card and reverse them all",
+        "pattern_correct": false,
+        "agent_correct": false,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account]",
+        "latency_ms": 92532.42970001884
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_07",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: failed direct debit refund AND cancel future direct debits",
+    "success": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:update_account]",
+    "latency_ms": 76258.55730008334,
+    "agent_calls": 1,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "An unauthorized direct debit was taken from my account, I need it refunded and I want to cancel all future direct debits from that company",
+        "pattern_correct": false,
+        "agent_correct": false,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:update_account]",
+        "latency_ms": 76258.55730008334
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_08",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: complaint about service delay AND request to update account contact details",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:create_ticket,tool_missing:update_account]; scenario:pass=[response_present] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 311021.3095000945,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.7846,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to file a complaint because my card replacement has taken over three weeks, and I also need to update my phone number and email on file.",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:create_ticket,tool_missing:update_account]",
+        "latency_ms": 77661.8500999175
+      }
+    ],
+    "governance_events": []
+  }
+]

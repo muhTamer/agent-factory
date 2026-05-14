@@ -1,0 +1,339 @@
+{
+  "total_scenarios": 45,
+  "tfidf_accuracy": 0.7333,
+  "neural_accuracy": 0.7556,
+  "tfidf_correct": 33,
+  "neural_correct": 34,
+  "agreement_rate": 0.6,
+  "standard_match": {
+    "count": 21,
+    "tfidf_accuracy": 0.9048,
+    "neural_accuracy": 0.7619,
+    "llm_accuracy": 0.7619
+  },
+  "lexical_gap": {
+    "count": 24,
+    "tfidf_accuracy": 0.5833,
+    "neural_accuracy": 0.75,
+    "llm_accuracy": 0.9583
+  },
+  "latency": {
+    "avg_tfidf_ms": 0.91,
+    "avg_neural_ms": 145.8,
+    "speedup_factor": 159.8,
+    "avg_llm_ms": 20458.92
+  },
+  "mcnemar": {
+    "pair": "tfidf_vs_neural",
+    "contingency": {
+      "both_correct": 25,
+      "tfidf_only": 8,
+      "neural_only": 9,
+      "both_wrong": 3
+    },
+    "discordant_pairs": 17,
+    "chi2": 0.0,
+    "p_value": 1.0,
+    "significant_at_005": false,
+    "favours": "neural"
+  },
+  "mcnemar_all_pairs": {
+    "tfidf_vs_neural": {
+      "pair": "tfidf_vs_neural",
+      "contingency": {
+        "both_correct": 25,
+        "tfidf_only": 8,
+        "neural_only": 9,
+        "both_wrong": 3
+      },
+      "discordant_pairs": 17,
+      "chi2": 0.0,
+      "p_value": 1.0,
+      "significant_at_005": false,
+      "favours": "neural"
+    },
+    "llm_vs_tfidf": {
+      "pair": "llm_vs_tfidf",
+      "contingency": {
+        "both_correct": 27,
+        "llm_only": 12,
+        "tfidf_only": 6,
+        "both_wrong": 0
+      },
+      "discordant_pairs": 18,
+      "chi2": 1.3889,
+      "p_value": 0.2386,
+      "significant_at_005": false,
+      "favours": "llm"
+    },
+    "llm_vs_neural": {
+      "pair": "llm_vs_neural",
+      "contingency": {
+        "both_correct": 28,
+        "llm_only": 11,
+        "neural_only": 6,
+        "both_wrong": 0
+      },
+      "discordant_pairs": 17,
+      "chi2": 0.9412,
+      "p_value": 0.332,
+      "significant_at_005": false,
+      "favours": "llm"
+    }
+  },
+  "by_category": {
+    "complaint_ambiguous": {
+      "count": 1,
+      "tfidf_correct": 0,
+      "tfidf_accuracy": 0.0,
+      "neural_correct": 0,
+      "neural_accuracy": 0.0
+    },
+    "complaint_lexical_gap": {
+      "count": 7,
+      "tfidf_correct": 6,
+      "tfidf_accuracy": 0.8571,
+      "neural_correct": 2,
+      "neural_accuracy": 0.2857
+    },
+    "complaint_standard": {
+      "count": 4,
+      "tfidf_correct": 3,
+      "tfidf_accuracy": 0.75,
+      "neural_correct": 0,
+      "neural_accuracy": 0.0
+    },
+    "faq_ambiguous": {
+      "count": 3,
+      "tfidf_correct": 3,
+      "tfidf_accuracy": 1.0,
+      "neural_correct": 3,
+      "neural_accuracy": 1.0
+    },
+    "faq_lexical_gap": {
+      "count": 7,
+      "tfidf_correct": 7,
+      "tfidf_accuracy": 1.0,
+      "neural_correct": 7,
+      "neural_accuracy": 1.0
+    },
+    "faq_standard": {
+      "count": 8,
+      "tfidf_correct": 8,
+      "tfidf_accuracy": 1.0,
+      "neural_correct": 8,
+      "neural_accuracy": 1.0
+    },
+    "refund_ambiguous": {
+      "count": 1,
+      "tfidf_correct": 0,
+      "tfidf_accuracy": 0.0,
+      "neural_correct": 1,
+      "neural_accuracy": 1.0
+    },
+    "refund_lexical_gap": {
+      "count": 9,
+      "tfidf_correct": 1,
+      "tfidf_accuracy": 0.1111,
+      "neural_correct": 8,
+      "neural_accuracy": 0.8889
+    },
+    "refund_standard": {
+      "count": 5,
+      "tfidf_correct": 5,
+      "tfidf_accuracy": 1.0,
+      "neural_correct": 5,
+      "neural_accuracy": 1.0
+    }
+  },
+  "confusion_tfidf": {
+    "complaints_agent": {
+      "complaints_agent": 9,
+      "faq_agent": 0,
+      "refunds_agent": 1
+    },
+    "faq_agent": {
+      "complaints_agent": 0,
+      "faq_agent": 18,
+      "refunds_agent": 0
+    },
+    "refunds_agent": {
+      "complaints_agent": 9,
+      "faq_agent": 0,
+      "refunds_agent": 6
+    }
+  },
+  "confusion_neural": {
+    "complaints_agent": {
+      "complaints_agent": 2,
+      "faq_agent": 0,
+      "refunds_agent": 8
+    },
+    "faq_agent": {
+      "complaints_agent": 0,
+      "faq_agent": 18,
+      "refunds_agent": 0
+    },
+    "refunds_agent": {
+      "complaints_agent": 1,
+      "faq_agent": 0,
+      "refunds_agent": 14
+    }
+  },
+  "llm_accuracy": 0.8667,
+  "llm_correct": 39,
+  "wall_time_seconds": 927.26,
+  "neural_mlp_trained": true,
+  "ablation_raw_tfidf": {
+    "total_scenarios": 45,
+    "tfidf_accuracy": 0.2,
+    "neural_accuracy": 0.4,
+    "tfidf_correct": 9,
+    "neural_correct": 18,
+    "agreement_rate": 0.2889,
+    "standard_match": {
+      "count": 21,
+      "tfidf_accuracy": 0.2857,
+      "neural_accuracy": 0.381
+    },
+    "lexical_gap": {
+      "count": 24,
+      "tfidf_accuracy": 0.125,
+      "neural_accuracy": 0.4167
+    },
+    "latency": {
+      "avg_tfidf_ms": 1.61,
+      "avg_neural_ms": 162.21,
+      "speedup_factor": 101.1
+    },
+    "mcnemar": {
+      "pair": "tfidf_vs_neural",
+      "contingency": {
+        "both_correct": 4,
+        "tfidf_only": 5,
+        "neural_only": 14,
+        "both_wrong": 22
+      },
+      "discordant_pairs": 19,
+      "chi2": 3.3684,
+      "p_value": 0.0665,
+      "significant_at_005": false,
+      "favours": "neural"
+    },
+    "mcnemar_all_pairs": {
+      "tfidf_vs_neural": {
+        "pair": "tfidf_vs_neural",
+        "contingency": {
+          "both_correct": 4,
+          "tfidf_only": 5,
+          "neural_only": 14,
+          "both_wrong": 22
+        },
+        "discordant_pairs": 19,
+        "chi2": 3.3684,
+        "p_value": 0.0665,
+        "significant_at_005": false,
+        "favours": "neural"
+      }
+    },
+    "by_category": {
+      "complaint_ambiguous": {
+        "count": 1,
+        "tfidf_correct": 0,
+        "tfidf_accuracy": 0.0,
+        "neural_correct": 0,
+        "neural_accuracy": 0.0
+      },
+      "complaint_lexical_gap": {
+        "count": 7,
+        "tfidf_correct": 1,
+        "tfidf_accuracy": 0.1429,
+        "neural_correct": 1,
+        "neural_accuracy": 0.1429
+      },
+      "complaint_standard": {
+        "count": 4,
+        "tfidf_correct": 0,
+        "tfidf_accuracy": 0.0,
+        "neural_correct": 0,
+        "neural_accuracy": 0.0
+      },
+      "faq_ambiguous": {
+        "count": 3,
+        "tfidf_correct": 0,
+        "tfidf_accuracy": 0.0,
+        "neural_correct": 1,
+        "neural_accuracy": 0.3333
+      },
+      "faq_lexical_gap": {
+        "count": 7,
+        "tfidf_correct": 2,
+        "tfidf_accuracy": 0.2857,
+        "neural_correct": 1,
+        "neural_accuracy": 0.1429
+      },
+      "faq_standard": {
+        "count": 8,
+        "tfidf_correct": 2,
+        "tfidf_accuracy": 0.25,
+        "neural_correct": 2,
+        "neural_accuracy": 0.25
+      },
+      "refund_ambiguous": {
+        "count": 1,
+        "tfidf_correct": 0,
+        "tfidf_accuracy": 0.0,
+        "neural_correct": 1,
+        "neural_accuracy": 1.0
+      },
+      "refund_lexical_gap": {
+        "count": 9,
+        "tfidf_correct": 0,
+        "tfidf_accuracy": 0.0,
+        "neural_correct": 7,
+        "neural_accuracy": 0.7778
+      },
+      "refund_standard": {
+        "count": 5,
+        "tfidf_correct": 4,
+        "tfidf_accuracy": 0.8,
+        "neural_correct": 5,
+        "neural_accuracy": 1.0
+      }
+    },
+    "confusion_tfidf": {
+      "complaints_agent": {
+        "complaints_agent": 1,
+        "faq_agent": 11,
+        "refunds_agent": 0
+      },
+      "faq_agent": {
+        "complaints_agent": 4,
+        "faq_agent": 4,
+        "refunds_agent": 3
+      },
+      "refunds_agent": {
+        "complaints_agent": 3,
+        "faq_agent": 8,
+        "refunds_agent": 4
+      }
+    },
+    "confusion_neural": {
+      "complaints_agent": {
+        "complaints_agent": 1,
+        "faq_agent": 2,
+        "refunds_agent": 8
+      },
+      "faq_agent": {
+        "complaints_agent": 0,
+        "faq_agent": 4,
+        "refunds_agent": 7
+      },
+      "refunds_agent": {
+        "complaints_agent": 1,
+        "faq_agent": 1,
+        "refunds_agent": 13
+      }
+    }
+  }
+}

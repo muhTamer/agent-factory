@@ -1,0 +1,105 @@
+[
+  {
+    "scenario_id": "hitl_01",
+    "category": "hitl_escalation",
+    "description": "Escalation: EUR 25000 fraud multi-turn (>5000 requires manager approval per policy)",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:create_ticket]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 328124.85940009356,
+    "first_agent": "complaints_agent",
+    "responding_agent": "complaints_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[complaints_policy.yaml] ============================================================\nSECTION 2 — COMPENSATION AMOUNT RULES\n============================================================\n\namount_rules:\n\n  - id: max_auto_compensation_limit\n    description: >\n      Compensation up to and including EUR 500 may be auto-approved\n      by the system if eligibility conditions are met.\n    threshold: 500\n    currency: EUR\n    approval: auto\n    slot_name: compensation_amount\n\n  - id: manager_approval_requ",
+    "error": null
+  },
+  {
+    "scenario_id": "edge_02",
+    "category": "graceful_degradation",
+    "description": "Refund for fictitious product (graceful handling)",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[clarification_or_response,response_present]",
+    "latency_ms": 138642.09090010263,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "refunds_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "I can help — a few quick clarifying items and one required authorization before I can look anything up or start a refund/dispute.\n\n1) Do you believe this flying‑car purchase was authorized by you and you now want a merchant refund/return, or do you believe it was an unauthorized/fraudulent charge?\n   - If unauthorized: we’ll open an urgent fraud investigation (police report requested).\n   - If authorized: we’ll first ask the merchant to refund; if they refuse we can open a card chargeback/disput",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_refund_03",
+    "category": "actionable_routing",
+    "description": "BANKING77: failed transfer (EUR 1200, auto-approve)",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 222272.71129982546,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "refunds_agent",
+      "accounts_agent",
+      "complaints_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[refunds_policy.yaml] ============================================================\n\nexecution:\n\n  - id: refund_method\n    description: >\n      Refunds must be returned to the original payment method whenever possible.\n      If not available, escalate to manual handling.\n    rules:\n      - if original_payment_method_available == true:\n          action: refund_to_original_method\n      - else:\n          action: escalate_manual_processing\n\n  - id: refund_settlement_time\n    description: >\n      Stan",
+    "error": null
+  }
+]

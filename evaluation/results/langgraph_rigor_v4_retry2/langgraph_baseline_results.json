@@ -1,0 +1,51 @@
+[
+  {
+    "scenario_id": "hitl_01",
+    "category": "hitl_escalation",
+    "description": "Escalation: EUR 25000 fraud multi-turn (>5000 requires manager approval per policy)",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:create_ticket]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 527376.4484999701,
+    "first_agent": "refunds_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "refunds_agent",
+      "accounts_agent",
+      "complaints_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "complaints_knowledge_search",
+      "complaints_knowledge_search",
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "lookup_payment",
+      "lookup_payment",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "complaints_knowledge_search",
+      "complaints_knowledge_search",
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "complaints_knowledge_search",
+      "complaints_knowledge_search"
+    ],
+    "answer_text": "Summary from teams: we have CUST-FRAUD-99 and TXN-FRAUD-25K (settled, 5 days old — within the 90‑day window). Refunds > EUR 5,000 require manager + finance approval and a formal investigation; KYC verification and an active (not frozen) account are mandatory. We cannot proceed until you give explicit consent.\n\nPlease reply with one exact phrase (copy-paste one):\n\n- Option A (freeze + start KYC & investigation): CUST-FRAUD-99 I consent Freeze my account now\n- Option B (no freeze, start KYC & inve",
+    "error": null
+  }
+]

@@ -1,0 +1,568 @@
+[
+  {
+    "scenario_id": "faq_10",
+    "category": "informational_routing",
+    "description": "FAQ: Overdraft facility eligibility and application process",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[knowledge=yes,response_present]",
+    "latency_ms": 76137.18870002776,
+    "first_agent": "accounts_agent",
+    "responding_agent": "accounts_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "You can apply for an overdraft, but there are eligibility and KYC requirements. Here’s a concise guide and the next steps you can take.\n\nWhat to know first\n- Overdrafts are not available on Recurring Deposit accounts.  \n- Limits (FAQ): minimum Rs. 25,000; maximum Rs. 1,00,000 (final amount depends on eligibility).  \n- Eligible account types: active current/checking accounts (accounts must not be dormant, under legal hold, or part of estate processing).  \n- Secured option: Overdrafts can sometime",
+    "error": null
+  },
+  {
+    "scenario_id": "refund_01",
+    "category": "actionable_routing",
+    "description": "Refund: simple eligible refund under EUR 5000 (auto-approve per policy)",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 260112.8301001154,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "refunds_agent",
+      "accounts_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "I can start, but I still need your explicit one-line consent plus the transaction year before I run any checks (policy requirement).\n\nPlease reply exactly with this line (copy/paste and change the year if needed):\nI consent to KYC and lookup for ACC-2024-7891 — March 15, 2026\n\nOnce you send that exact line I will:\n- run the mandatory KYC/identity check and look up the March 15 EUR 200 MerchantXYZ transaction,  \n- if eligible (KYC verified, account active, ≤90 days, not under investigation), init",
+    "error": null
+  },
+  {
+    "scenario_id": "complaint_02",
+    "category": "actionable_routing",
+    "description": "Complaint: ombudsman threat (regulatory escalation per policy)",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:handoff_to_human]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 179178.72620001435,
+    "first_agent": "complaints_agent",
+    "responding_agent": "complaints_agent",
+    "agents_involved": [
+      "complaints_agent",
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "complaints_agent",
+      "faq_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[complaints_policy.yaml] ============================================================\n\nexecution:\n\n  - id: compensation_method\n    description: >\n      Compensation must be credited to the customer's active account\n      balance. If account is restricted, escalate to manual processing.\n    rules:\n      - if account_status == \"active\":\n          action: credit_account_balance\n      - else:\n          action: escalate_manual_processing\n\n  - id: resolution_sla\n    description: >\n      Standard compl",
+    "error": null
+  },
+  {
+    "scenario_id": "deleg_03",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: refund AND address change",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:update_profile]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 101610.68339995109,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "refunds_agent",
+      "accounts_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "I can do both — but I must have your explicit one-line consent before I run any KYC/transaction checks, plus the address and duplicate-charge details so I process everything correctly.\n\nPlease reply using the exact consent line below (copy/paste and change the year if the charge was in a different year), and include the new mailing address plus duplicate-charge confirmation in the same reply. Example single reply you can send:\n\nI consent to KYC and lookup for ACC-2024-7891 — March 15, 2026\nDupli",
+    "error": null
+  },
+  {
+    "scenario_id": "deleg_05",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: open new account AND close existing one",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 80497.10779986344,
+    "first_agent": "accounts_agent",
+    "responding_agent": "accounts_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "I can help — here’s what’s required and how we can proceed.\n\nQuick summary (policy highlights)\n- To open a Premium Current Account you must be KYC‑verified (valid government ID + proof of address dated ≤90 days) and ≥18 years old. For SMEs additional business documents may be required.  \n- To close your Regular Current Account it must have: zero outstanding balance, no pending transactions, and no linked credit/loan facilities. If there is a remaining balance we will need transfer instructions b",
+    "error": null
+  },
+  {
+    "scenario_id": "deleg_12",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: report unauthorized transaction AND freeze account",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 135308.18350007758,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "refunds_agent",
+      "accounts_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "I can start this immediately — but I still need your explicit one-line consent plus the transaction date/merchant before I can run KYC, open the fraud case, or place a freeze.\n\nPlease reply exactly with one line using this template (copy/paste and replace the bracketed items):\n\nI consent to KYC, fraud lookup and account freeze for ACC-2024-7891 — Transaction: April 2, 2026 — Merchant: MerchantXYZ — Amount: EUR 800 — Freeze: yes — 2FA ready: yes\n\nWhat I’ll do as soon as you send that exact line:\n",
+    "error": null
+  },
+  {
+    "scenario_id": "deleg_14",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: three intents — refund, complaint, and FAQ",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:create_ticket]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 137720.91189981438,
+    "first_agent": "complaints_agent",
+    "responding_agent": "complaints_agent",
+    "agents_involved": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "handling_agents": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "I can handle the EUR 100 refund and open the formal complaint about branch handling. Quick summary of what applies (policy‑grounded):\n\n- Refunds: must go to the original payment method when possible and, if approved, typically settle in 3–5 business days (refund method and timing per our refunds policy).  \n- Eligibility checks before we proceed: identity/KYC verification, active account, transaction not excluded (e.g., confirmed fraud, crypto, closed/frozen accounts).  \n- Complaints: standard re",
+    "error": null
+  },
+  {
+    "scenario_id": "deleg_15",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: close savings AND open fixed deposit",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 99558.44649998471,
+    "first_agent": "accounts_agent",
+    "responding_agent": "accounts_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[accounts_policy.yaml] ============================================================\n\neligibility:\n\n  - id: account_opening_kyc\n    description: >\n      New account opening requires successful KYC verification\n      including valid government-issued ID and proof of address\n      dated within the last 3 months.\n    conditions:\n      - kyc_status == \"verified\"\n      - id_document_valid == true\n      - proof_of_address_age_days <= 90\n    outcome: eligible\n\n  - id: account_opening_age\n    description",
+    "error": null
+  },
+  {
+    "scenario_id": "deleg_16",
+    "category": "action_routing",
+    "description": "Sequential action: add beneficiary then initiate international transfer (same agent)",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_transfer]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 86120.31699996442,
+    "first_agent": "accounts_agent",
+    "responding_agent": "accounts_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[accounts_policy.yaml] ============================================================\nSECTION 6 — AML / RISK SAFEGUARDS\n============================================================\n\nrisk_controls:\n\n  - id: aml_account_opening\n    description: >\n      All new account applications undergo automated AML screening\n      against sanctions lists and PEP databases. Matches trigger\n      enhanced due diligence review.\n    action: automated_screening_then_edd_if_flagged\n\n  - id: unusual_activity_monitoring",
+    "error": null
+  },
+  {
+    "scenario_id": "hitl_01",
+    "category": "hitl_escalation",
+    "description": "Escalation: EUR 25000 fraud multi-turn (>5000 requires manager approval per policy)",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 301312.2429847717,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
+  },
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[escalation=yes,response_present,kw_any:complaint,ombudsman,escalat]",
+    "latency_ms": 110485.29390012845,
+    "first_agent": "complaints_agent",
+    "responding_agent": "complaints_agent",
+    "agents_involved": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "handling_agents": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "I’m sorry — that shouldn’t happen. I can open a formal complaint and start a refund review, but I must follow policy checks (KYC, evidence preservation, AML) and cannot promise a full immediate reimbursement before investigation is complete.\n\nQuick summary of what will happen and limits (policy‑based)\n- We will open a formal complaint and notify Compliance immediately (you’ve mentioned the ombudsman).  \n- Standard complaint SLA: 5 business days (complex cases up to 15).  \n- Refunds are returned ",
+    "error": null
+  },
+  {
+    "scenario_id": "hitl_03",
+    "category": "hitl_escalation",
+    "description": "Escalation: compromised card with active fraud (multi-intent)",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 113473.55409990996,
+    "first_agent": "accounts_agent",
+    "responding_agent": "accounts_agent",
+    "agents_involved": [
+      "refunds_agent",
+      "accounts_agent"
+    ],
+    "handling_agents": [
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search"
+    ],
+    "answer_text": "I’m sorry this is happening — I can’t block the card or open a fraud investigation without your explicit one‑line consent (policy). If you need an immediate block now, call our 24/7 hotline first.\n\nOtherwise please copy/paste and send this exact single line (replace bracketed items):\n\nI consent to KYC, fraud lookup and card block for [YOUR_CUSTOMER_ID_or_registered_email] — Card last4: [1234] — Freeze: yes — 2FA ready: yes — Preferred contact: [email or phone] — Police report filed: [yes/no]\n\nIn",
+    "error": null
+  },
+  {
+    "scenario_id": "hitl_04",
+    "category": "hitl_escalation",
+    "description": "Escalation: vulnerable customer in financial distress",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[clarification_or_response,response_present]",
+    "latency_ms": 112077.43870001286,
+    "first_agent": "accounts_agent",
+    "responding_agent": "accounts_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[accounts_policy.yaml] ============================================================\n\nmetadata:\n  policy_id: novapay_accounts_policy\n  jurisdiction: EU\n  regulatory_framework:\n    - PSD2\n    - GDPR\n    - AMLD5\n    - EBA Guidelines on Account Switching\n  internal_references:\n    - KYC/AML Compliance Handbook 2024\n    - Data Privacy Operations Manual v2.1\n\noverview: >\n  This policy defines the eligibility criteria, approval workflow,\n  compliance safeguards, and execution standards for account life",
+    "error": null
+  },
+  {
+    "scenario_id": "hitl_05",
+    "category": "hitl_escalation",
+    "description": "Escalation: deceased account holder estate inquiry",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[clarification_or_response,knowledge=yes,response_present]",
+    "latency_ms": 107250.40429993533,
+    "first_agent": "accounts_agent",
+    "responding_agent": "accounts_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "Thanks — I can proceed with your deceased‑account request. Do you want me to:\n\nA) Open an estate/claims case now with the specialist team and locate the accounts, or  \nB) Send the full document checklist and secure upload instructions so you can prepare first?\n\nIf you want A (I’ll escalate), please reply with these non‑sensitive items and the exact one‑line consent required by policy (do NOT post scanned IDs or full account/card numbers here):\n\n- Non‑sensitive identifier: customer ID OR last 4 d",
+    "error": null
+  },
+  {
+    "scenario_id": "hitl_06",
+    "category": "hitl_escalation",
+    "description": "Escalation: suspected money laundering report",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[clarification_or_response,response_present]",
+    "latency_ms": 156370.14149990864,
+    "first_agent": "complaints_agent",
+    "responding_agent": "complaints_agent",
+    "agents_involved": [
+      "complaints_agent",
+      "accounts_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent"
+    ],
+    "tools_used": [
+      "knowledge_search"
+    ],
+    "answer_text": "Understood — this is urgent and we must follow AML/fraud rules. Per policy: unusual activity is reviewed within 24 hours, and transfers above EUR 15,000 trigger additional verification and reporting. We cannot act without your explicit one‑line consent.\n\nPlease do NOT move funds or attempt transfers. If you want the fastest possible block, call our 24/7 hotline now and then paste the consent line here so I can open the case.\n\nCopy/paste this exact single line (replace bracketed items) and send i",
+    "error": null
+  },
+  {
+    "scenario_id": "edge_01",
+    "category": "graceful_degradation",
+    "description": "Out-of-domain: quantum physics question (graceful fallback to FAQ)",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present,kw_any:outside]",
+    "latency_ms": 91190.02350000665,
+    "first_agent": "faq_agent",
+    "responding_agent": "faq_agent",
+    "agents_involved": [
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent"
+    ],
+    "tools_used": [
+      "knowledge_search"
+    ],
+    "answer_text": "This topic is outside the bank’s FAQ domain, but I can help. Would you like one of the following (pick one)?\n\n- A short, non‑technical example and intuition (quick recap in plain language).  \n- A simple Gaussian wavepacket example showing the minimum‑uncertainty case (with the key equations).  \n- A concise operator‑based derivation sketch (using [x,p]=iħ and the standard deviation inequality).  \n- Links to reputable resources (textbooks and online lectures).\n\nTell me which and I’ll give a brief,",
+    "error": null
+  },
+  {
+    "scenario_id": "edge_02",
+    "category": "graceful_degradation",
+    "description": "Refund for fictitious product (graceful handling)",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 330979.7668457031,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
+  },
+  {
+    "scenario_id": "edge_05",
+    "category": "graceful_degradation",
+    "description": "Legal threat requiring human intervention (graceful AOP handling)",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present,kw_any:escalat,complaint,sorry]",
+    "latency_ms": 115628.50739993155,
+    "first_agent": "complaints_agent",
+    "responding_agent": "complaints_agent",
+    "agents_involved": [
+      "complaints_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "complaints_agent",
+      "faq_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "handoff_to_human"
+    ],
+    "answer_text": "I’m sorry this has escalated — I can’t arrange direct CEO contact. Per policy, legal claims must be handled by our Legal & Compliance teams (and any mention of litigation is escalated immediately). I’ve already flagged this to our human escalation team so Legal/Compliance and Senior Ops have been notified.\n\nWhat I cannot do\n- Promise direct CEO availability or share CEO contact details here.  \n- Accept scanned legal documents or sensitive IDs in chat — please use your lawyer to send formal notic",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_refund_01",
+    "category": "actionable_routing",
+    "description": "BANKING77: card payment not recognised (EUR 89.99, auto-approve)",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 201513.37609998882,
+    "first_agent": "refunds_agent",
+    "responding_agent": "refunds_agent",
+    "agents_involved": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "handling_agents": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[refunds_policy.yaml] ============================================================\n\nexecution:\n\n  - id: refund_method\n    description: >\n      Refunds must be returned to the original payment method whenever possible.\n      If not available, escalate to manual handling.\n    rules:\n      - if original_payment_method_available == true:\n          action: refund_to_original_method\n      - else:\n          action: escalate_manual_processing\n\n  - id: refund_settlement_time\n    description: >\n      Stan",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_refund_03",
+    "category": "actionable_routing",
+    "description": "BANKING77: failed transfer (EUR 1200, auto-approve)",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 300014.2014026642,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
+  }
+]

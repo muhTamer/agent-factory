@@ -1,0 +1,542 @@
+============================================================
+AGENT FACTORY ORCHESTRATION — EVALUATION HARNESS
+DSRM Stage 5 | REAL LLM MODE | Estimator: llm
+============================================================
+
+2026-03-31 22:41:09,703 [INFO] evaluation.rq1: LLM API provider: Azure OpenAI
+2026-03-31 22:41:09,741 [INFO] evaluation.rq1: Loading real agent: faq_agent
+[03/31/26 22:41:19] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+2026-03-31 22:42:29,870 [INFO] evaluation.rq1: Loading real agent: refunds_agent
+2026-03-31 22:42:31,639 [INFO] evaluation.rq1: Loading real agent: complaints_agent
+2026-03-31 22:42:33,263 [INFO] evaluation.rq1: Loading real agent: accounts_agent
+2026-03-31 22:42:34,690 [INFO] evaluation.rq1: Loaded 4 real agents: ['faq_agent', 'refunds_agent', 'complaints_agent', 'accounts_agent']
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-03-31 22:43:49,559 [WARNING] huggingface_hub.utils._http: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 6452.39it/s]
+[1mBertModel LOAD REPORT[0m from: sentence-transformers/all-MiniLM-L6-v2
+Key                     | Status     |  | 
+------------------------+------------+--+-
+embeddings.position_ids | UNEXPECTED |  | 
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.[0m
+2026-03-31 22:43:52,302 [INFO] evaluation.rq1: Solvability estimator: llm
+
+Running 35 scenarios with REAL LLM agents...
+Inter-scenario delay: 1.0s
+
+2026-03-31 22:43:52,312 [INFO] evaluation.rq1: ============================================================
+2026-03-31 22:43:52,312 [INFO] evaluation.rq1: AGENT FACTORY — Starting 35 scenarios
+2026-03-31 22:43:52,312 [INFO] evaluation.rq1: Log file: C:\Users\mozaki\OneDrive\CBS\Thesis\agent-factory\evaluation\logs\agent_factory.log
+2026-03-31 22:43:52,312 [INFO] evaluation.rq1: ============================================================
+2026-03-31 22:43:52,312 [INFO] evaluation.rq1: [1/35] ▶ faq_06 (category=informational_routing)
+[REQ] faq_06_turn0: I want to know about the refund or dispute process at your bank.
+[AOP] hierarchical delegation for: I want to know about the refund or dispute process at your bank.
+[REQ] faq_06_turn0_aop0: 1
+[REQ] faq_06_turn0_aop1: 1
+[REQ] faq_06_turn1: I'm asking about a card transaction dispute — a merchant charged me twice.
+[AOP] hierarchical delegation for: I'm asking about a card transaction dispute — a merchant charged me twice.
+[REQ] faq_06_turn1_aop0: 1
+[REQ] faq_06_turn1_aop1: 1
+[REQ] faq_06_turn1_aop2: 1
+2026-03-31 22:54:04,339 [INFO] evaluation.rq1:   [SOFT] faq_06                pattern=MISS  agent=OK    latency=612027ms  [1✓ 0✗ | ETA 346m48s]
+2026-03-31 22:54:05,347 [INFO] evaluation.rq1: [2/35] ▶ faq_07 (category=informational_routing)
+[REQ] faq_07_turn0: How do I make a claim?
+[AOP] hierarchical delegation for: How do I make a claim?
+[REQ] faq_07_turn1: It's an insurance claim — I have the Accidental Protection Plan.
+[AOP] hierarchical delegation for: It's an insurance claim — I have the Accidental Protection Plan.
+[REQ] faq_07_turn1_aop0: 1
+[REQ] faq_07_turn1_aop1: 1
+[REQ] faq_07_turn1_aop2: 1
+2026-03-31 23:04:58,416 [INFO] evaluation.rq1:   [PASS] faq_07                pattern=MISS  agent=OK    latency=653069ms  [2✓ 0✗ | ETA 348m10s]
+2026-03-31 23:04:59,419 [INFO] evaluation.rq1: [3/35] ▶ faq_08 (category=informational_routing)
+[REQ] faq_08_turn0: What should I do about my card?
+[AOP] hierarchical delegation for: What should I do about my card?
+[REQ] faq_08_turn0_aop0: 1
+[REQ] faq_08_turn0_aop1: 1
+[ROUTER] sticky primary=faq_agent
+[REQ] faq_08_turn0_aop2: 1
+[ROUTER] sticky primary=faq_agent
+[REQ] faq_08_turn0_aop3: 1
+[ROUTER] sticky primary=faq_agent
+[REQ] faq_08_turn1: My debit card was lost. What is the procedure?
+[ROUTER] sticky primary=faq_agent
+2026-03-31 23:12:00,764 [INFO] evaluation.rq1:   [SOFT] faq_08                pattern=MISS  agent=OK    latency=421345ms  [3✓ 0✗ | ETA 300m10s]
+2026-03-31 23:12:01,770 [INFO] evaluation.rq1: [4/35] ▶ faq_10 (category=informational_routing)
+[REQ] faq_10_turn0: How can I apply for an overdraft facility on my account?
+[AOP] hierarchical delegation for: How can I apply for an overdraft facility on my account?
+[REQ] faq_10_turn0_aop0: 1
+[REQ] faq_10_turn0_aop1: 1
+[ROUTER] sticky primary=faq_agent
+2026-03-31 23:16:50,730 [INFO] evaluation.rq1:   [SOFT] faq_10                pattern=MISS  agent=OK    latency=288960ms  [4✓ 0✗ | ETA 255m32s]
+2026-03-31 23:16:51,738 [INFO] evaluation.rq1: [5/35] ▶ refund_01 (category=actionable_routing)
+[REQ] refund_01_turn0: I want a refund for a EUR 200 charge on my account
+[AOP] hierarchical delegation for: I want a refund for a EUR 200 charge on my account
+[REQ] refund_01_turn0_aop0: 1
+[REQ] refund_01_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[03/31/26 23:21:56] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] refund_01_turn0_aop2: 1
+[ROUTER] sticky primary=refunds_agent
+[REQ] refund_01_turn0_aop3: 1
+[ROUTER] sticky primary=refunds_agent
+[REQ] refund_01_turn1: My account number is ACC-2024-7891 and the charge was on March 15th from MerchantXYZ
+[ROUTER] sticky primary=refunds_agent
+[REQ] refund_01_turn2: Yes, please go ahead and process the refund
+[ROUTER] sticky primary=refunds_agent
+2026-03-31 23:26:51,967 [INFO] evaluation.rq1:   [SOFT] refund_01             pattern=MISS  agent=OK    latency=600230ms  [5✓ 0✗ | ETA 257m57s]
+2026-03-31 23:26:52,968 [INFO] evaluation.rq1: [6/35] ▶ refund_02 (category=actionable_routing)
+[REQ] refund_02_turn0: I need a refund for order number 12345, charged EUR 150 on my card
+[AOP] hierarchical delegation for: I need a refund for order number 12345, charged EUR 150 on my card
+[REQ] refund_02_turn0_aop0: 1
+[03/31/26 23:28:25] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] refund_02_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[03/31/26 23:30:18] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[03/31/26 23:30:31] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] refund_02_turn0_aop2: 1
+[ROUTER] sticky primary=refunds_agent
+[03/31/26 23:32:39] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[03/31/26 23:32:53] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] refund_02_turn1: My account ID is ACC-2024-3456 and I paid with my Visa ending in 4242
+[AOP] hierarchical delegation for: My account ID is ACC-2024-3456 and I paid with my Visa ending in 4242
+[REQ] refund_02_turn1_aop0: 1
+[03/31/26 23:36:07] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[03/31/26 23:36:13] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] refund_02_turn1_aop1: 1
+[03/31/26 23:37:18] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[03/31/26 23:37:34] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[03/31/26 23:39:48] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] refund_02_turn1_aop2: 1
+[REQ] refund_02_turn1_aop3: 1
+2026-03-31 23:44:17,608 [WARNING] evaluation.rq1: [6/35] ✗ refund_02 TIMEOUT after 900s
+2026-03-31 23:44:17,608 [INFO] evaluation.rq1:   [FAIL] refund_02             pattern=MISS  agent=MISS  latency=1044639ms  [5✓ 1✗ | ETA 292m02s]
+2026-03-31 23:44:18,609 [INFO] evaluation.rq1: [7/35] ▶ refund_05 (category=actionable_routing)
+[REQ] refund_05_turn0: I was charged twice for the same transaction of EUR 75, please refund one
+[AOP] hierarchical delegation for: I was charged twice for the same transaction of EUR 75, please refund one
+[REQ] refund_05_turn0_aop0: 1
+[REQ] refund_05_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[03/31/26 23:47:00] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] refund_05_turn1: The duplicate charges appeared on March 10th, account ACC-2024-5501, both from the same online store
+[ROUTER] sticky primary=refunds_agent
+2026-03-31 23:48:13,279 [INFO] evaluation.rq1:   [SOFT] refund_05             pattern=MISS  agent=OK    latency=234671ms  [6✓ 1✗ | ETA 257m23s]
+2026-03-31 23:48:14,287 [INFO] evaluation.rq1: [8/35] ▶ refund_07 (category=actionable_routing)
+[REQ] refund_07_turn0: There is an unauthorized EUR 500 charge from a foreign merchant on my account
+[AOP] hierarchical delegation for: There is an unauthorized EUR 500 charge from a foreign merchant on my account
+[REQ] refund_07_turn0_aop0: 1
+[REQ] refund_07_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[03/31/26 23:49:59] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] refund_07_turn0_aop2: 1
+[ROUTER] sticky primary=refunds_agent
+[03/31/26 23:52:13] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] refund_07_turn1: My account is ACC-2024-8820 and the charge appeared yesterday from a merchant in Romania that I do not recognise
+[ROUTER] sticky primary=refunds_agent
+[03/31/26 23:53:35] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[03/31/26 23:53:46] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[03/31/26 23:54:08] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[03/31/26 23:54:20] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-03-31 23:56:06,855 [INFO] evaluation.rq1:   [SOFT] refund_07             pattern=MISS  agent=OK    latency=472568ms  [7✓ 1✗ | ETA 243m49s]
+2026-03-31 23:56:07,860 [INFO] evaluation.rq1: [9/35] ▶ complaint_01 (category=actionable_routing)
+[REQ] complaint_01_turn0: I want to file a formal complaint about the poor service at your branch
+[AOP] hierarchical delegation for: I want to file a formal complaint about the poor service at your branch
+[REQ] complaint_01_turn0_aop0: 1
+[AOP-GUARD] Blocked action agent complaints_agent — no transaction details in query
+[REQ] complaint_01_turn0_aop1: 1
+[AOP-GUARD] Blocked action agent complaints_agent — no transaction details in query
+[REQ] complaint_01_turn0_aop2: 1
+[AOP-GUARD] Blocked action agent complaints_agent — no transaction details in query
+[REQ] complaint_01_turn0_aop3: 1
+[AOP-GUARD] Blocked action agent complaints_agent — no transaction details in query
+[REQ] complaint_01_turn1: It was the downtown branch on High Street, I visited on March 18th and waited 2 hours with no assistance
+[AOP] hierarchical delegation for: It was the downtown branch on High Street, I visited on March 18th and waited 2 
+[REQ] complaint_01_turn1_aop0: 1
+[REQ] complaint_01_turn1_aop1: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 00:06:14] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] complaint_01_turn1_aop2: 1
+[ROUTER] sticky primary=accounts_agent
+2026-04-01 00:08:26,063 [INFO] evaluation.rq1:   [SOFT] complaint_01          pattern=MISS  agent=OK    latency=738203ms  [8✓ 1✗ | ETA 244m17s]
+2026-04-01 00:08:27,075 [INFO] evaluation.rq1: [10/35] ▶ complaint_02 (category=actionable_routing)
+[REQ] complaint_02_turn0: I want to escalate my complaint to a manager, or I will go to the ombudsman
+[AOP] hierarchical delegation for: I want to escalate my complaint to a manager, or I will go to the ombudsman
+[REQ] complaint_02_turn0_aop0: 1
+[REQ] complaint_02_turn0_aop1: 1
+[ROUTER] sticky primary=complaints_agent
+[04/01/26 00:10:34] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] complaint_02_turn1: My complaint reference is CMP-2024-445 and I first raised it three weeks ago but have not received any response
+[ROUTER] sticky primary=complaints_agent
+[04/01/26 00:11:17] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 00:11:32,206 [INFO] evaluation.rq1:   [SOFT] complaint_02          pattern=MISS  agent=OK    latency=185131ms  [9✓ 1✗ | ETA 219m09s]
+2026-04-01 00:11:33,208 [INFO] evaluation.rq1: [11/35] ▶ deleg_08 (category=hierarchical_delegation)
+[REQ] deleg_08_turn0: I want to dispute a EUR 350 charge I did not make, and what fraud protection does my account have?
+[AOP] hierarchical delegation for: I want to dispute a EUR 350 charge I did not make, and what fraud protection doe
+[REQ] deleg_08_turn0_aop0: 1
+[REQ] deleg_08_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 00:14:10] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 00:16:09,763 [INFO] evaluation.rq1:   [SOFT] deleg_08              pattern=OK    agent=OK    latency=276555ms  [10✓ 1✗ | ETA 201m21s]
+2026-04-01 00:16:10,776 [INFO] evaluation.rq1: [12/35] ▶ deleg_09 (category=hierarchical_delegation)
+[REQ] deleg_09_turn0: I want to complain about the 45 minute wait on your phone line, and also I need my last 3 months account statements
+[AOP] hierarchical delegation for: I want to complain about the 45 minute wait on your phone line, and also I need 
+[REQ] deleg_09_turn0_aop0: 1
+[REQ] deleg_09_turn0_aop1: 1
+[ROUTER] sticky primary=complaints_agent
+[04/01/26 00:18:41] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 00:19:19,260 [INFO] evaluation.rq1:   [SOFT] deleg_09              pattern=OK    agent=OK    latency=188483ms  [11✓ 1✗ | ETA 182m56s]
+2026-04-01 00:19:20,264 [INFO] evaluation.rq1: [13/35] ▶ deleg_10 (category=hierarchical_delegation)
+[REQ] deleg_10_turn0: Refund the EUR 50 double charge from yesterday and also switch my alerts to email instead of SMS
+[AOP] hierarchical delegation for: Refund the EUR 50 double charge from yesterday and also switch my alerts to emai
+[REQ] deleg_10_turn0_aop0: 1
+[REQ] deleg_10_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 00:22:07] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 00:23:19,833 [INFO] evaluation.rq1:   [SOFT] deleg_10              pattern=OK    agent=OK    latency=239569ms  [12✓ 1✗ | ETA 168m18s]
+2026-04-01 00:23:20,843 [INFO] evaluation.rq1: [14/35] ▶ deleg_11 (category=hierarchical_delegation)
+[REQ] deleg_11_turn0: Why was I charged an overdraft fee and can you reverse it? Also what are the conditions to avoid it in future?
+[AOP] hierarchical delegation for: Why was I charged an overdraft fee and can you reverse it? Also what are the con
+[REQ] deleg_11_turn0_aop0: 1
+[REQ] deleg_11_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 00:26:46] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] deleg_11_turn0_aop2: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 00:28:13] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 00:28:48,264 [INFO] evaluation.rq1:   [SOFT] deleg_11              pattern=OK    agent=OK    latency=327421ms  [13✓ 1✗ | ETA 157m23s]
+2026-04-01 00:28:49,273 [INFO] evaluation.rq1: [15/35] ▶ deleg_13 (category=hierarchical_delegation)
+[REQ] deleg_13_turn0: I want to upgrade from regular to premium current account and transfer my full balance to the new account
+[AOP] hierarchical delegation for: I want to upgrade from regular to premium current account and transfer my full b
+[REQ] deleg_13_turn0_aop0: 1
+[REQ] deleg_13_turn0_aop1: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 00:32:07] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] deleg_13_turn0_aop2: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 00:33:13] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] deleg_13_turn0_aop3: 1
+[04/01/26 00:33:40] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 00:34:22,049 [INFO] evaluation.rq1:   [SOFT] deleg_13              pattern=OK    agent=OK    latency=332776ms  [14✓ 1✗ | ETA 147m19s]
+2026-04-01 00:34:23,051 [INFO] evaluation.rq1: [16/35] ▶ deleg_14 (category=hierarchical_delegation)
+[REQ] deleg_14_turn0: I want a refund for the EUR 100 charge, I want to complain about how the branch handled it, and what are my rights under consumer protection?
+[AOP] hierarchical delegation for: I want a refund for the EUR 100 charge, I want to complain about how the branch 
+[REQ] deleg_14_turn0_aop0: 1
+[REQ] deleg_14_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 00:37:14] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] deleg_14_turn0_aop2: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 00:39:36] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 00:41:27,540 [INFO] evaluation.rq1:   [SOFT] deleg_14              pattern=OK    agent=OK    latency=424489ms  [15✓ 1✗ | ETA 139m38s]
+2026-04-01 00:41:28,549 [INFO] evaluation.rq1: [17/35] ▶ deleg_15 (category=hierarchical_delegation)
+[REQ] deleg_15_turn0: Close my savings account and use the balance to open a fixed deposit for 12 months
+[AOP] hierarchical delegation for: Close my savings account and use the balance to open a fixed deposit for 12 mont
+2026-04-01 00:43:40,272 [INFO] evaluation.rq1:   [FAIL] deleg_15              pattern=OK    agent=MISS  latency=131723ms  [15✓ 2✗ | ETA 126m50s]
+2026-04-01 00:43:41,283 [INFO] evaluation.rq1: [18/35] ▶ deleg_16 (category=action_routing)
+[REQ] deleg_16_turn0: I need to add a new international beneficiary and then send EUR 2000 to them via SWIFT
+[AOP] hierarchical delegation for: I need to add a new international beneficiary and then send EUR 2000 to them via
+[REQ] deleg_16_turn0_aop0: 1
+[AOP-GUARD] Blocked action agent accounts_agent — no transaction details in query
+[REQ] deleg_16_turn0_aop1: 1
+[AOP-GUARD] Blocked action agent accounts_agent — no transaction details in query
+[REQ] deleg_16_turn0_aop2: 1
+[AOP-GUARD] Blocked action agent accounts_agent — no transaction details in query
+[REQ] deleg_16_turn0_aop3: 1
+[AOP-GUARD] Blocked action agent accounts_agent — no transaction details in query
+[REQ] deleg_16_turn0_aop4: 1
+[AOP-GUARD] Blocked action agent accounts_agent — no transaction details in query
+2026-04-01 00:51:08,745 [INFO] evaluation.rq1:   [SOFT] deleg_16              pattern=MISS  agent=OK    latency=447462ms  [16✓ 2✗ | ETA 120m12s]
+2026-04-01 00:51:09,747 [INFO] evaluation.rq1: [19/35] ▶ hitl_01 (category=hitl_escalation)
+[REQ] hitl_01_turn0: Someone has stolen EUR 25000 from my account through multiple unauthorized transactions over the past month and I need all of it back immediately
+[AOP] hierarchical delegation for: Someone has stolen EUR 25000 from my account through multiple unauthorized trans
+[REQ] hitl_01_turn0_aop0: 1
+[REQ] hitl_01_turn0_aop1: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 00:54:22] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] hitl_01_turn0_aop2: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 00:55:23] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] hitl_01_turn1: The transaction ID is TXN-FRAUD-25K on my account
+[AOP] hierarchical delegation for: The transaction ID is TXN-FRAUD-25K on my account
+[REQ] hitl_01_turn1_aop0: 1
+[04/01/26 00:56:44] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] hitl_01_turn1_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 00:58:07] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[04/01/26 00:58:22] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[04/01/26 00:58:32] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] hitl_01_turn2: My customer ID is CUST-FRAUD-99
+[AOP] hierarchical delegation for: My customer ID is CUST-FRAUD-99
+[REQ] hitl_01_turn2_aop0: 1
+[REQ] hitl_01_turn2_aop1: 1
+[ROUTER] sticky primary=faq_agent
+[REQ] hitl_01_turn2_aop2: 1
+[ROUTER] sticky primary=faq_agent
+[REQ] hitl_01_turn2_aop3: 1
+[ROUTER] sticky primary=faq_agent
+2026-04-01 01:04:58,392 [INFO] evaluation.rq1:   [SOFT] hitl_01               pattern=MISS  agent=OK    latency=828645ms  [17✓ 2✗ | ETA 118m49s]
+2026-04-01 01:04:59,403 [INFO] evaluation.rq1: [20/35] ▶ hitl_02 (category=hitl_escalation)
+[REQ] hitl_02_turn0: Your bank has been charging hidden fees on my account for months and I want a full refund plus I am filing a complaint with the financial ombudsman
+[AOP] hierarchical delegation for: Your bank has been charging hidden fees on my account for months and I want a fu
+[REQ] hitl_02_turn0_aop0: 1
+[REQ] hitl_02_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 01:07:00] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 01:07:37,596 [INFO] evaluation.rq1:   [SOFT] hitl_02               pattern=OK    agent=OK    latency=158192ms  [18✓ 2✗ | ETA 107m48s]
+2026-04-01 01:07:38,602 [INFO] evaluation.rq1: [21/35] ▶ hitl_03 (category=hitl_escalation)
+[REQ] hitl_03_turn0: My card has been compromised and there are transactions happening right now that I did not authorise, please block it and reverse everything
+[AOP] hierarchical delegation for: My card has been compromised and there are transactions happening right now that
+[REQ] hitl_03_turn0_aop0: 1
+[REQ] hitl_03_turn0_aop1: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 01:10:19] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] hitl_03_turn0_aop2: 1
+[ROUTER] sticky primary=accounts_agent
+2026-04-01 01:12:38,159 [INFO] evaluation.rq1:   [SOFT] hitl_03               pattern=OK    agent=OK    latency=299557ms  [19✓ 2✗ | ETA 99m10s]
+2026-04-01 01:12:39,171 [INFO] evaluation.rq1: [22/35] ▶ hitl_04 (category=hitl_escalation)
+[REQ] hitl_04_turn0: I have lost my job and cannot pay my loan instalments, I am about to lose my home, please help me restructure my debt before the bank forecloses
+[AOP] hierarchical delegation for: I have lost my job and cannot pay my loan instalments, I am about to lose my hom
+[REQ] hitl_04_turn0_aop0: 1
+[REQ] hitl_04_turn0_aop1: 1
+[ROUTER] sticky primary=faq_agent
+[REQ] hitl_04_turn0_aop2: 1
+[ROUTER] sticky primary=faq_agent
+[REQ] hitl_04_turn0_aop3: 1
+[ROUTER] sticky primary=faq_agent
+2026-04-01 01:20:10,916 [INFO] evaluation.rq1:   [PASS] hitl_04               pattern=MISS  agent=OK    latency=451745ms  [20✓ 2✗ | ETA 92m21s]
+2026-04-01 01:20:11,929 [INFO] evaluation.rq1: [23/35] ▶ hitl_05 (category=hitl_escalation)
+[REQ] hitl_05_turn0: My father passed away last week and I need to know how to access his accounts, close them, and transfer the funds to the estate
+[AOP] hierarchical delegation for: My father passed away last week and I need to know how to access his accounts, c
+[REQ] hitl_05_turn0_aop0: 1
+[REQ] hitl_05_turn0_aop1: 1
+[REQ] hitl_05_turn0_aop2: 1
+2026-04-01 01:24:39,325 [INFO] evaluation.rq1:   [SOFT] hitl_05               pattern=MISS  agent=OK    latency=267396ms  [21✓ 2✗ | ETA 83m53s]
+2026-04-01 01:24:40,329 [INFO] evaluation.rq1: [24/35] ▶ hitl_06 (category=hitl_escalation)
+[REQ] hitl_06_turn0: I noticed several large deposits from unknown sources in my business account that I did not receive, I think someone is using my account for money laundering
+[AOP] hierarchical delegation for: I noticed several large deposits from unknown sources in my business account tha
+[REQ] hitl_06_turn0_aop0: 1
+[REQ] hitl_06_turn0_aop1: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 01:29:28] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] hitl_06_turn0_aop2: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 01:31:04] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] hitl_06_turn0_aop3: 1
+[04/01/26 01:31:27] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 01:32:16,369 [INFO] evaluation.rq1:   [PASS] hitl_06               pattern=MISS  agent=OK    latency=456040ms  [22✓ 2✗ | ETA 77m11s]
+2026-04-01 01:32:17,379 [INFO] evaluation.rq1: [25/35] ▶ edge_02 (category=graceful_degradation)
+[REQ] edge_02_turn0: I want a refund for my flying car purchase from last Tuesday
+[AOP] hierarchical delegation for: I want a refund for my flying car purchase from last Tuesday
+[REQ] edge_02_turn0_aop0: 1
+[REQ] edge_02_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 01:35:53] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] edge_02_turn0_aop2: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 01:36:38] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[04/01/26 01:36:58] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] edge_02_turn0_aop3: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 01:38:50] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[04/01/26 01:39:05] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 01:39:23,316 [INFO] evaluation.rq1:   [PASS] edge_02               pattern=MISS  agent=OK    latency=425937ms  [23✓ 2✗ | ETA 70m12s]
+2026-04-01 01:39:24,317 [INFO] evaluation.rq1: [26/35] ▶ edge_03 (category=graceful_degradation)
+[REQ] edge_03_turn0: Transfer my account to the Mars branch and explain intergalactic banking regulations
+[AOP] hierarchical delegation for: Transfer my account to the Mars branch and explain intergalactic banking regulat
+[REQ] edge_03_turn0_aop0: 1
+[REQ] edge_03_turn0_aop1: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 01:43:06] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] edge_03_turn0_aop2: 1
+[ROUTER] sticky primary=accounts_agent
+[REQ] edge_03_turn0_aop3: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 01:45:05] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 01:46:12,621 [INFO] evaluation.rq1:   [SOFT] edge_03               pattern=OK    agent=OK    latency=408304ms  [24✓ 2✗ | ETA 63m07s]
+2026-04-01 01:46:13,635 [INFO] evaluation.rq1: [27/35] ▶ edge_05 (category=graceful_degradation)
+[REQ] edge_05_turn0: I am suing your bank for negligence and demand my lawyer speaks with your CEO immediately
+[AOP] hierarchical delegation for: I am suing your bank for negligence and demand my lawyer speaks with your CEO im
+[REQ] edge_05_turn0_aop0: 1
+[REQ] edge_05_turn0_aop1: 1
+[ROUTER] sticky primary=complaints_agent
+[04/01/26 01:49:01] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 01:50:09,727 [INFO] evaluation.rq1:   [PASS] edge_05               pattern=OK    agent=OK    latency=236093ms  [25✓ 2✗ | ETA 55m11s]
+2026-04-01 01:50:10,733 [INFO] evaluation.rq1: [28/35] ▶ edge_08 (category=graceful_degradation)
+[REQ] edge_08_turn0: This is the worst bank I have ever used, you are all incompetent and I want every single penny back right now or else
+[AOP] hierarchical delegation for: This is the worst bank I have ever used, you are all incompetent and I want ever
+[REQ] edge_08_turn0_aop0: 1
+[REQ] edge_08_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 01:51:55] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 01:52:31,028 [INFO] evaluation.rq1:   [SOFT] edge_08               pattern=MISS  agent=OK    latency=140294ms  [26✓ 2✗ | ETA 47m09s]
+2026-04-01 01:52:32,037 [INFO] evaluation.rq1: [29/35] ▶ b77_refund_01 (category=actionable_routing)
+[REQ] b77_refund_01_turn0: There is a card payment on my statement that I do not recognise, I need it reversed
+[AOP] hierarchical delegation for: There is a card payment on my statement that I do not recognise, I need it rever
+[REQ] b77_refund_01_turn0_aop0: 1
+[REQ] b77_refund_01_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 01:55:32] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] b77_refund_01_turn0_aop2: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 01:57:17] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[04/01/26 01:57:33] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] b77_refund_01_turn1: The payment was for EUR 89.99 on March 12th, my account is ACC-2024-6633 and the merchant name shows as WEBSHOP-UK
+[ROUTER] sticky primary=refunds_agent
+2026-04-01 02:00:07,766 [INFO] evaluation.rq1:   [SOFT] b77_refund_01         pattern=MISS  agent=OK    latency=455729ms  [27✓ 2✗ | ETA 40m36s]
+2026-04-01 02:00:08,780 [INFO] evaluation.rq1: [30/35] ▶ b77_refund_03 (category=actionable_routing)
+[REQ] b77_refund_03_turn0: My transfer failed but the money was taken from my account and has not been returned
+[AOP] hierarchical delegation for: My transfer failed but the money was taken from my account and has not been retu
+[REQ] b77_refund_03_turn0_aop0: 1
+[REQ] b77_refund_03_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 02:02:41] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] b77_refund_03_turn0_aop2: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 02:03:39] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] b77_refund_03_turn1: I transferred EUR 1200 on March 14th from account ACC-2024-7700 to sort code 20-45-67, account 12345678
+[ROUTER] sticky primary=refunds_agent
+2026-04-01 02:05:48,367 [INFO] evaluation.rq1:   [SOFT] b77_refund_03         pattern=MISS  agent=OK    latency=339587ms  [28✓ 2✗ | ETA 33m39s]
+2026-04-01 02:05:49,371 [INFO] evaluation.rq1: [31/35] ▶ b77_complaint_01 (category=actionable_routing)
+[REQ] b77_complaint_01_turn0: The ATM swallowed my card and I need it back or a replacement issued urgently
+[AOP] hierarchical delegation for: The ATM swallowed my card and I need it back or a replacement issued urgently
+[REQ] b77_complaint_01_turn0_aop0: 1
+[REQ] b77_complaint_01_turn0_aop1: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 02:10:41] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] b77_complaint_01_turn0_aop2: 1
+[ROUTER] sticky primary=accounts_agent
+[REQ] b77_complaint_01_turn0_aop3: 1
+[ROUTER] sticky primary=accounts_agent
+[REQ] b77_complaint_01_turn1: It was the ATM at 123 Main Street branch, my card number ends in 8877 and my account is ACC-2024-9012
+[ROUTER] sticky primary=accounts_agent
+2026-04-01 02:13:19,245 [INFO] evaluation.rq1:   [FAIL] b77_complaint_01      pattern=MISS  agent=MISS  latency=449874ms  [28✓ 3✗ | ETA 27m01s]
+2026-04-01 02:13:20,256 [INFO] evaluation.rq1: [32/35] ▶ b77_complaint_02 (category=actionable_routing)
+[REQ] b77_complaint_02_turn0: I have lost my debit card and need to report it stolen and get a replacement
+[AOP] hierarchical delegation for: I have lost my debit card and need to report it stolen and get a replacement
+[REQ] b77_complaint_02_turn0_aop0: 1
+[REQ] b77_complaint_02_turn0_aop1: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 02:15:00] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] b77_complaint_02_turn1: My account number is ACC-2024-1155 and the card ending in 3344, I last used it yesterday at a coffee shop
+[ROUTER] sticky primary=accounts_agent
+[REQ] b77_complaint_02_turn2: Yes, please block the card and file a report
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 02:16:49] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 02:17:04,993 [INFO] evaluation.rq1:   [FAIL] b77_complaint_02      pattern=MISS  agent=MISS  latency=224738ms  [28✓ 4✗ | ETA 19m59s]
+2026-04-01 02:17:06,005 [INFO] evaluation.rq1: [33/35] ▶ b77_deleg_03 (category=hierarchical_delegation)
+[REQ] b77_deleg_03_turn0: My card keeps getting declined, I want to change my PIN, and also check how much is in my account
+[AOP] hierarchical delegation for: My card keeps getting declined, I want to change my PIN, and also check how much
+[REQ] b77_deleg_03_turn0_aop0: 1
+[REQ] b77_deleg_03_turn0_aop1: 1
+[ROUTER] sticky primary=accounts_agent
+[REQ] b77_deleg_03_turn0_aop2: 1
+[ROUTER] sticky primary=accounts_agent
+[REQ] b77_deleg_03_turn0_aop3: 1
+[ROUTER] sticky primary=accounts_agent
+2026-04-01 02:24:12,410 [INFO] evaluation.rq1:   [SOFT] b77_deleg_03          pattern=OK    agent=OK    latency=426405ms  [29✓ 4✗ | ETA 13m21s]
+2026-04-01 02:24:13,415 [INFO] evaluation.rq1: [34/35] ▶ b77_deleg_04 (category=hierarchical_delegation)
+[REQ] b77_deleg_04_turn0: I have a charge on my statement I do not recognise and want it refunded, also my card has stopped working in shops
+[AOP] hierarchical delegation for: I have a charge on my statement I do not recognise and want it refunded, also my
+[REQ] b77_deleg_04_turn0_aop0: 1
+[REQ] b77_deleg_04_turn0_aop1: 1
+[ROUTER] sticky primary=refunds_agent
+[04/01/26 02:26:19] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+2026-04-01 02:27:45,229 [INFO] evaluation.rq1:   [FAIL] b77_deleg_04          pattern=OK    agent=MISS  latency=211814ms  [29✓ 5✗ | ETA 6m35s]
+2026-04-01 02:27:46,245 [INFO] evaluation.rq1: [35/35] ▶ b77_deleg_06 (category=hierarchical_delegation)
+[REQ] b77_deleg_06_turn0: My card was stolen yesterday and I can see three transactions I did not make, block the card and reverse them all
+[AOP] hierarchical delegation for: My card was stolen yesterday and I can see three transactions I did not make, bl
+[REQ] b77_deleg_06_turn0_aop0: 1
+[REQ] b77_deleg_06_turn0_aop1: 1
+[ROUTER] sticky primary=accounts_agent
+[04/01/26 02:30:50] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[REQ] b77_deleg_06_turn0_aop2: 1
+[ROUTER] sticky primary=accounts_agent
+2026-04-01 02:34:33,075 [INFO] evaluation.rq1:   [SOFT] b77_deleg_06          pattern=OK    agent=OK    latency=406830ms  [30✓ 5✗ | ETA 0m00s]
+
+============================================================
+EVALUATION SUMMARY (REAL LLM MODE)
+============================================================
+  Total scenarios:         35
+  Passed:                  30
+  Failed:                  5
+  Orchestration Accuracy:  40.0%
+  Reasoning Accuracy:      85.7%
+  Agent Accuracy:          85.7%
+  Outcome Accuracy:        14.3%
+  Avg Latency:             364632.2 ms
+  Solvability Correlation: -0.2254
+  Completeness Rate:       99.2%
+
+  Total wall time:         13840.8s
+
+  Latency by category:
+    action_routing                  447499.4 ms  (5.0 agent calls)
+    actionable_routing              370074.1 ms  (4.0 agent calls)
+    graceful_degradation            302647.2 ms  (3.0 agent calls)
+    hierarchical_delegation         296619.7 ms  (2.6 agent calls)
+    hitl_escalation                 410287.9 ms  (4.2 agent calls)
+    informational_routing           493843.3 ms  (4.5 agent calls)
+
+  Results exported to: C:\Users\mozaki\OneDrive\CBS\Thesis\agent-factory\evaluation\results\ablation\aop_only_retry35

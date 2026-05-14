@@ -1,0 +1,13 @@
+{
+  "aop_only": {
+    "passed": 49,
+    "failed": 11,
+    "total": 60,
+    "task_completion_rate": 0.8167,
+    "agent_accuracy": 0.8,
+    "reasoning_accuracy": 0.8167,
+    "avg_latency_ms": 430329.86,
+    "wall_time_seconds": 30938.85,
+    "by_category": {}
+  }
+}

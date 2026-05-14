@@ -1,0 +1,21 @@
+[
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "error:Found AIMessages with tool_calls that do not have a corresponding ToolMessage. Here are the first few of those tool calls: [{'name': 'accounts_knowledge_search', 'args': {'query': 'hidden fees refund eligibility KYC verification 90 days investigation complaint ombudsman escalation account status freeze documentation required evidence process'}, 'id': 'call_6dWJYLJm4ispvuDC7Lvtl5uL', 'type': 'tool_call'}].\n\nEvery tool call (LLM requesting to call a tool) in the message history MUST have a corresponding ToolMessage (result of a tool invocation to return to the LLM) - this is required by most LLM providers.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/INVALID_CHAT_HISTORY",
+    "latency_ms": 112745.38860004395,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Found AIMessages with tool_calls that do not have a corresponding ToolMessage. Here are the first few of those tool calls: [{'name': 'accounts_knowledge_search', 'args': {'query': 'hidden fees refund eligibility KYC verification 90 days investigation complaint ombudsman escalation account status freeze documentation required evidence process'}, 'id': 'call_6dWJYLJm4ispvuDC7Lvtl5uL', 'type': 'tool_call'}].\n\nEvery tool call (LLM requesting to call a tool) in the message history MUST have a corresponding ToolMessage (result of a tool invocation to return to the LLM) - this is required by most LLM providers.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/INVALID_CHAT_HISTORY"
+  }
+]

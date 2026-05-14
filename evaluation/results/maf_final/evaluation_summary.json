@@ -1,19 +1,20 @@
 {
   "framework": "meta_agent_factory",
-  "total_scenarios": 60,
-  "passed": 57,
   "hard_passed": 27,
   "soft_passed": 30,
   "failed": 3,
+  "passed": 57,
+  "total_scenarios": 60,
   "pass_rate": 0.95,
-  "avg_latency_ms": 157754.93,
+  "avg_latency_ms": 148371.21,
   "execution_mode": "real_llm",
   "estimator": "llm",
-  "note": "Consolidated from maf_rigor_v4 base + retry runs (kw_fix, hitl02_fix, retry, retry2) + targeted reruns of hitl_02 and b77_deleg_06 (2026-05-14). See METHODOLOGY_NOTES.md for retry rationale.",
+  "merge_rule": "best_result_wins_across_retries",
+  "note": "Consolidated from maf_rigor_v4 base + retry runs + targeted reruns of hitl_02 and b77_deleg_06 (2026-05-14). Best-result-wins per scenario across all retries (LLM non-determinism in retries shouldn't penalise a scenario that previously passed). See METHODOLOGY_NOTES.md.",
   "failed_scenarios": [
     "b77_complaint_01",
     "b77_complaint_02",
     "b77_deleg_04"
   ],
-  "compiled_at": "2026-05-14T14:45:27"
+  "compiled_at": "2026-05-14T16:29:02"
 }

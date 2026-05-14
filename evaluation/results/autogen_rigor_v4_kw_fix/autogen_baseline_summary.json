@@ -1,0 +1,32 @@
+{
+  "framework": "autogen_agentchat",
+  "total_scenarios": 9,
+  "passed": 4,
+  "soft_passed": 3,
+  "failed": 5,
+  "orchestration_accuracy": 1.0,
+  "agent_accuracy": 0.4444,
+  "outcome_accuracy": 0.4444,
+  "reasoning_accuracy": 0.4444,
+  "avg_latency_ms": 105041.89,
+  "execution_mode": "real_llm",
+  "total_wall_time_seconds": 985.43,
+  "by_category": {
+    "hierarchical_delegation": {
+      "n": 8,
+      "orchestration_accuracy": 1.0,
+      "agent_accuracy": 0.375,
+      "outcome_accuracy": 0.375,
+      "reasoning_accuracy": 0.375,
+      "avg_latency_ms": 107009.65
+    },
+    "hitl_escalation": {
+      "n": 1,
+      "orchestration_accuracy": 1.0,
+      "agent_accuracy": 1.0,
+      "outcome_accuracy": 1.0,
+      "reasoning_accuracy": 1.0,
+      "avg_latency_ms": 89299.79
+    }
+  }
+}

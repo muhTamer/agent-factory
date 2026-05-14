@@ -1,0 +1,32 @@
+[
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[escalation=yes,response_present]",
+    "latency_ms": 110572.38160003908,
+    "first_agent": "complaints_agent",
+    "responding_agent": "complaints_agent",
+    "agents_involved": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "handling_agents": [
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "knowledge_search",
+      "knowledge_search",
+      "knowledge_search"
+    ],
+    "answer_text": "[complaints_policy.yaml] ============================================================\n\nexecution:\n\n  - id: compensation_method\n    description: >\n      Compensation must be credited to the customer's active account\n      balance. If account is restricted, escalate to manual processing.\n    rules:\n      - if account_status == \"active\":\n          action: credit_account_balance\n      - else:\n          action: escalate_manual_processing\n\n  - id: resolution_sla\n    description: >\n      Standard compl",
+    "error": null
+  }
+]

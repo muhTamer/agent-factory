@@ -1,0 +1,32 @@
+{
+  "framework": "langgraph_supervisor",
+  "total_scenarios": 3,
+  "passed": 3,
+  "soft_passed": 2,
+  "failed": 0,
+  "orchestration_accuracy": 1.0,
+  "agent_accuracy": 1.0,
+  "outcome_accuracy": 1.0,
+  "reasoning_accuracy": 1.0,
+  "avg_latency_ms": 174223.67,
+  "execution_mode": "real_llm",
+  "total_wall_time_seconds": 532.77,
+  "by_category": {
+    "hierarchical_delegation": {
+      "n": 2,
+      "orchestration_accuracy": 1.0,
+      "agent_accuracy": 1.0,
+      "outcome_accuracy": 1.0,
+      "reasoning_accuracy": 1.0,
+      "avg_latency_ms": 163089.7
+    },
+    "hitl_escalation": {
+      "n": 1,
+      "orchestration_accuracy": 1.0,
+      "agent_accuracy": 1.0,
+      "outcome_accuracy": 1.0,
+      "reasoning_accuracy": 1.0,
+      "avg_latency_ms": 196491.59
+    }
+  }
+}

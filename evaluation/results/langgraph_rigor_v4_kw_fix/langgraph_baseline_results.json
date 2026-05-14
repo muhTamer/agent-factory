@@ -1,0 +1,269 @@
+[
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "error:Found AIMessages with tool_calls that do not have a corresponding ToolMessage. Here are the first few of those tool calls: [{'name': 'refunds_knowledge_search', 'args': {'query': \"hidden fees undisclosed charges refund eligibility evidence required escalation ombudsman compliance hold PSD2 verification KYC refund thresholds EUR 500 'hidden fees' 'undisclosed' 'refund policy' 'evidence' 'escalation'\"}, 'id': 'call_FWoK3LitcmmzD9XAxHiS7Bme', 'type': 'tool_call'}].\n\nEvery tool call (LLM requesting to call a tool) in the message history MUST have a corresponding ToolMessage (result of a tool invocation to return to the LLM) - this is required by most LLM providers.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/INVALID_CHAT_HISTORY",
+    "latency_ms": 98533.93879998475,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Found AIMessages with tool_calls that do not have a corresponding ToolMessage. Here are the first few of those tool calls: [{'name': 'refunds_knowledge_search', 'args': {'query': \"hidden fees undisclosed charges refund eligibility evidence required escalation ombudsman compliance hold PSD2 verification KYC refund thresholds EUR 500 'hidden fees' 'undisclosed' 'refund policy' 'evidence' 'escalation'\"}, 'id': 'call_FWoK3LitcmmzD9XAxHiS7Bme', 'type': 'tool_call'}].\n\nEvery tool call (LLM requesting to call a tool) in the message history MUST have a corresponding ToolMessage (result of a tool invocation to return to the LLM) - this is required by most LLM providers.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/INVALID_CHAT_HISTORY"
+  },
+  {
+    "scenario_id": "b77_deleg_01",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: lost card report AND pending transfer inquiry (cross-agent)",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 58936.912700068206,
+    "first_agent": "accounts_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "accounts_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent"
+    ],
+    "tools_used": [
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search"
+    ],
+    "answer_text": "Thanks — I’ve routed this to our accounts team and they can handle both the lost card and the pending transfer. To proceed I need to verify your identity and confirm a few details. Please reply with the items below and your consent for me to perform identity verification:\n\n1) Account identifier: customer ID, or the email/phone number tied to the account.  \n2) Card details & action: confirm the card is lost (or stolen), whether you want it blocked immediately, and the last 4 digits of the card if",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_02",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: request refund for wrong exchange rate AND ask about supported currencies",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[knowledge=yes,response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 116132.71089992486,
+    "first_agent": "refunds_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "refunds_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "faq_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "faq_knowledge_search",
+      "faq_knowledge_search"
+    ],
+    "answer_text": "Thanks — I can help with both. Here’s a concise plan and what I need from you so I can start a refund and confirm currency support.\n\n1) Refund for wrong exchange rate — eligibility & what I need\n- Eligibility checks we’ll run:\n  - Your account must be KYC-verified and active.\n  - The refund request must be made within 90 calendar days of the transaction settlement date.\n  - The transaction must not be under an open fraud/chargeback investigation.\n  - Accounts that are suspended/frozen are not el",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_03",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: report declined card AND request PIN change AND check balance",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 151307.94690013863,
+    "first_agent": "accounts_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "accounts_agent",
+      "refunds_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "faq_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "faq_knowledge_search",
+      "faq_knowledge_search"
+    ],
+    "answer_text": "Thanks — I’ll handle this. Summary of what I (and the teams) can do, quick checks you can try now, and the options to proceed.\n\nWhy cards get declined (common causes)\n- Insufficient available balance or pending authorization/hold (e.g., hotel/car rental).  \n- Daily/transaction limits reached.  \n- Incorrect PIN or card blocked after multiple wrong attempts.  \n- Card expired, temporarily blocked for suspected fraud, or not enabled for online/cross‑border use.  \n- Merchant/terminal or network issue",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_04",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: unrecognised charge refund AND complaint about card not working",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[knowledge=yes,response_present] fail=[tool_missing:initiate_refund]",
+    "latency_ms": 121330.9268001467,
+    "first_agent": "refunds_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "refunds_agent",
+      "accounts_agent",
+      "complaints_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "complaints_knowledge_search",
+      "complaints_knowledge_search"
+    ],
+    "answer_text": "Thanks — I’ll handle both issues, and I’ll need your permission and a few details to proceed.\n\nSummary of what we can do now\n- Refund / dispute an unrecognised charge: I can open a refund/chargeback or escalate to a fraud investigation. Refunds require a KYC‑verified active account and must be requested within 90 calendar days of the transaction settlement. If the transaction is already under an open fraud investigation, refunds are paused until that completes.\n- Card stopped working in shops: I",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_05",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: dispute top-up revert AND ask about card limits",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "error:Found AIMessages with tool_calls that do not have a corresponding ToolMessage. Here are the first few of those tool calls: [{'name': 'faq_knowledge_search', 'args': {'query': \"top-up reverted reasons how to fix top-up reverted daily spending limits card where to view limits app 'top-up reverted' 'daily spending limits' 'card limits' FAQ\"}, 'id': 'call_6BY4Sg2fIrmL1fV54KWANutU', 'type': 'tool_call'}].\n\nEvery tool call (LLM requesting to call a tool) in the message history MUST have a corresponding ToolMessage (result of a tool invocation to return to the LLM) - this is required by most LLM providers.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/INVALID_CHAT_HISTORY",
+    "latency_ms": 95755.17020002007,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Found AIMessages with tool_calls that do not have a corresponding ToolMessage. Here are the first few of those tool calls: [{'name': 'faq_knowledge_search', 'args': {'query': \"top-up reverted reasons how to fix top-up reverted daily spending limits card where to view limits app 'top-up reverted' 'daily spending limits' 'card limits' FAQ\"}, 'id': 'call_6BY4Sg2fIrmL1fV54KWANutU', 'type': 'tool_call'}].\n\nEvery tool call (LLM requesting to call a tool) in the message history MUST have a corresponding ToolMessage (result of a tool invocation to return to the LLM) - this is required by most LLM providers.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/INVALID_CHAT_HISTORY"
+  },
+  {
+    "scenario_id": "b77_deleg_06",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: report stolen card AND reverse fraudulent transactions",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 83104.23960001208,
+    "first_agent": "accounts_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "accounts_agent",
+      "refunds_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "refunds_knowledge_search",
+      "refunds_knowledge_search"
+    ],
+    "answer_text": "Thanks — I’m sorry this happened. I’ve checked with the card/accounts and refunds teams. Here’s what we can do now and what I need from you to proceed.\n\nImmediate protection (recommended)\n- If you want the fastest protection, block the card now in the mobile app (Cards → Block card) or call our 24/7 hotline to block immediately. If you block now, come back here and I’ll open the disputes.  \n- If you want me to act now, I can run identity verification and block the card for you immediately.\n\nWhat",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_07",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: failed direct debit refund AND cancel future direct debits",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:update_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 120749.03400009498,
+    "first_agent": "refunds_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "refunds_agent",
+      "accounts_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "lookup_payment",
+      "lookup_payment",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search"
+    ],
+    "answer_text": "Thank you — I’ve opened this with the refunds and accounts teams. Here’s a consolidated next-step plan and exactly what we need from you so we can start the refund and stop future debits immediately.\n\nWhat we’ll do for you\n- Open an unauthorized‑debit claim and investigate the transaction.\n- Run identity verification (required before we can issue refunds).\n- If eligible, initiate a refund per policy; if not, we’ll explain why and next steps.\n- Submit a request to revoke/stop the direct‑debit man",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_08",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: complaint about service delay AND request to update account contact details",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:create_ticket,tool_missing:update_account]; scenario:pass=[response_present]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 149108.88279997744,
+    "first_agent": "complaints_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "complaints_agent",
+      "accounts_agent",
+      "refunds_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "complaints_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "complaints_knowledge_search",
+      "complaints_knowledge_search",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "refunds_knowledge_search",
+      "refunds_knowledge_search"
+    ],
+    "answer_text": "Thanks — I’ll open a formal complaint about the delayed card replacement and update your phone and email, but I need to verify your identity first. Below is what I’ll do and what I need from you so we can proceed quickly.\n\nWhat I will do for you\n- Open a formal complaint ticket for the delayed card replacement and escalate to Operations for an urgent investigation and tracking. Standard replacement SLA is 5–7 business days; three weeks is outside that SLA and will be escalated.\n- Request Operati",
+    "error": null
+  }
+]

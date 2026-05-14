@@ -1,0 +1,2 @@
+scenario_id,category,description,success,soft_pass,pattern_correct,agent_correct,outcome_correct,outcome_detail,answer_keywords_found,latency_ms,agent_calls,completeness_score,solvability_score,error
+faq_06,informational_routing,FAQ: Multi-turn card dispute inquiry (clarification then BankFAQ retrieval),True,False,False,True,True,"scenario:pass=[knowledge=yes,response_present]",True,376820.42,3,,1.0,

@@ -1,0 +1,64 @@
+{
+  "framework": "autogen_agentchat",
+  "total_scenarios": 20,
+  "passed": 17,
+  "soft_passed": 10,
+  "failed": 3,
+  "orchestration_accuracy": 0.4,
+  "agent_accuracy": 0.85,
+  "outcome_accuracy": 0.85,
+  "reasoning_accuracy": 0.85,
+  "avg_latency_ms": 154826.97,
+  "execution_mode": "real_llm",
+  "total_wall_time_seconds": 3191.67,
+  "by_category": {
+    "action_routing": {
+      "n": 1,
+      "orchestration_accuracy": 0.0,
+      "agent_accuracy": 1.0,
+      "outcome_accuracy": 1.0,
+      "reasoning_accuracy": 1.0,
+      "avg_latency_ms": 86120.32
+    },
+    "actionable_routing": {
+      "n": 4,
+      "orchestration_accuracy": 0.0,
+      "agent_accuracy": 0.75,
+      "outcome_accuracy": 0.75,
+      "reasoning_accuracy": 0.75,
+      "avg_latency_ms": 235204.78
+    },
+    "graceful_degradation": {
+      "n": 3,
+      "orchestration_accuracy": 0.3333,
+      "agent_accuracy": 0.6667,
+      "outcome_accuracy": 0.6667,
+      "reasoning_accuracy": 0.6667,
+      "avg_latency_ms": 179266.1
+    },
+    "hierarchical_delegation": {
+      "n": 5,
+      "orchestration_accuracy": 1.0,
+      "agent_accuracy": 1.0,
+      "outcome_accuracy": 1.0,
+      "reasoning_accuracy": 1.0,
+      "avg_latency_ms": 110939.07
+    },
+    "hitl_escalation": {
+      "n": 6,
+      "orchestration_accuracy": 0.3333,
+      "agent_accuracy": 0.8333,
+      "outcome_accuracy": 0.8333,
+      "reasoning_accuracy": 0.8333,
+      "avg_latency_ms": 150161.51
+    },
+    "informational_routing": {
+      "n": 1,
+      "orchestration_accuracy": 0.0,
+      "agent_accuracy": 1.0,
+      "outcome_accuracy": 1.0,
+      "reasoning_accuracy": 1.0,
+      "avg_latency_ms": 76137.19
+    }
+  }
+}

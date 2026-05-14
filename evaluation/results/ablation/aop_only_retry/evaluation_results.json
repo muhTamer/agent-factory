@@ -1,0 +1,42 @@
+[
+  {
+    "scenario_id": "faq_06",
+    "category": "informational_routing",
+    "description": "FAQ: Multi-turn card dispute inquiry (clarification then BankFAQ retrieval)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "scenario:pass=[knowledge=yes,response_present]",
+    "latency_ms": 376820.4156998545,
+    "agent_calls": 3,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to know about the refund or dispute process at your bank.",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 60081.30980003625
+      },
+      {
+        "turn_index": 1,
+        "query": "I'm asking about a card transaction dispute \u2014 a merchant charged me twice.",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 40856.67869984172
+      }
+    ],
+    "governance_events": []
+  }
+]

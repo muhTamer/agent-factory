@@ -1,0 +1,32 @@
+{
+  "orchestration_accuracy": 0.8833,
+  "reasoning_accuracy": 0.85,
+  "agent_accuracy": 0.85,
+  "outcome_accuracy": 0.3833,
+  "solvability_correlation": 0.0088,
+  "completeness_rate": 1.0,
+  "avg_latency_ms": 116814.11,
+  "latency_by_category": {
+    "action_routing": 0.0,
+    "actionable_routing": 120271.97,
+    "graceful_degradation": 95468.69,
+    "hierarchical_delegation": 158667.99,
+    "hitl_escalation": 140004.65,
+    "informational_routing": 53137.37
+  },
+  "steps_by_category": {
+    "action_routing": 0.0,
+    "actionable_routing": 1.9,
+    "graceful_degradation": 1.17,
+    "hierarchical_delegation": 2.0,
+    "hitl_escalation": 2.0,
+    "informational_routing": 1.21
+  },
+  "total_scenarios": 60,
+  "passed": 51,
+  "soft_passed": 27,
+  "failed": 9,
+  "execution_mode": "real_llm",
+  "total_wall_time_seconds": 8185.06,
+  "inter_scenario_delay_seconds": 1.0
+}

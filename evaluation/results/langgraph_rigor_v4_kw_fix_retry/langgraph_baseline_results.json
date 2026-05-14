@@ -1,0 +1,117 @@
+[
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
+    "success": true,
+    "soft_pass": false,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[escalation=yes,response_present]",
+    "latency_ms": 196491.58630007878,
+    "first_agent": "refunds_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "refunds_agent",
+      "complaints_agent",
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "complaints_agent",
+      "faq_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "complaints_knowledge_search",
+      "complaints_knowledge_search",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "faq_knowledge_search",
+      "faq_knowledge_search"
+    ],
+    "answer_text": "I’m very sorry this happened. I’ve opened this with our specialists (Refunds, Complaints, Accounts and FAQ teams) and here’s a clear, consolidated plan and what I need from you to start an official investigation and request a refund.\n\nWhat we must check before any refund\n- KYC/identity: Refunds and formal complaints require your KYC to be complete and your account to be active. I must run an identity/account check first.  \n- Time window: Automated refunds are normally limited to transactions set",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_04",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: unrecognised charge refund AND complaint about card not working",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[knowledge=yes,response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 177398.85180001147,
+    "first_agent": "refunds_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "refunds_agent",
+      "accounts_agent",
+      "complaints_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "complaints_agent",
+      "faq_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "complaints_knowledge_search",
+      "complaints_knowledge_search",
+      "faq_knowledge_search",
+      "faq_knowledge_search"
+    ],
+    "answer_text": "Thanks — I’ve checked with the refunds, accounts, complaints and FAQ teams. Here’s a single clear plan and what we need from you to act.\n\nSummary of what we can do now\n- Refund/dispute: We can open a dispute for the unrecognized charge if your account is verified (KYC) and the transaction is eligible. Internal refunds policy: eligible within 90 days of the transaction; bank FAQ also advises reporting disputes in writing within 30 days — report as soon as possible. If eligible, we’ll open the dis",
+    "error": null
+  },
+  {
+    "scenario_id": "b77_deleg_05",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: dispute top-up revert AND ask about card limits",
+    "success": true,
+    "soft_pass": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[knowledge=yes,response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 148780.55809997022,
+    "first_agent": "refunds_agent",
+    "responding_agent": "supervisor",
+    "agents_involved": [
+      "refunds_agent",
+      "accounts_agent",
+      "faq_agent"
+    ],
+    "handling_agents": [
+      "accounts_agent",
+      "faq_agent",
+      "refunds_agent"
+    ],
+    "tools_used": [
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "refunds_knowledge_search",
+      "accounts_knowledge_search",
+      "accounts_knowledge_search",
+      "faq_knowledge_search",
+      "faq_knowledge_search"
+    ],
+    "answer_text": "Thanks — I’ll handle both parts: investigate the reverted top‑up and confirm your card’s daily spending limits.\n\nSummary (what I will do)\n- Investigate the reverted top‑up and, if eligible, attempt to re‑credit your account or escalate to Operations/Finance.  \n- Check and confirm your card’s exact daily ATM/POS limits (and advise how to change them if needed).\n\nWhat I need from you to proceed (pick an option below)\n- Account identifier: Customer ID or the email/phone on the account  \n- Transacti",
+    "error": null
+  }
+]

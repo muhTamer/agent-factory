@@ -1,0 +1,22 @@
+{
+  "orchestration_accuracy": 0.0,
+  "reasoning_accuracy": 1.0,
+  "agent_accuracy": 1.0,
+  "outcome_accuracy": 1.0,
+  "solvability_correlation": null,
+  "completeness_rate": null,
+  "avg_latency_ms": 376820.42,
+  "latency_by_category": {
+    "informational_routing": 376820.42
+  },
+  "steps_by_category": {
+    "informational_routing": 3.0
+  },
+  "total_scenarios": 1,
+  "passed": 1,
+  "soft_passed": 0,
+  "failed": 0,
+  "execution_mode": "real_llm",
+  "total_wall_time_seconds": 376.83,
+  "inter_scenario_delay_seconds": 1.0
+}

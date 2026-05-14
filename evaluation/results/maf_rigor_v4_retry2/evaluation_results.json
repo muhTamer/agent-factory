@@ -1,0 +1,232 @@
+[
+  {
+    "scenario_id": "deleg_04",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: cancel subscription AND explain charges",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[tool:update_account,response_present]",
+    "latency_ms": 262919.9745999649,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.77,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Cancel my premium subscription and explain the charges on my last statement",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "pass=[tool:update_account,response_present]",
+        "latency_ms": 82676.05150002055
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_12",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: report unauthorized transaction AND freeze account",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 319843.9444997348,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.7928999999999999,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "There is a transaction I did not make on my account for EUR 800, please reverse it and freeze my account until this is sorted",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account]",
+        "latency_ms": 92952.40979990922
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_16",
+    "category": "action_routing",
+    "description": "Sequential action: add beneficiary then initiate international transfer (same agent)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_transfer] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 658459.2033999506,
+    "agent_calls": 5,
+    "completeness_score": 1.0,
+    "solvability_score": 0.7858,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I need to add a new international beneficiary and then send EUR 2000 to them via SWIFT",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_transfer]",
+        "latency_ms": 268754.14289999753
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
+    "success": false,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[escalation_mismatch:expected=True,got=False,kw_any_missing:none_of[complaint,ombudsman,escalat,regulatory]]",
+    "latency_ms": 418420.79849983566,
+    "agent_calls": 3,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8035,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Your bank has been charging hidden fees on my account for months and I want a full refund plus I am filing a complaint with the financial ombudsman",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[escalation_mismatch:expected=True,got=False,kw_any_missing:none_of[complaint,ombudsman,escalat,regulatory]]",
+        "latency_ms": 104163.25769992545
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_complaint_02",
+    "category": "actionable_routing",
+    "description": "BANKING77: lost/stolen card report (block + replace)",
+    "success": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:create_ticket]",
+    "latency_ms": 284338.7139001861,
+    "agent_calls": 3,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I have lost my debit card and need to report it stolen and get a replacement",
+        "pattern_correct": true,
+        "agent_correct": false,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 104521.65170013905
+      },
+      {
+        "turn_index": 1,
+        "query": "My account number is ACC-2024-1155 and the card ending in 3344, I last used it yesterday at a coffee shop",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 105061.55240000226
+      },
+      {
+        "turn_index": 2,
+        "query": "Yes, please block the card and file a report",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 74755.50980004482
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_04",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: unrecognised charge refund AND complaint about card not working",
+    "success": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[kw_missing:refund,kw_missing:card]",
+    "latency_ms": 355032.2907997761,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8311999999999999,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I have a charge on my statement I do not recognise and want it refunded, also my card has stopped working in shops",
+        "pattern_correct": true,
+        "agent_correct": false,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[kw_missing:refund,kw_missing:card]",
+        "latency_ms": 95492.28739994578
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_07",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: failed direct debit refund AND cancel future direct debits",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present,kw:refund,kw:direct debit]",
+    "latency_ms": 449612.1775000356,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8354,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "An unauthorized direct debit was taken from my account, I need it refunded and I want to cancel all future direct debits from that company",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "pass=[response_present,kw:refund,kw:direct debit]",
+        "latency_ms": 100592.6696001552
+      }
+    ],
+    "governance_events": []
+  }
+]

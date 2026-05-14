@@ -88,7 +88,7 @@
       "knowledge_search",
       "knowledge_search"
     ],
-    "answer_text": "According to the bank FAQ, the M&N Bank Premium Current Account differs from a regular Current Account by offering (at least):\n\n- Free intercity clearing between M&N Bank branch locations  \n- Up to 100 free payable\u2011at\u2011par cheque leaves per month\n\nIf you\u2019d like the full list of Premium CA benefits or the applicable terms/eligibility, I can connect you with the accounts team.",
+    "answer_text": "According to the bank FAQ, the M&N Bank Premium Current Account differs from a regular Current Account by offering (at least):\n\n- Free intercity clearing between M&N Bank branch locations  \n- Up to 100 free payable‑at‑par cheque leaves per month\n\nIf you’d like the full list of Premium CA benefits or the applicable terms/eligibility, I can connect you with the accounts team.",
     "error": null
   },
   {
@@ -118,7 +118,7 @@
       "knowledge_search",
       "knowledge_search"
     ],
-    "answer_text": "No. The bank FAQ states: \"No, SEZ Units cannot open EEFC accounts.\"\n\nIf you\u2019d like, I can connect you with the accounts team to discuss alternatives for managing foreign currency receipts.",
+    "answer_text": "No. The bank FAQ states: \"No, SEZ Units cannot open EEFC accounts.\"\n\nIf you’d like, I can connect you with the accounts team to discuss alternatives for managing foreign currency receipts.",
     "error": null
   },
   {
@@ -147,7 +147,7 @@
       "knowledge_search",
       "knowledge_search"
     ],
-    "answer_text": "Initial deposit: Rs. 75,000 to open a Flexi Current Account.\n\nAlso note (from the FAQ):\n- Standard KYC (valid government ID and current proof of address) is required.\n- Minimum Average Monthly Balance (AMB) to maintain is Rs. 75,000; if not maintained a charge of Rs. 1,000 is applied for that month.\n\nWould you like me to:\n- Start an application (I\u2019ll route you to the accounts team),  \n- Explain AMB/maintenance charges in more detail, or  \n- Arrange a branch visit?",
+    "answer_text": "Initial deposit: Rs. 75,000 to open a Flexi Current Account.\n\nAlso note (from the FAQ):\n- Standard KYC (valid government ID and current proof of address) is required.\n- Minimum Average Monthly Balance (AMB) to maintain is Rs. 75,000; if not maintained a charge of Rs. 1,000 is applied for that month.\n\nWould you like me to:\n- Start an application (I’ll route you to the accounts team),  \n- Explain AMB/maintenance charges in more detail, or  \n- Arrange a branch visit?",
     "error": null
   },
   {
@@ -261,64 +261,39 @@
     "scenario_id": "faq_10",
     "category": "informational_routing",
     "description": "FAQ: Overdraft facility eligibility and application process",
-    "success": true,
+    "success": false,
     "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[knowledge=yes,response_present]",
-    "latency_ms": 76137.18870002776,
-    "first_agent": "accounts_agent",
-    "responding_agent": "accounts_agent",
-    "agents_involved": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "You can apply for an overdraft, but there are eligibility and KYC requirements. Here\u2019s a concise guide and the next steps you can take.\n\nWhat to know first\n- Overdrafts are not available on Recurring Deposit accounts.  \n- Limits (FAQ): minimum Rs. 25,000; maximum Rs. 1,00,000 (final amount depends on eligibility).  \n- Eligible account types: active current/checking accounts (accounts must not be dormant, under legal hold, or part of estate processing).  \n- Secured option: Overdrafts can sometime",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 431149.48654174805,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "refund_01",
     "category": "actionable_routing",
     "description": "Refund: simple eligible refund under EUR 5000 (auto-approve per policy)",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 260112.8301001154,
-    "first_agent": "refunds_agent",
-    "responding_agent": "refunds_agent",
-    "agents_involved": [
-      "refunds_agent",
-      "accounts_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "refunds_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "I can start, but I still need your explicit one-line consent plus the transaction year before I run any checks (policy requirement).\n\nPlease reply exactly with this line (copy/paste and change the year if needed):\nI consent to KYC and lookup for ACC-2024-7891 \u2014 March 15, 2026\n\nOnce you send that exact line I will:\n- run the mandatory KYC/identity check and look up the March 15 EUR 200 MerchantXYZ transaction,  \n- if eligible (KYC verified, account active, \u226490 days, not under investigation), init",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 316877.4690628052,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "refund_02",
@@ -351,7 +326,7 @@
       "lookup_customer",
       "initiate_refund"
     ],
-    "answer_text": "Refund REF-001 (EUR 150 for order 12345) has been initiated to your Visa ending 4242 and should post within ~3\u20135 business days.\n\nPlease choose how you want to provide the dispute paperwork:\nA) I\u2019ll attach the case to a Cardholder Dispute Form (CDF) for you \u2014 upload the completed CDF and any evidence (receipts, screenshots, merchant messages) to the app\u2019s Secure Messages area and I\u2019ll add them to the case. Reply \u201cA\u201d when you\u2019ve uploaded or if you want me to fetch from your registered secure inbox",
+    "answer_text": "Refund REF-001 (EUR 150 for order 12345) has been initiated to your Visa ending 4242 and should post within ~3–5 business days.\n\nPlease choose how you want to provide the dispute paperwork:\nA) I’ll attach the case to a Cardholder Dispute Form (CDF) for you — upload the completed CDF and any evidence (receipts, screenshots, merchant messages) to the app’s Secure Messages area and I’ll add them to the case. Reply “A” when you’ve uploaded or if you want me to fetch from your registered secure inbox",
     "error": null
   },
   {
@@ -422,7 +397,7 @@
       "lookup_customer",
       "knowledge_search"
     ],
-    "answer_text": "We can proceed \u2014 your account (ACC-2024-8820) is active and KYC\u2011verified, so I can act now. Please reply with the short info below and pick one option:\n\nRequired now\n- Last 4 digits of the card (do not send the full card number).  \n- Confirm transaction date (you said \u201cyesterday\u201d \u2014 please give yyyy\u2011mm\u2011dd).  \n- Any merchant descriptor shown on your statement (exact text if available).\n\nChoose one action\nA) Block card now and then open dispute (recommended if you want to prevent further unauthoris",
+    "answer_text": "We can proceed — your account (ACC-2024-8820) is active and KYC‑verified, so I can act now. Please reply with the short info below and pick one option:\n\nRequired now\n- Last 4 digits of the card (do not send the full card number).  \n- Confirm transaction date (you said “yesterday” — please give yyyy‑mm‑dd).  \n- Any merchant descriptor shown on your statement (exact text if available).\n\nChoose one action\nA) Block card now and then open dispute (recommended if you want to prevent further unauthoris",
     "error": null
   },
   {
@@ -456,50 +431,34 @@
       "knowledge_search",
       "knowledge_search"
     ],
-    "answer_text": "Thanks \u2014 I\u2019ve noted the branch (Downtown, High Street), date (18 March) and that you waited ~2 hours with no assistance. I can open a formal complaint right away \u2014 I just need three quick confirmations so we meet policy and link the complaint to your account:\n\n1) Which account should we register the complaint under? (full account ID or just the last 4 digits \u2014 e.g., ACC-2024-8820 or \u25cf\u25cf\u25cf\u25cf 1234)  \n2) Preferred contact method on file (phone or email).  \n3) Desired outcome (apology/explanation, comp",
+    "answer_text": "Thanks — I’ve noted the branch (Downtown, High Street), date (18 March) and that you waited ~2 hours with no assistance. I can open a formal complaint right away — I just need three quick confirmations so we meet policy and link the complaint to your account:\n\n1) Which account should we register the complaint under? (full account ID or just the last 4 digits — e.g., ACC-2024-8820 or ●●●● 1234)  \n2) Preferred contact method on file (phone or email).  \n3) Desired outcome (apology/explanation, comp",
     "error": null
   },
   {
     "scenario_id": "complaint_02",
     "category": "actionable_routing",
     "description": "Complaint: ombudsman threat (regulatory escalation per policy)",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:handoff_to_human]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 179178.72620001435,
-    "first_agent": "complaints_agent",
-    "responding_agent": "complaints_agent",
-    "agents_involved": [
-      "complaints_agent",
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "complaints_agent",
-      "faq_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "[complaints_policy.yaml] ============================================================\n\nexecution:\n\n  - id: compensation_method\n    description: >\n      Compensation must be credited to the customer's active account\n      balance. If account is restricted, escalate to manual processing.\n    rules:\n      - if account_status == \"active\":\n          action: credit_account_balance\n      - else:\n          action: escalate_manual_processing\n\n  - id: resolution_sla\n    description: >\n      Standard compl",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 396426.05781555176,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "deleg_01",
     "category": "hierarchical_delegation",
     "description": "Multi-intent: refund AND policy question",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": true,
     "agent_correct": false,
     "answer_keywords_found": true,
@@ -518,7 +477,7 @@
     "tools_used": [
       "knowledge_search"
     ],
-    "answer_text": "Short answer \u2014 return / claim windows\n- Card transaction disputes (formal chargebacks): report in writing within 30 days of the transaction date (Cardholder Dispute Form or equivalent).  \n- Bank refunds / merchant refund requests: submit within 90 calendar days of the transaction settlement.  \n- Complaints/service claims: up to 180 days.  \n- If a refund is approved it\u2019s normally returned to the original payment method and posts in ~3\u20135 business days.\n\nAdditional timing (industry FAQ)\n- Debit car",
+    "answer_text": "Short answer — return / claim windows\n- Card transaction disputes (formal chargebacks): report in writing within 30 days of the transaction date (Cardholder Dispute Form or equivalent).  \n- Bank refunds / merchant refund requests: submit within 90 calendar days of the transaction settlement.  \n- Complaints/service claims: up to 180 days.  \n- If a refund is approved it’s normally returned to the original payment method and posts in ~3–5 business days.\n\nAdditional timing (industry FAQ)\n- Debit car",
     "error": null
   },
   {
@@ -545,38 +504,27 @@
     "tools_used": [
       "knowledge_search"
     ],
-    "answer_text": "Cheque\u2011clearing times (indicative)\n- Main metros (Mumbai, Chennai, Kolkata, New Delhi): ~7 working days.  \n- Other metro centres & state capitals (except NE states & Sikkim): up to 10 working days.  \n- Other branch locations / non\u2011branch locations (with or without correspondents): up to 14 working days.\n\nTo get your account balance\n- Fastest: check the mobile app or online banking, call our 24/7 PhoneBanking, or visit a branch.  \n- If you want me to look it up for you, reply \u201cCheck balance\u201d and ",
+    "answer_text": "Cheque‑clearing times (indicative)\n- Main metros (Mumbai, Chennai, Kolkata, New Delhi): ~7 working days.  \n- Other metro centres & state capitals (except NE states & Sikkim): up to 10 working days.  \n- Other branch locations / non‑branch locations (with or without correspondents): up to 14 working days.\n\nTo get your account balance\n- Fastest: check the mobile app or online banking, call our 24/7 PhoneBanking, or visit a branch.  \n- If you want me to look it up for you, reply “Check balance” and ",
     "error": null
   },
   {
     "scenario_id": "deleg_03",
     "category": "hierarchical_delegation",
     "description": "Multi-intent: refund AND address change",
-    "success": true,
-    "soft_pass": true,
-    "pattern_correct": true,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:update_profile]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 101610.68339995109,
-    "first_agent": "refunds_agent",
-    "responding_agent": "refunds_agent",
-    "agents_involved": [
-      "refunds_agent",
-      "accounts_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "refunds_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "I can do both \u2014 but I must have your explicit one-line consent before I run any KYC/transaction checks, plus the address and duplicate-charge details so I process everything correctly.\n\nPlease reply using the exact consent line below (copy/paste and change the year if the charge was in a different year), and include the new mailing address plus duplicate-charge confirmation in the same reply. Example single reply you can send:\n\nI consent to KYC and lookup for ACC-2024-7891 \u2014 March 15, 2026\nDupli",
-    "error": null
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 320783.2124233246,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "deleg_04",
@@ -605,45 +553,34 @@
       "knowledge_search",
       "knowledge_search"
     ],
-    "answer_text": "I can take care of this \u2014 but per policy I must verify your identity before making any payment changes or opening disputes. Please reply with the items below (do NOT post full card numbers, PIN or CVV):\n\n1) Payment method for the premium subscription: card recurring charge, direct debit/standing order, or one\u2011off bank transfer?  \n2) Merchant / subscription name as shown on your statement and the amount.  \n3) Which account to act on \u2014 account ID or last 4 digits of the card (last 4 only).  \n4) Wh",
+    "answer_text": "I can take care of this — but per policy I must verify your identity before making any payment changes or opening disputes. Please reply with the items below (do NOT post full card numbers, PIN or CVV):\n\n1) Payment method for the premium subscription: card recurring charge, direct debit/standing order, or one‑off bank transfer?  \n2) Merchant / subscription name as shown on your statement and the amount.  \n3) Which account to act on — account ID or last 4 digits of the card (last 4 only).  \n4) Wh",
     "error": null
   },
   {
     "scenario_id": "deleg_05",
     "category": "hierarchical_delegation",
     "description": "Multi-intent: open new account AND close existing one",
-    "success": true,
-    "soft_pass": true,
-    "pattern_correct": true,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 80497.10779986344,
-    "first_agent": "accounts_agent",
-    "responding_agent": "accounts_agent",
-    "agents_involved": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "I can help \u2014 here\u2019s what\u2019s required and how we can proceed.\n\nQuick summary (policy highlights)\n- To open a Premium Current Account you must be KYC\u2011verified (valid government ID + proof of address dated \u226490 days) and \u226518 years old. For SMEs additional business documents may be required.  \n- To close your Regular Current Account it must have: zero outstanding balance, no pending transactions, and no linked credit/loan facilities. If there is a remaining balance we will need transfer instructions b",
-    "error": null
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 305864.2578125,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "deleg_06",
     "category": "hierarchical_delegation",
     "description": "Multi-intent: complaint AND refund (cross-agent delegation)",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": true,
     "agent_correct": false,
     "answer_keywords_found": true,
@@ -663,15 +600,15 @@
       "knowledge_search",
       "knowledge_search"
     ],
-    "answer_text": "I can do both \u2014 open the service complaint and start a refund for order #456. To comply with policy and open auditable tickets I need a few non\u2011sensitive details and your choice how to proceed. Do NOT send full card numbers, CVV or PINs.\n\nPlease reply with the following:\n\n1) Account identifier \u2014 full account ID or last 4 digits of the card on file.  \n2) Refund (order #456) details:\n   - Transaction date (or approximate date) and amount charged.  \n   - Merchant / statement descriptor (if differen",
+    "answer_text": "I can do both — open the service complaint and start a refund for order #456. To comply with policy and open auditable tickets I need a few non‑sensitive details and your choice how to proceed. Do NOT send full card numbers, CVV or PINs.\n\nPlease reply with the following:\n\n1) Account identifier — full account ID or last 4 digits of the card on file.  \n2) Refund (order #456) details:\n   - Transaction date (or approximate date) and amount charged.  \n   - Merchant / statement descriptor (if differen",
     "error": null
   },
   {
     "scenario_id": "deleg_07",
     "category": "hierarchical_delegation",
     "description": "Multi-intent: refund for wrong item AND track replacement delivery",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": true,
     "agent_correct": false,
     "answer_keywords_found": true,
@@ -690,7 +627,7 @@
     "tools_used": [
       "knowledge_search"
     ],
-    "answer_text": "I can start both right away. Please choose one option and provide the non\u2011sensitive details so I can follow KYC and proceed:\n\nOptions\n- \u201cStart now\u201d \u2014 I\u2019ll begin identity verification (2\u2011FA), look up the duplicate transactions, initiate the refund (merchant request/chargeback if needed) and send a 2\u2011FA prompt so we can update your address. I\u2019ll then send secure upload instructions for evidence and proof of address.\n- \u201cSend upload instructions\u201d \u2014 I\u2019ll send a secure upload link first so you can sub",
+    "answer_text": "I can start both right away. Please choose one option and provide the non‑sensitive details so I can follow KYC and proceed:\n\nOptions\n- “Start now” — I’ll begin identity verification (2‑FA), look up the duplicate transactions, initiate the refund (merchant request/chargeback if needed) and send a 2‑FA prompt so we can update your address. I’ll then send secure upload instructions for evidence and proof of address.\n- “Send upload instructions” — I’ll send a secure upload link first so you can sub",
     "error": null
   },
   {
@@ -713,15 +650,15 @@
     ],
     "handling_agents": [],
     "tools_used": [],
-    "answer_text": "I recommend option A (Verify + Block + Dispute) for an unauthorised EUR 350 charge \u2014 that stops further fraud immediately and starts the formal chargeback. To proceed I must verify your identity first and need a few non\u2011sensitive details from you. Please reply with the exact items below (do NOT send full card numbers, CVV or PINs):\n\n1) Choice: A, B, C or D (A recommended)  \n2) Account ID or last 4 digits of the card used (last 4 only)  \n3) Transaction date and merchant descriptor as shown on you",
+    "answer_text": "I recommend option A (Verify + Block + Dispute) for an unauthorised EUR 350 charge — that stops further fraud immediately and starts the formal chargeback. To proceed I must verify your identity first and need a few non‑sensitive details from you. Please reply with the exact items below (do NOT send full card numbers, CVV or PINs):\n\n1) Choice: A, B, C or D (A recommended)  \n2) Account ID or last 4 digits of the card used (last 4 only)  \n3) Transaction date and merchant descriptor as shown on you",
     "error": null
   },
   {
     "scenario_id": "deleg_09",
     "category": "hierarchical_delegation",
     "description": "Multi-intent: complaint about waiting time AND request account statement",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": true,
     "agent_correct": false,
     "answer_keywords_found": true,
@@ -748,8 +685,8 @@
     "scenario_id": "deleg_10",
     "category": "hierarchical_delegation",
     "description": "Multi-intent: request refund AND change notification preferences",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": true,
     "agent_correct": false,
     "answer_keywords_found": true,
@@ -769,7 +706,7 @@
       "knowledge_search",
       "knowledge_search"
     ],
-    "answer_text": "I can do both \u2014 refund one of the EUR 50 duplicate charges and switch your alerts to email \u2014 but I must verify a few things first and get your consent for 2\u2011factor verification (required by policy).\n\nPlease reply with these non\u2011sensitive items (do NOT send full card numbers, CVV or PINs):\n1) Account ID or last 4 digits of the card on file.  \n2) Confirm the duplicate charge details:\n   - Date (you said \u201cyesterday\u201d \u2014 please confirm yyyy\u2011mm\u2011dd),  \n   - Merchant name/statement descriptor,  \n   - Amo",
+    "answer_text": "I can do both — refund one of the EUR 50 duplicate charges and switch your alerts to email — but I must verify a few things first and get your consent for 2‑factor verification (required by policy).\n\nPlease reply with these non‑sensitive items (do NOT send full card numbers, CVV or PINs):\n1) Account ID or last 4 digits of the card on file.  \n2) Confirm the duplicate charge details:\n   - Date (you said “yesterday” — please confirm yyyy‑mm‑dd),  \n   - Merchant name/statement descriptor,  \n   - Amo",
     "error": null
   },
   {
@@ -799,37 +736,27 @@
       "knowledge_search",
       "knowledge_search"
     ],
-    "answer_text": "Summary \u2014 why you may have an overdraft fee, whether it can be reversed, and how to avoid it.\n\nWhy you were charged\n- A payment or cleared authorisation took your available balance below zero or past an agreed overdraft limit.  \n- A standing order/direct debit posted when funds were insufficient.  \n- You exceeded an arranged overdraft limit (or used an unauthorised overdraft).  \n- Posting/settlement timing or a merchant refund arriving late can also trigger a fee.  \n- Occasionally a system/posti",
+    "answer_text": "Summary — why you may have an overdraft fee, whether it can be reversed, and how to avoid it.\n\nWhy you were charged\n- A payment or cleared authorisation took your available balance below zero or past an agreed overdraft limit.  \n- A standing order/direct debit posted when funds were insufficient.  \n- You exceeded an arranged overdraft limit (or used an unauthorised overdraft).  \n- Posting/settlement timing or a merchant refund arriving late can also trigger a fee.  \n- Occasionally a system/posti",
     "error": null
   },
   {
     "scenario_id": "deleg_12",
     "category": "hierarchical_delegation",
     "description": "Multi-intent: report unauthorized transaction AND freeze account",
-    "success": true,
-    "soft_pass": true,
-    "pattern_correct": true,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 135308.18350007758,
-    "first_agent": "refunds_agent",
-    "responding_agent": "refunds_agent",
-    "agents_involved": [
-      "refunds_agent",
-      "accounts_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "refunds_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "I can start this immediately \u2014 but I still need your explicit one-line consent plus the transaction date/merchant before I can run KYC, open the fraud case, or place a freeze.\n\nPlease reply exactly with one line using this template (copy/paste and replace the bracketed items):\n\nI consent to KYC, fraud lookup and account freeze for ACC-2024-7891 \u2014 Transaction: April 2, 2026 \u2014 Merchant: MerchantXYZ \u2014 Amount: EUR 800 \u2014 Freeze: yes \u2014 2FA ready: yes\n\nWhat I\u2019ll do as soon as you send that exact line:\n",
-    "error": null
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 308184.6568584442,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "deleg_13",
@@ -863,330 +790,211 @@
   {
     "scenario_id": "deleg_14",
     "category": "hierarchical_delegation",
-    "description": "Multi-intent: three intents \u2014 refund, complaint, and FAQ",
-    "success": true,
-    "soft_pass": true,
-    "pattern_correct": true,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:create_ticket]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 137720.91189981438,
-    "first_agent": "complaints_agent",
-    "responding_agent": "complaints_agent",
-    "agents_involved": [
-      "complaints_agent",
-      "refunds_agent"
-    ],
-    "handling_agents": [
-      "complaints_agent",
-      "refunds_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "I can handle the EUR 100 refund and open the formal complaint about branch handling. Quick summary of what applies (policy\u2011grounded):\n\n- Refunds: must go to the original payment method when possible and, if approved, typically settle in 3\u20135 business days (refund method and timing per our refunds policy).  \n- Eligibility checks before we proceed: identity/KYC verification, active account, transaction not excluded (e.g., confirmed fraud, crypto, closed/frozen accounts).  \n- Complaints: standard re",
-    "error": null
+    "description": "Multi-intent: three intents — refund, complaint, and FAQ",
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 302074.41878318787,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "deleg_15",
     "category": "hierarchical_delegation",
     "description": "Multi-intent: close savings AND open fixed deposit",
-    "success": true,
-    "soft_pass": true,
-    "pattern_correct": true,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 99558.44649998471,
-    "first_agent": "accounts_agent",
-    "responding_agent": "accounts_agent",
-    "agents_involved": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "[accounts_policy.yaml] ============================================================\n\neligibility:\n\n  - id: account_opening_kyc\n    description: >\n      New account opening requires successful KYC verification\n      including valid government-issued ID and proof of address\n      dated within the last 3 months.\n    conditions:\n      - kyc_status == \"verified\"\n      - id_document_valid == true\n      - proof_of_address_age_days <= 90\n    outcome: eligible\n\n  - id: account_opening_age\n    description",
-    "error": null
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 303083.0190181732,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "deleg_16",
     "category": "action_routing",
     "description": "Sequential action: add beneficiary then initiate international transfer (same agent)",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_transfer]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 86120.31699996442,
-    "first_agent": "accounts_agent",
-    "responding_agent": "accounts_agent",
-    "agents_involved": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "[accounts_policy.yaml] ============================================================\nSECTION 6 \u2014 AML / RISK SAFEGUARDS\n============================================================\n\nrisk_controls:\n\n  - id: aml_account_opening\n    description: >\n      All new account applications undergo automated AML screening\n      against sanctions lists and PEP databases. Matches trigger\n      enhanced due diligence review.\n    action: automated_screening_then_edd_if_flagged\n\n  - id: unusual_activity_monitoring",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 305898.380279541,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "hitl_01",
     "category": "hitl_escalation",
     "description": "Escalation: EUR 25000 fraud multi-turn (>5000 requires manager approval per policy)",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:create_ticket]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 328124.85940009356,
-    "first_agent": "complaints_agent",
-    "responding_agent": "complaints_agent",
-    "agents_involved": [
-      "accounts_agent",
-      "complaints_agent",
-      "refunds_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "complaints_agent",
-      "refunds_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "[complaints_policy.yaml] ============================================================\nSECTION 2 \u2014 COMPENSATION AMOUNT RULES\n============================================================\n\namount_rules:\n\n  - id: max_auto_compensation_limit\n    description: >\n      Compensation up to and including EUR 500 may be auto-approved\n      by the system if eligibility conditions are met.\n    threshold: 500\n    currency: EUR\n    approval: auto\n    slot_name: compensation_amount\n\n  - id: manager_approval_requ",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 314490.58079719543,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "hitl_02",
     "category": "hitl_escalation",
     "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
-    "success": true,
+    "success": false,
     "soft_pass": false,
-    "pattern_correct": true,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[escalation=yes,response_present]",
-    "latency_ms": 89299.78940007277,
-    "first_agent": "complaints_agent",
-    "responding_agent": "complaints_agent",
-    "agents_involved": [
-      "refunds_agent",
-      "complaints_agent"
-    ],
-    "handling_agents": [
-      "complaints_agent",
-      "refunds_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "[complaints_policy.yaml] ============================================================\nSECTION 2 \u2014 COMPENSATION AMOUNT RULES\n============================================================\n\namount_rules:\n\n  - id: max_auto_compensation_limit\n    description: >\n      Compensation up to and including EUR 500 may be auto-approved\n      by the system if eligibility conditions are met.\n    threshold: 500\n    currency: EUR\n    approval: auto\n    slot_name: compensation_amount\n\n  - id: manager_approval_requ",
-    "error": null
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 301599.9405384064,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "hitl_03",
     "category": "hitl_escalation",
     "description": "Escalation: compromised card with active fraud (multi-intent)",
-    "success": true,
-    "soft_pass": true,
-    "pattern_correct": true,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 113473.55409990996,
-    "first_agent": "accounts_agent",
-    "responding_agent": "accounts_agent",
-    "agents_involved": [
-      "refunds_agent",
-      "accounts_agent"
-    ],
-    "handling_agents": [
-      "refunds_agent"
-    ],
-    "tools_used": [
-      "knowledge_search"
-    ],
-    "answer_text": "I\u2019m sorry this is happening \u2014 I can\u2019t block the card or open a fraud investigation without your explicit one\u2011line consent (policy). If you need an immediate block now, call our 24/7 hotline first.\n\nOtherwise please copy/paste and send this exact single line (replace bracketed items):\n\nI consent to KYC, fraud lookup and card block for [YOUR_CUSTOMER_ID_or_registered_email] \u2014 Card last4: [1234] \u2014 Freeze: yes \u2014 2FA ready: yes \u2014 Preferred contact: [email or phone] \u2014 Police report filed: [yes/no]\n\nIn",
-    "error": null
+    "success": false,
+    "soft_pass": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 300740.2777671814,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "hitl_04",
     "category": "hitl_escalation",
     "description": "Escalation: vulnerable customer in financial distress",
-    "success": true,
+    "success": false,
     "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[clarification_or_response,response_present]",
-    "latency_ms": 112077.43870001286,
-    "first_agent": "accounts_agent",
-    "responding_agent": "accounts_agent",
-    "agents_involved": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "[accounts_policy.yaml] ============================================================\n\nmetadata:\n  policy_id: novapay_accounts_policy\n  jurisdiction: EU\n  regulatory_framework:\n    - PSD2\n    - GDPR\n    - AMLD5\n    - EBA Guidelines on Account Switching\n  internal_references:\n    - KYC/AML Compliance Handbook 2024\n    - Data Privacy Operations Manual v2.1\n\noverview: >\n  This policy defines the eligibility criteria, approval workflow,\n  compliance safeguards, and execution standards for account life",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 303877.0959377289,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "hitl_05",
     "category": "hitl_escalation",
     "description": "Escalation: deceased account holder estate inquiry",
-    "success": true,
+    "success": false,
     "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[clarification_or_response,knowledge=yes,response_present]",
-    "latency_ms": 107250.40429993533,
-    "first_agent": "accounts_agent",
-    "responding_agent": "accounts_agent",
-    "agents_involved": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "Thanks \u2014 I can proceed with your deceased\u2011account request. Do you want me to:\n\nA) Open an estate/claims case now with the specialist team and locate the accounts, or  \nB) Send the full document checklist and secure upload instructions so you can prepare first?\n\nIf you want A (I\u2019ll escalate), please reply with these non\u2011sensitive items and the exact one\u2011line consent required by policy (do NOT post scanned IDs or full account/card numbers here):\n\n- Non\u2011sensitive identifier: customer ID OR last 4 d",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 307453.6054134369,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "hitl_06",
     "category": "hitl_escalation",
     "description": "Escalation: suspected money laundering report",
-    "success": true,
+    "success": false,
     "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[clarification_or_response,response_present]",
-    "latency_ms": 156370.14149990864,
-    "first_agent": "complaints_agent",
-    "responding_agent": "complaints_agent",
-    "agents_involved": [
-      "complaints_agent",
-      "accounts_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent"
-    ],
-    "tools_used": [
-      "knowledge_search"
-    ],
-    "answer_text": "Understood \u2014 this is urgent and we must follow AML/fraud rules. Per policy: unusual activity is reviewed within 24 hours, and transfers above EUR 15,000 trigger additional verification and reporting. We cannot act without your explicit one\u2011line consent.\n\nPlease do NOT move funds or attempt transfers. If you want the fastest possible block, call our 24/7 hotline now and then paste the consent line here so I can open the case.\n\nCopy/paste this exact single line (replace bracketed items) and send i",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 306877.7515888214,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "edge_01",
     "category": "graceful_degradation",
     "description": "Out-of-domain: quantum physics question (graceful fallback to FAQ)",
-    "success": true,
+    "success": false,
     "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[response_present,kw_any:outside]",
-    "latency_ms": 91190.02350000665,
-    "first_agent": "faq_agent",
-    "responding_agent": "faq_agent",
-    "agents_involved": [
-      "accounts_agent",
-      "faq_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent"
-    ],
-    "tools_used": [
-      "knowledge_search"
-    ],
-    "answer_text": "This topic is outside the bank\u2019s FAQ domain, but I can help. Would you like one of the following (pick one)?\n\n- A short, non\u2011technical example and intuition (quick recap in plain language).  \n- A simple Gaussian wavepacket example showing the minimum\u2011uncertainty case (with the key equations).  \n- A concise operator\u2011based derivation sketch (using [x,p]=i\u0127 and the standard deviation inequality).  \n- Links to reputable resources (textbooks and online lectures).\n\nTell me which and I\u2019ll give a brief,",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 304101.4494895935,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "edge_02",
     "category": "graceful_degradation",
     "description": "Refund for fictitious product (graceful handling)",
-    "success": true,
+    "success": false,
     "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[clarification_or_response,response_present]",
-    "latency_ms": 138642.09090010263,
-    "first_agent": "refunds_agent",
-    "responding_agent": "refunds_agent",
-    "agents_involved": [
-      "accounts_agent",
-      "refunds_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "refunds_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "I can help \u2014 a few quick clarifying items and one required authorization before I can look anything up or start a refund/dispute.\n\n1) Do you believe this flying\u2011car purchase was authorized by you and you now want a merchant refund/return, or do you believe it was an unauthorized/fraudulent charge?\n   - If unauthorized: we\u2019ll open an urgent fraud investigation (police report requested).\n   - If authorized: we\u2019ll first ask the merchant to refund; if they refuse we can open a card chargeback/disput",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 311358.34431648254,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "edge_03",
@@ -1219,31 +1027,20 @@
     "scenario_id": "edge_05",
     "category": "graceful_degradation",
     "description": "Legal threat requiring human intervention (graceful AOP handling)",
-    "success": true,
+    "success": false,
     "soft_pass": false,
-    "pattern_correct": true,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "pass=[response_present,kw_any:escalat,complaint,sorry]",
-    "latency_ms": 115628.50739993155,
-    "first_agent": "complaints_agent",
-    "responding_agent": "complaints_agent",
-    "agents_involved": [
-      "complaints_agent",
-      "faq_agent"
-    ],
-    "handling_agents": [
-      "complaints_agent",
-      "faq_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "handoff_to_human"
-    ],
-    "answer_text": "I\u2019m sorry this has escalated \u2014 I can\u2019t arrange direct CEO contact. Per policy, legal claims must be handled by our Legal & Compliance teams (and any mention of litigation is escalated immediately). I\u2019ve already flagged this to our human escalation team so Legal/Compliance and Senior Ops have been notified.\n\nWhat I cannot do\n- Promise direct CEO availability or share CEO contact details here.  \n- Accept scanned legal documents or sensitive IDs in chat \u2014 please use your lawyer to send formal notic",
-    "error": null
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 307071.5751647949,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "edge_06",
@@ -1265,7 +1062,7 @@
     ],
     "handling_agents": [],
     "tools_used": [],
-    "answer_text": "I can start this \u2014 please reply with the short non\u2011sensitive details below so I can verify and begin the refund flow. Do NOT post full card numbers, CVV or PIN.\n\nI need:\n1) Payment method: card or bank transfer  \n2) Transaction date (yyyy\u2011mm\u2011dd) and exact amount charged  \n3) Merchant name / statement descriptor and transaction ID (if available)  \n4) Account identifier \u2014 account ID or last 4 digits of the card on file  \n5) Consent to 2\u2011factor identity verification now? Reply \u201cI consent\u201d or \u201cNo\u201d (",
+    "answer_text": "I can start this — please reply with the short non‑sensitive details below so I can verify and begin the refund flow. Do NOT post full card numbers, CVV or PIN.\n\nI need:\n1) Payment method: card or bank transfer  \n2) Transaction date (yyyy‑mm‑dd) and exact amount charged  \n3) Merchant name / statement descriptor and transaction ID (if available)  \n4) Account identifier — account ID or last 4 digits of the card on file  \n5) Consent to 2‑factor identity verification now? Reply “I consent” or “No” (",
     "error": null
   },
   {
@@ -1288,7 +1085,7 @@
     ],
     "handling_agents": [],
     "tools_used": [],
-    "answer_text": "I\u2019m standing by to start \u2014 please confirm with one short line using one of these templates (do NOT include full card numbers, CVV or PIN):\n\n1) Fast protection + full recovery (recommended)  \nBlock + I consent + last4=1234 + Refund everything [date range] + I will upload\n\n2) Block + refund specific transactions  \nBlock + I consent + last4=1234 + Refund: [yyyy\u2011mm\u2011dd, \u20acamount, merchant]; [yyyy\u2011mm\u2011dd, \u20acamount, merchant] + I will upload\n\n3) No block, just refunds & complaint  \nNo block + I consent + ",
+    "answer_text": "I’m standing by to start — please confirm with one short line using one of these templates (do NOT include full card numbers, CVV or PIN):\n\n1) Fast protection + full recovery (recommended)  \nBlock + I consent + last4=1234 + Refund everything [date range] + I will upload\n\n2) Block + refund specific transactions  \nBlock + I consent + last4=1234 + Refund: [yyyy‑mm‑dd, €amount, merchant]; [yyyy‑mm‑dd, €amount, merchant] + I will upload\n\n3) No block, just refunds & complaint  \nNo block + I consent + ",
     "error": null
   },
   {
@@ -1343,7 +1140,7 @@
     "tools_used": [
       "knowledge_search"
     ],
-    "answer_text": "I can help \u2014 pick one option and I\u2019ll proceed. Don\u2019t send full card numbers, PINs or CVV.\n\nA) Troubleshoot mobile wallet / tap tips \u2014 reply \u201cA\u201d and I\u2019ll send step\u2011by\u2011step checks.  \nB) Check card/account status for blocks/declines \u2014 reply \u201cB + last4=1234 + I consent\u201d (last 4 only) so I can run a quick 2\u2011FA check.  \nC) Open a Card Operations ticket / request replacement \u2014 reply \u201cC + last4=1234 + I consent\u201d and I\u2019ll log an investigation (replacement SLA 5\u20137 business days).\n\nIf you suspect fraud or ",
+    "answer_text": "I can help — pick one option and I’ll proceed. Don’t send full card numbers, PINs or CVV.\n\nA) Troubleshoot mobile wallet / tap tips — reply “A” and I’ll send step‑by‑step checks.  \nB) Check card/account status for blocks/declines — reply “B + last4=1234 + I consent” (last 4 only) so I can run a quick 2‑FA check.  \nC) Open a Card Operations ticket / request replacement — reply “C + last4=1234 + I consent” and I’ll log an investigation (replacement SLA 5–7 business days).\n\nIf you suspect fraud or ",
     "error": null
   },
   {
@@ -1400,7 +1197,7 @@
     "tools_used": [
       "knowledge_search"
     ],
-    "answer_text": "You can reset your card PIN quickly and securely. Options and what to expect:\n\n- Mobile app (fastest): Card \u2192 Change/Reset PIN, complete 2\u2011factor authentication (2\u2011FA) and set a new PIN. Effect is immediate.  \n- PhoneBanking or branch: call 24/7 PhoneBanking or visit a branch; staff will verify your identity and process the reset.  \n- PIN letter by post: request a new PIN by mail \u2014 delivery ~3\u20135 business days.  \n- Prepaid/Gift cards: reset via the prepaid netbanking portal (if applicable).\n\nImpo",
+    "answer_text": "You can reset your card PIN quickly and securely. Options and what to expect:\n\n- Mobile app (fastest): Card → Change/Reset PIN, complete 2‑factor authentication (2‑FA) and set a new PIN. Effect is immediate.  \n- PhoneBanking or branch: call 24/7 PhoneBanking or visit a branch; staff will verify your identity and process the reset.  \n- PIN letter by post: request a new PIN by mail — delivery ~3–5 business days.  \n- Prepaid/Gift cards: reset via the prepaid netbanking portal (if applicable).\n\nImpo",
     "error": null
   },
   {
@@ -1435,76 +1232,46 @@
     "scenario_id": "b77_refund_01",
     "category": "actionable_routing",
     "description": "BANKING77: card payment not recognised (EUR 89.99, auto-approve)",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 201513.37609998882,
-    "first_agent": "refunds_agent",
-    "responding_agent": "refunds_agent",
-    "agents_involved": [
-      "complaints_agent",
-      "refunds_agent"
-    ],
-    "handling_agents": [
-      "complaints_agent",
-      "refunds_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "[refunds_policy.yaml] ============================================================\n\nexecution:\n\n  - id: refund_method\n    description: >\n      Refunds must be returned to the original payment method whenever possible.\n      If not available, escalate to manual handling.\n    rules:\n      - if original_payment_method_available == true:\n          action: refund_to_original_method\n      - else:\n          action: escalate_manual_processing\n\n  - id: refund_settlement_time\n    description: >\n      Stan",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 321142.4820423126,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "b77_refund_03",
     "category": "actionable_routing",
     "description": "BANKING77: failed transfer (EUR 1200, auto-approve)",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": false,
-    "agent_correct": true,
-    "answer_keywords_found": true,
-    "outcome_correct": true,
-    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund]; [SOFT_PASS:tool_not_called_but_orchestration_ok]",
-    "latency_ms": 222272.71129982546,
-    "first_agent": "refunds_agent",
-    "responding_agent": "refunds_agent",
-    "agents_involved": [
-      "refunds_agent",
-      "accounts_agent",
-      "complaints_agent"
-    ],
-    "handling_agents": [
-      "accounts_agent",
-      "complaints_agent",
-      "refunds_agent"
-    ],
-    "tools_used": [
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search",
-      "knowledge_search"
-    ],
-    "answer_text": "[refunds_policy.yaml] ============================================================\n\nexecution:\n\n  - id: refund_method\n    description: >\n      Refunds must be returned to the original payment method whenever possible.\n      If not available, escalate to manual handling.\n    rules:\n      - if original_payment_method_available == true:\n          action: refund_to_original_method\n      - else:\n          action: escalate_manual_processing\n\n  - id: refund_settlement_time\n    description: >\n      Stan",
-    "error": null
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:300s",
+    "latency_ms": 459616.7297363281,
+    "first_agent": "",
+    "responding_agent": "",
+    "agents_involved": [],
+    "tools_used": [],
+    "answer_text": "",
+    "error": "Timeout after 300s"
   },
   {
     "scenario_id": "b77_complaint_01",
     "category": "actionable_routing",
     "description": "BANKING77: card swallowed by ATM (per complaints policy)",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": false,
     "agent_correct": false,
     "answer_keywords_found": true,
@@ -1523,7 +1290,7 @@
     "tools_used": [
       "knowledge_search"
     ],
-    "answer_text": "I\u2019m ready to act. Please reply with one short line (do NOT include full card numbers, CVV or PIN). Use this exact format and pick the operator + one action + consent:\n\n[Our ATM / Other]; [Block + Order replacement | Block only | Order replacement only | Block + Order replacement + Start fraud investigation]; I consent\n\nExample:\nOur ATM; Block + Order replacement; I consent\n\nIf you need immediate blocking and can\u2019t do 2\u2011FA here, call PhoneBanking (24/7) now to hotlist the card, then come back and",
+    "answer_text": "I’m ready to act. Please reply with one short line (do NOT include full card numbers, CVV or PIN). Use this exact format and pick the operator + one action + consent:\n\n[Our ATM / Other]; [Block + Order replacement | Block only | Order replacement only | Block + Order replacement + Start fraud investigation]; I consent\n\nExample:\nOur ATM; Block + Order replacement; I consent\n\nIf you need immediate blocking and can’t do 2‑FA here, call PhoneBanking (24/7) now to hotlist the card, then come back and",
     "error": null
   },
   {
@@ -1556,7 +1323,7 @@
       "lookup_customer",
       "create_ticket"
     ],
-    "answer_text": "Done \u2014 I\u2019ve blocked your card and opened a fraud report.\n\nWhat I did\n- Blocked/hotlisted card ending 3344 on account ACC-2024-1155 to stop further transactions.  \n- Opened a fraud investigation and created ticket TKT-001.  \n- Confirmed your account is active and KYC\u2011verified (verification complete).\n\nWhat happens next\n- Replacement card: I ordered a replacement (first replacement usually free). Delivery is typically 5\u20137 business days. I\u2019ll confirm the delivery reference once available.  \n- Fraud",
+    "answer_text": "Done — I’ve blocked your card and opened a fraud report.\n\nWhat I did\n- Blocked/hotlisted card ending 3344 on account ACC-2024-1155 to stop further transactions.  \n- Opened a fraud investigation and created ticket TKT-001.  \n- Confirmed your account is active and KYC‑verified (verification complete).\n\nWhat happens next\n- Replacement card: I ordered a replacement (first replacement usually free). Delivery is typically 5–7 business days. I’ll confirm the delivery reference once available.  \n- Fraud",
     "error": null
   },
   {
@@ -1579,7 +1346,7 @@
     ],
     "handling_agents": [],
     "tools_used": [],
-    "answer_text": "I\u2019m ready \u2014 please send both confirmations in one message (do NOT include full card numbers, CVV or PIN). Use the exact formats below.\n\n1) Replacement card \u2014 pick one and reply exactly:  \n- Card: Check delivery  \n- Card: Expedite  \n- Card: Emergency cash at branch (if this, add the branch name you\u2019ll visit)  \n- Card: OK\n\n2) Pending transfer \u2014 one short line (include \u201cI consent\u201d so I can run 2\u2011FA and act):\n\nCheck transfer; I consent \u2014 Type: [internal/SEPA/SWIFT]; Date: yyyy\u2011mm\u2011dd; Amount: EUR xx.",
+    "answer_text": "I’m ready — please send both confirmations in one message (do NOT include full card numbers, CVV or PIN). Use the exact formats below.\n\n1) Replacement card — pick one and reply exactly:  \n- Card: Check delivery  \n- Card: Expedite  \n- Card: Emergency cash at branch (if this, add the branch name you’ll visit)  \n- Card: OK\n\n2) Pending transfer — one short line (include “I consent” so I can run 2‑FA and act):\n\nCheck transfer; I consent — Type: [internal/SEPA/SWIFT]; Date: yyyy‑mm‑dd; Amount: EUR xx.",
     "error": null
   },
   {
@@ -1609,7 +1376,7 @@
       "knowledge_search",
       "knowledge_search"
     ],
-    "answer_text": "I can handle both \u2014 investigate the wrong exchange\u2011rate charge and confirm which currencies your card/account supports \u2014 but I\u2019ll need a few non\u2011sensitive details and your consent to verify before moving funds.\n\nQuick summary (what applies)\n- First check whether the merchant applied Dynamic Currency Conversion (DCC) or billed in a foreign currency; if merchant applied DCC they can often correct it fastest.  \n- Card disputes should be reported in writing within 30 days of the transaction; general",
+    "answer_text": "I can handle both — investigate the wrong exchange‑rate charge and confirm which currencies your card/account supports — but I’ll need a few non‑sensitive details and your consent to verify before moving funds.\n\nQuick summary (what applies)\n- First check whether the merchant applied Dynamic Currency Conversion (DCC) or billed in a foreign currency; if merchant applied DCC they can often correct it fastest.  \n- Card disputes should be reported in writing within 30 days of the transaction; general",
     "error": null
   },
   {
@@ -1636,7 +1403,7 @@
     "tools_used": [
       "knowledge_search"
     ],
-    "answer_text": "Sorry for the trouble \u2014 I can help. Quick troubleshooting first, then the safe ways I can act.\n\nTry these now (fast fixes)\n- Check available balance in the app (insufficient funds is the most common cause).  \n- Use chip (insert) rather than contactless, or try a different terminal.  \n- Remove the card from metal sleeves/wallets (NFC interference).  \n- Ensure you\u2019re entering the correct PIN (3 wrong tries can block it).  \n- If the card was recently replaced, make sure it\u2019s activated.  \n- If you s",
+    "answer_text": "Sorry for the trouble — I can help. Quick troubleshooting first, then the safe ways I can act.\n\nTry these now (fast fixes)\n- Check available balance in the app (insufficient funds is the most common cause).  \n- Use chip (insert) rather than contactless, or try a different terminal.  \n- Remove the card from metal sleeves/wallets (NFC interference).  \n- Ensure you’re entering the correct PIN (3 wrong tries can block it).  \n- If the card was recently replaced, make sure it’s activated.  \n- If you s",
     "error": null
   },
   {
@@ -1659,7 +1426,7 @@
     ],
     "handling_agents": [],
     "tools_used": [],
-    "answer_text": "Please reply with one short line filling the non\u2011sensitive fields (do NOT include full card numbers, CVV or PIN). Copy/edit this template:\n\nAccount: [account ID or last4], Txn: [yyyy\u2011mm\u2011dd, EUR amount, merchant descriptor], Unauth: [Yes/No], Block card now: [Yes/No], Consent to 2\u2011FA: [I consent/No], Evidence: [I will upload/No], Card issue: [stops working everywhere / only in shops / only on chip/contactless / error shown: ____]\n\nExample you can copy/edit:\nACC-2024-9999, Txn: 2026-03-12, EUR 45.",
+    "answer_text": "Please reply with one short line filling the non‑sensitive fields (do NOT include full card numbers, CVV or PIN). Copy/edit this template:\n\nAccount: [account ID or last4], Txn: [yyyy‑mm‑dd, EUR amount, merchant descriptor], Unauth: [Yes/No], Block card now: [Yes/No], Consent to 2‑FA: [I consent/No], Evidence: [I will upload/No], Card issue: [stops working everywhere / only in shops / only on chip/contactless / error shown: ____]\n\nExample you can copy/edit:\nACC-2024-9999, Txn: 2026-03-12, EUR 45.",
     "error": null
   },
   {
@@ -1682,15 +1449,15 @@
     ],
     "handling_agents": [],
     "tools_used": [],
-    "answer_text": "Ready to proceed \u2014 please either (A) send the one\u2011line details below or (B) ask \u201cSend upload instructions\u201d so you can upload evidence first. I\u2019ll run 2\u2011FA and act once you confirm. Do NOT post full card numbers, CVV or PIN.\n\nA \u2014 One\u2011line template (copy/edit):\nACC/last4: [account ID or last4], Top\u2011up: [yyyy\u2011mm\u2011dd, EUR amount, payment method, ref/ID], Status: [reverted/failed/returned], I consent / No, Evidence: [I will upload / No upload], Limits: [Check limits / Increase to EUR X / No change]\n\nE",
+    "answer_text": "Ready to proceed — please either (A) send the one‑line details below or (B) ask “Send upload instructions” so you can upload evidence first. I’ll run 2‑FA and act once you confirm. Do NOT post full card numbers, CVV or PIN.\n\nA — One‑line template (copy/edit):\nACC/last4: [account ID or last4], Top‑up: [yyyy‑mm‑dd, EUR amount, payment method, ref/ID], Status: [reverted/failed/returned], I consent / No, Evidence: [I will upload / No upload], Limits: [Check limits / Increase to EUR X / No change]\n\nE",
     "error": null
   },
   {
     "scenario_id": "b77_deleg_06",
     "category": "hierarchical_delegation",
     "description": "BANKING77: report stolen card AND reverse fraudulent transactions",
-    "success": true,
-    "soft_pass": true,
+    "success": false,
+    "soft_pass": false,
     "pattern_correct": true,
     "agent_correct": false,
     "answer_keywords_found": true,
@@ -1709,7 +1476,7 @@
     "tools_used": [
       "update_account"
     ],
-    "answer_text": "Yes \u2014 I can send the secure upload link now so you can attach screenshots and receipts. Uploading documents there is the fastest and safest way to get them into the fraud case.\n\nBefore I send the link \u2014 quick checks\n- Do you want the upload link sent now? (Reply Yes/No)  \n- Any other unrecognised transactions to add beyond the three already reported? (Yes \u2014 list / No)\n\nWhat to upload (preferred files)\n- Screenshots of the transactions on your statement (showing date, amount, merchant).  \n- Any m",
+    "answer_text": "Yes — I can send the secure upload link now so you can attach screenshots and receipts. Uploading documents there is the fastest and safest way to get them into the fraud case.\n\nBefore I send the link — quick checks\n- Do you want the upload link sent now? (Reply Yes/No)  \n- Any other unrecognised transactions to add beyond the three already reported? (Yes — list / No)\n\nWhat to upload (preferred files)\n- Screenshots of the transactions on your statement (showing date, amount, merchant).  \n- Any m",
     "error": null
   },
   {
@@ -1736,7 +1503,7 @@
     "tools_used": [
       "knowledge_search"
     ],
-    "answer_text": "I can start the refund and cancel the direct\u2011debit mandate, but I must verify you first. Please reply once with a single short line (do NOT include full card/PAN, CVV or PIN). Copy/edit this template and send it back:\n\nAccount/last4: [account ID or last4], Txn: [yyyy\u2011mm\u2011dd, EUR amount, company as on statement], Action: A (refund + cancel mandate) / B (refund only) / C (cancel only), Consent to 2\u2011FA: [I consent/No], Evidence: [I will upload/No], Immediate stop: [No / Request freeze]\n\nExample:\nACC",
+    "answer_text": "I can start the refund and cancel the direct‑debit mandate, but I must verify you first. Please reply once with a single short line (do NOT include full card/PAN, CVV or PIN). Copy/edit this template and send it back:\n\nAccount/last4: [account ID or last4], Txn: [yyyy‑mm‑dd, EUR amount, company as on statement], Action: A (refund + cancel mandate) / B (refund only) / C (cancel only), Consent to 2‑FA: [I consent/No], Evidence: [I will upload/No], Immediate stop: [No / Request freeze]\n\nExample:\nACC",
     "error": null
   },
   {

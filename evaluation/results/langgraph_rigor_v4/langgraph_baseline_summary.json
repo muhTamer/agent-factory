@@ -1,0 +1,64 @@
+{
+  "framework": "langgraph_supervisor",
+  "total_scenarios": 60,
+  "passed": 51,
+  "soft_passed": 21,
+  "failed": 9,
+  "orchestration_accuracy": 0.65,
+  "agent_accuracy": 0.85,
+  "outcome_accuracy": 0.85,
+  "reasoning_accuracy": 0.85,
+  "avg_latency_ms": 67983.77,
+  "execution_mode": "real_llm",
+  "total_wall_time_seconds": 4374.6,
+  "by_category": {
+    "action_routing": {
+      "n": 1,
+      "orchestration_accuracy": 1.0,
+      "agent_accuracy": 1.0,
+      "outcome_accuracy": 1.0,
+      "reasoning_accuracy": 1.0,
+      "avg_latency_ms": 36241.2
+    },
+    "actionable_routing": {
+      "n": 10,
+      "orchestration_accuracy": 0.5,
+      "agent_accuracy": 0.6,
+      "outcome_accuracy": 0.6,
+      "reasoning_accuracy": 0.6,
+      "avg_latency_ms": 116642.28
+    },
+    "graceful_degradation": {
+      "n": 6,
+      "orchestration_accuracy": 0.5,
+      "agent_accuracy": 1.0,
+      "outcome_accuracy": 0.8333,
+      "reasoning_accuracy": 0.8333,
+      "avg_latency_ms": 74791.2
+    },
+    "hierarchical_delegation": {
+      "n": 23,
+      "orchestration_accuracy": 0.6522,
+      "agent_accuracy": 0.8261,
+      "outcome_accuracy": 0.8696,
+      "reasoning_accuracy": 0.8696,
+      "avg_latency_ms": 60503.62
+    },
+    "hitl_escalation": {
+      "n": 6,
+      "orchestration_accuracy": 0.5,
+      "agent_accuracy": 0.8333,
+      "outcome_accuracy": 0.8333,
+      "reasoning_accuracy": 0.8333,
+      "avg_latency_ms": 68850.1
+    },
+    "informational_routing": {
+      "n": 14,
+      "orchestration_accuracy": 0.8571,
+      "agent_accuracy": 1.0,
+      "outcome_accuracy": 1.0,
+      "reasoning_accuracy": 1.0,
+      "avg_latency_ms": 44495.09
+    }
+  }
+}

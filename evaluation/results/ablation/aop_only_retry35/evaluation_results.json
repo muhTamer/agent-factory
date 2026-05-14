@@ -1,0 +1,1201 @@
+[
+  {
+    "scenario_id": "faq_06",
+    "category": "informational_routing",
+    "description": "FAQ: Multi-turn card dispute inquiry (clarification then BankFAQ retrieval)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[knowledge_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 612015.1146000717,
+    "agent_calls": 5,
+    "completeness_score": 1.0,
+    "solvability_score": 0.7881333333333332,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to know about the refund or dispute process at your bank.",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 58288.59000001103
+      },
+      {
+        "turn_index": 1,
+        "query": "I'm asking about a card transaction dispute \u2014 a merchant charged me twice.",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 56262.65539997257
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "faq_07",
+    "category": "informational_routing",
+    "description": "FAQ: Multi-turn insurance claim inquiry (clarification then BankFAQ retrieval)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "scenario:pass=[knowledge=yes,response_present]",
+    "latency_ms": 653066.9204001315,
+    "agent_calls": 6,
+    "completeness_score": 1.0,
+    "solvability_score": 0.7974,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "How do I make a claim?",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 263596.9521999359
+      },
+      {
+        "turn_index": 1,
+        "query": "It's an insurance claim \u2014 I have the Accidental Protection Plan.",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 54275.36720014177
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "faq_08",
+    "category": "informational_routing",
+    "description": "FAQ: Multi-turn lost card procedure (clarification then BankFAQ retrieval)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[knowledge_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 421343.3085998986,
+    "agent_calls": 5,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "What should I do about my card?",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 173297.6476000622
+      },
+      {
+        "turn_index": 1,
+        "query": "My debit card was lost. What is the procedure?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 62238.05809998885
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "faq_10",
+    "category": "informational_routing",
+    "description": "FAQ: Overdraft facility eligibility and application process",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[knowledge_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 288947.82299990766,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8005,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "How can I apply for an overdraft facility on my account?",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[knowledge_mismatch:expected=True,got=False]",
+        "latency_ms": 64235.63680006191
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_01",
+    "category": "actionable_routing",
+    "description": "Refund: simple eligible refund under EUR 5000 (auto-approve per policy)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 600203.7638002075,
+    "agent_calls": 6,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want a refund for a EUR 200 charge on my account",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 187768.3986001648
+      },
+      {
+        "turn_index": 1,
+        "query": "My account number is ACC-2024-7891 and the charge was on March 15th from MerchantXYZ",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 83837.58149994537
+      },
+      {
+        "turn_index": 2,
+        "query": "Yes, please go ahead and process the refund",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 38352.89239999838
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_02",
+    "category": "actionable_routing",
+    "description": "Refund: customer provides transaction details (EUR 150, auto-approve)",
+    "success": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": false,
+    "outcome_correct": false,
+    "outcome_detail": "timeout:900s",
+    "latency_ms": 0.0,
+    "agent_calls": 0,
+    "completeness_score": null,
+    "solvability_score": null,
+    "soft_pass": false,
+    "error": "Timeout after 900s",
+    "turns": [],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_05",
+    "category": "actionable_routing",
+    "description": "Refund: duplicate charge (EUR 75, auto-approve)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 234673.47780033015,
+    "agent_calls": 3,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I was charged twice for the same transaction of EUR 75, please refund one",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 65342.891100095585
+      },
+      {
+        "turn_index": 1,
+        "query": "The duplicate charges appeared on March 10th, account ACC-2024-5501, both from the same online store",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 37924.19470008463
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "refund_07",
+    "category": "actionable_routing",
+    "description": "Refund: unauthorized foreign charge (EUR 500, auto-approve + investigation)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 472565.993799828,
+    "agent_calls": 4,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "There is an unauthorized EUR 500 charge from a foreign merchant on my account",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 59325.7424000185
+      },
+      {
+        "turn_index": 1,
+        "query": "My account is ACC-2024-8820 and the charge appeared yesterday from a merchant in Romania that I do not recognise",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 164618.103899993
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "complaint_01",
+    "category": "actionable_routing",
+    "description": "Complaint: formal complaint about service (per complaints policy)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:create_ticket] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 738206.8089996465,
+    "agent_calls": 7,
+    "completeness_score": 1.0,
+    "solvability_score": 0.6345333333333333,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to file a formal complaint about the poor service at your branch",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 138051.23160011135
+      },
+      {
+        "turn_index": 1,
+        "query": "It was the downtown branch on High Street, I visited on March 18th and waited 2 hours with no assistance",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 133761.61789987236
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "complaint_02",
+    "category": "actionable_routing",
+    "description": "Complaint: ombudsman threat (regulatory escalation per policy)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:handoff_to_human] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 185124.6338998899,
+    "agent_calls": 3,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to escalate my complaint to a manager, or I will go to the ombudsman",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 74041.82259994559
+      },
+      {
+        "turn_index": 1,
+        "query": "My complaint reference is CMP-2024-445 and I first raised it three weeks ago but have not received any response",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 28206.23070001602
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_08",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: dispute charge AND ask about fraud protection",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 276563.90560022555,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8455999999999999,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to dispute a EUR 350 charge I did not make, and what fraud protection does my account have?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False]",
+        "latency_ms": 51267.24260021001
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_09",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: complaint about waiting time AND request account statement",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:create_ticket,tool_missing:generate_statement] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 188465.5514000915,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8288500000000001,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to complain about the 45 minute wait on your phone line, and also I need my last 3 months account statements",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:create_ticket,tool_missing:generate_statement]",
+        "latency_ms": 65356.833199970424
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_10",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: request refund AND change notification preferences",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:update_profile] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 239574.5140002109,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.84255,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Refund the EUR 50 double charge from yesterday and also switch my alerts to email instead of SMS",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:update_profile]",
+        "latency_ms": 46447.31940003112
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_11",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: explain overdraft fees AND reverse latest fee",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 327454.3405997101,
+    "agent_calls": 3,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8345666666666668,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Why was I charged an overdraft fee and can you reverse it? Also what are the conditions to avoid it in future?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False]",
+        "latency_ms": 73699.51509987004
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_13",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: upgrade account type AND transfer balance",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 332777.57320017554,
+    "agent_calls": 4,
+    "completeness_score": 1.0,
+    "solvability_score": 0.7893,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want to upgrade from regular to premium current account and transfer my full balance to the new account",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]",
+        "latency_ms": 140712.42709993385
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_14",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: three intents \u2014 refund, complaint, and FAQ",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:create_ticket] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 424553.0238999054,
+    "agent_calls": 3,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8448333333333333,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want a refund for the EUR 100 charge, I want to complain about how the branch handled it, and what are my rights under consumer protection?",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:create_ticket]",
+        "latency_ms": 61380.03939995542
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_15",
+    "category": "hierarchical_delegation",
+    "description": "Multi-intent: close savings AND open fixed deposit",
+    "success": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]",
+    "latency_ms": 131733.39239996858,
+    "agent_calls": 1,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8031,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Close my savings account and use the balance to open a fixed deposit for 12 months",
+        "pattern_correct": true,
+        "agent_correct": false,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]",
+        "latency_ms": 131733.39239996858
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "deleg_16",
+    "category": "action_routing",
+    "description": "Sequential action: add beneficiary then initiate international transfer (same agent)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_transfer] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 447499.43360011093,
+    "agent_calls": 5,
+    "completeness_score": 0.9,
+    "solvability_score": 0.8066000000000001,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I need to add a new international beneficiary and then send EUR 2000 to them via SWIFT",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_transfer]",
+        "latency_ms": 216124.70509996638
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "hitl_01",
+    "category": "hitl_escalation",
+    "description": "Escalation: EUR 25000 fraud multi-turn (>5000 requires manager approval per policy)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:create_ticket] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 828713.9264994767,
+    "agent_calls": 9,
+    "completeness_score": 0.9,
+    "solvability_score": 0.8261750000000001,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Someone has stolen EUR 25000 from my account through multiple unauthorized transactions over the past month and I need all of it back immediately",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 80389.05699993484
+      },
+      {
+        "turn_index": 1,
+        "query": "The transaction ID is TXN-FRAUD-25K on my account",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 55203.21259996854
+      },
+      {
+        "turn_index": 2,
+        "query": "My customer ID is CUST-FRAUD-99",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 167888.51409987547
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[escalation_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 158190.86550013162,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.86155,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Your bank has been charging hidden fees on my account for months and I want a full refund plus I am filing a complaint with the financial ombudsman",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[escalation_mismatch:expected=True,got=False]",
+        "latency_ms": 61202.494099969044
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "hitl_03",
+    "category": "hitl_escalation",
+    "description": "Escalation: compromised card with active fraud (multi-intent)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 299586.01780002937,
+    "agent_calls": 3,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8512666666666666,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "My card has been compromised and there are transactions happening right now that I did not authorise, please block it and reverse everything",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund]",
+        "latency_ms": 87307.32690007426
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "hitl_04",
+    "category": "hitl_escalation",
+    "description": "Escalation: vulnerable customer in financial distress",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[clarification_or_response,response_present]",
+    "latency_ms": 451782.3002000805,
+    "agent_calls": 4,
+    "completeness_score": 1.0,
+    "solvability_score": 0.7368,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I have lost my job and cannot pay my loan instalments, I am about to lose my home, please help me restructure my debt before the bank forecloses",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "pass=[clarification_or_response,response_present]",
+        "latency_ms": 176481.65839980356
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "hitl_05",
+    "category": "hitl_escalation",
+    "description": "Escalation: deceased account holder estate inquiry",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[clarification_or_response,response_present] fail=[knowledge_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 267384.9299000576,
+    "agent_calls": 3,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8374,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "My father passed away last week and I need to know how to access his accounts, close them, and transfer the funds to the estate",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[clarification_or_response,response_present] fail=[knowledge_mismatch:expected=True,got=False]",
+        "latency_ms": 67522.90119999088
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "hitl_06",
+    "category": "hitl_escalation",
+    "description": "Escalation: suspected money laundering report",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[clarification_or_response,response_present]",
+    "latency_ms": 456069.44360001944,
+    "agent_calls": 4,
+    "completeness_score": 1.0,
+    "solvability_score": 0.681975,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I noticed several large deposits from unknown sources in my business account that I did not receive, I think someone is using my account for money laundering",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "pass=[clarification_or_response,response_present]",
+        "latency_ms": 179273.6814999953
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "edge_02",
+    "category": "graceful_degradation",
+    "description": "Refund for fictitious product (graceful handling)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[clarification_or_response,response_present]",
+    "latency_ms": 425931.2068000436,
+    "agent_calls": 4,
+    "completeness_score": 1.0,
+    "solvability_score": 0.7133999999999999,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I want a refund for my flying car purchase from last Tuesday",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "pass=[clarification_or_response,response_present]",
+        "latency_ms": 142338.61689991318
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "edge_03",
+    "category": "graceful_degradation",
+    "description": "Multi-intent with impossible subtask (graceful AOP decomposition)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[kw_any_missing:none_of[unable,not available,cannot,don't offer,not possible,banking]] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 408322.6571998093,
+    "agent_calls": 4,
+    "completeness_score": 1.0,
+    "solvability_score": 0.84765,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Transfer my account to the Mars branch and explain intergalactic banking regulations",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[kw_any_missing:none_of[unable,not available,cannot,don't offer,not possible,banking]]",
+        "latency_ms": 143623.13210009597
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "edge_05",
+    "category": "graceful_degradation",
+    "description": "Legal threat requiring human intervention (graceful AOP handling)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": true,
+    "outcome_detail": "pass=[response_present,kw_any:escalat,complaint]",
+    "latency_ms": 236084.26929987036,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8295,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I am suing your bank for negligence and demand my lawyer speaks with your CEO immediately",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "pass=[response_present,kw_any:escalat,complaint]",
+        "latency_ms": 54820.20069984719
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "edge_08",
+    "category": "graceful_degradation",
+    "description": "Emotionally charged abusive message (graceful de-escalation)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[kw_any_missing:none_of[sorry,apologize,understand,help,assist,concern]] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 140250.4922999069,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8504,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "This is the worst bank I have ever used, you are all incompetent and I want every single penny back right now or else",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[kw_any_missing:none_of[sorry,apologize,understand,help,assist,concern]]",
+        "latency_ms": 57369.3880001083
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_refund_01",
+    "category": "actionable_routing",
+    "description": "BANKING77: card payment not recognised (EUR 89.99, auto-approve)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 455748.63919988275,
+    "agent_calls": 4,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "There is a card payment on my statement that I do not recognise, I need it reversed",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 70296.83639993891
+      },
+      {
+        "turn_index": 1,
+        "query": "The payment was for EUR 89.99 on March 12th, my account is ACC-2024-6633 and the merchant name shows as WEBSHOP-UK",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 122399.91409983486
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_refund_03",
+    "category": "actionable_routing",
+    "description": "BANKING77: failed transfer (EUR 1200, auto-approve)",
+    "success": true,
+    "pattern_correct": false,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:initiate_refund] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 339596.0895998869,
+    "agent_calls": 4,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "My transfer failed but the money was taken from my account and has not been returned",
+        "pattern_correct": false,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 72789.3446998205
+      },
+      {
+        "turn_index": 1,
+        "query": "I transferred EUR 1200 on March 14th from account ACC-2024-7700 to sort code 20-45-67, account 12345678",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 73711.4891000092
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_complaint_01",
+    "category": "actionable_routing",
+    "description": "BANKING77: card swallowed by ATM (per complaints policy)",
+    "success": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:create_ticket]",
+    "latency_ms": 449884.7093002405,
+    "agent_calls": 5,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "The ATM swallowed my card and I need it back or a replacement issued urgently",
+        "pattern_correct": false,
+        "agent_correct": false,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 176336.5802001208
+      },
+      {
+        "turn_index": 1,
+        "query": "It was the ATM at 123 Main Street branch, my card number ends in 8877 and my account is ACC-2024-9012",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 39633.31399997696
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_complaint_02",
+    "category": "actionable_routing",
+    "description": "BANKING77: lost/stolen card report (block + replace)",
+    "success": false,
+    "pattern_correct": false,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "scenario:pass=[response_present] fail=[tool_missing:create_ticket]",
+    "latency_ms": 224736.57619999722,
+    "agent_calls": 4,
+    "completeness_score": null,
+    "solvability_score": 1.0,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I have lost my debit card and need to report it stolen and get a replacement",
+        "pattern_correct": false,
+        "agent_correct": false,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 59697.3703999538
+      },
+      {
+        "turn_index": 1,
+        "query": "My account number is ACC-2024-1155 and the card ending in 3344, I last used it yesterday at a coffee shop",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 60627.95999995433
+      },
+      {
+        "turn_index": 2,
+        "query": "Yes, please block the card and file a report",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": true,
+        "outcome_detail": "",
+        "latency_ms": 27541.250200010836
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_03",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: report declined card AND request PIN change AND check balance",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 426408.4344001021,
+    "agent_calls": 4,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8672,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "My card keeps getting declined, I want to change my PIN, and also check how much is in my account",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:update_account]",
+        "latency_ms": 163905.7662000414
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_04",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: unrecognised charge refund AND complaint about card not working",
+    "success": false,
+    "pattern_correct": true,
+    "agent_correct": false,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False]",
+    "latency_ms": 211828.46069987863,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8816999999999999,
+    "soft_pass": false,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "I have a charge on my statement I do not recognise and want it refunded, also my card has stopped working in shops",
+        "pattern_correct": true,
+        "agent_correct": false,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,knowledge_mismatch:expected=True,got=False]",
+        "latency_ms": 55246.03089992888
+      }
+    ],
+    "governance_events": []
+  },
+  {
+    "scenario_id": "b77_deleg_06",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: report stolen card AND reverse fraudulent transactions",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 406837.7174998168,
+    "agent_calls": 3,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8693666666666667,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "My card was stolen yesterday and I can see three transactions I did not make, block the card and reverse them all",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account]",
+        "latency_ms": 73308.48689982668
+      }
+    ],
+    "governance_events": []
+  }
+]

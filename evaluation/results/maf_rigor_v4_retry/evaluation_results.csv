@@ -1,0 +1,10 @@
+scenario_id,category,description,success,soft_pass,pattern_correct,agent_correct,outcome_correct,outcome_detail,answer_keywords_found,latency_ms,agent_calls,completeness_score,solvability_score,error
+deleg_04,hierarchical_delegation,Multi-intent: cancel subscription AND explain charges,False,False,False,False,False,timeout:300s,False,0.0,0,,,Timeout after 300s
+deleg_12,hierarchical_delegation,Multi-intent: report unauthorized transaction AND freeze account,False,False,False,False,False,timeout:300s,False,0.0,0,,,Timeout after 300s
+deleg_16,action_routing,Sequential action: add beneficiary then initiate international transfer (same agent),False,False,False,False,False,timeout:300s,False,0.0,0,,,Timeout after 300s
+hitl_02,hitl_escalation,Escalation: dispute with regulatory complaint threat (multi-intent),False,False,False,False,False,timeout:300s,False,0.0,0,,,Timeout after 300s
+edge_05,graceful_degradation,Legal threat requiring human intervention (graceful AOP handling),True,False,False,True,True,"pass=[response_present,kw_any:escalat]",True,112776.45,1,,0.81,
+b77_complaint_01,actionable_routing,BANKING77: card swallowed by ATM (per complaints policy),False,False,True,False,False,scenario:pass=[response_present] fail=[tool_missing:create_ticket],True,207438.21,2,,1.0,
+b77_complaint_02,actionable_routing,BANKING77: lost/stolen card report (block + replace),False,False,False,False,False,timeout:300s,False,0.0,0,,,Timeout after 300s
+b77_deleg_04,hierarchical_delegation,BANKING77: unrecognised charge refund AND complaint about card not working,False,False,False,False,False,timeout:300s,False,0.0,0,,,Timeout after 300s
+b77_deleg_07,hierarchical_delegation,BANKING77: failed direct debit refund AND cancel future direct debits,False,False,False,False,False,timeout:300s,False,0.0,0,,,Timeout after 300s

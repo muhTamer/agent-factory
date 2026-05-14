@@ -1,0 +1,24 @@
+{
+  "orchestration_accuracy": 0.7778,
+  "reasoning_accuracy": 0.5556,
+  "agent_accuracy": 0.6667,
+  "outcome_accuracy": 0.0,
+  "solvability_correlation": -0.3464,
+  "completeness_rate": 1.0,
+  "avg_latency_ms": 271522.6,
+  "latency_by_category": {
+    "hierarchical_delegation": 225542.07,
+    "hitl_escalation": 639366.9
+  },
+  "steps_by_category": {
+    "hierarchical_delegation": 1.88,
+    "hitl_escalation": 4.0
+  },
+  "total_scenarios": 9,
+  "passed": 5,
+  "soft_passed": 5,
+  "failed": 4,
+  "execution_mode": "real_llm",
+  "total_wall_time_seconds": 2451.87,
+  "inter_scenario_delay_seconds": 1.0
+}
