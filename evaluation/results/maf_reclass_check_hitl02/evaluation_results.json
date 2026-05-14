@@ -1,0 +1,32 @@
+[
+  {
+    "scenario_id": "hitl_02",
+    "category": "hitl_escalation",
+    "description": "Escalation: dispute with regulatory complaint threat (multi-intent)",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[escalation_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 196813.53220000165,
+    "agent_calls": 3,
+    "completeness_score": 1.0,
+    "solvability_score": 0.8000000000000002,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "Your bank has been charging hidden fees on my account for months and I want a full refund plus I am filing a complaint with the financial ombudsman",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[escalation_mismatch:expected=True,got=False]",
+        "latency_ms": 66739.18879999837
+      }
+    ],
+    "governance_events": []
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "orchestration_accuracy": 1.0,
+  "reasoning_accuracy": 1.0,
+  "agent_accuracy": 1.0,
+  "outcome_accuracy": 0.0,
+  "solvability_correlation": null,
+  "completeness_rate": 1.0,
+  "avg_latency_ms": 105213.92,
+  "latency_by_category": {
+    "hierarchical_delegation": 105213.92
+  },
+  "steps_by_category": {
+    "hierarchical_delegation": 2.0
+  },
+  "total_scenarios": 1,
+  "passed": 1,
+  "soft_passed": 1,
+  "failed": 0,
+  "execution_mode": "real_llm",
+  "total_wall_time_seconds": 105.21,
+  "inter_scenario_delay_seconds": 1.0
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "scenario_id": "b77_deleg_06",
+    "category": "hierarchical_delegation",
+    "description": "BANKING77: report stolen card AND reverse fraudulent transactions",
+    "success": true,
+    "pattern_correct": true,
+    "agent_correct": true,
+    "answer_keywords_found": true,
+    "outcome_correct": false,
+    "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account] [SOFT_PASS:tool_not_called_but_orchestration_ok]",
+    "latency_ms": 105213.91609997954,
+    "agent_calls": 2,
+    "completeness_score": 1.0,
+    "solvability_score": 0.605,
+    "soft_pass": true,
+    "error": null,
+    "turns": [
+      {
+        "turn_index": 0,
+        "query": "My card was stolen yesterday and I can see three transactions I did not make, block the card and reverse them all",
+        "pattern_correct": true,
+        "agent_correct": true,
+        "answer_keywords_found": true,
+        "outcome_correct": false,
+        "outcome_detail": "pass=[response_present] fail=[tool_missing:initiate_refund,tool_missing:freeze_account]",
+        "latency_ms": 52960.72829999321
+      }
+    ],
+    "governance_events": []
+  }
+]

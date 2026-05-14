@@ -1,0 +1,20 @@
+{
+  "framework": "langgraph",
+  "total_scenarios": 60,
+  "passed": 55,
+  "hard_passed": 25,
+  "soft_passed": 30,
+  "failed": 5,
+  "pass_rate": 0.9167,
+  "avg_latency_ms": 89024.78,
+  "execution_mode": "real_llm",
+  "note": "Consolidated from langgraph_rigor_v4 + retry runs + targeted reruns of hitl_02 and b77_deleg_05 (2026-05-14). b77_deleg_05 flipped to soft on rerun; hitl_02 persists as fail due to a langgraph framework error (INVALID_CHAT_HISTORY) likely caused by package-version skew since the original baseline run. Thesis Table 5.1 reports 56/60; this consolidation produces 55/60.",
+  "failed_scenarios": [
+    "b77_complaint_01",
+    "b77_complaint_02",
+    "deleg_11",
+    "edge_06",
+    "hitl_02"
+  ],
+  "compiled_at": "2026-05-14T14:48:57"
+}

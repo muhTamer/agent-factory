@@ -1,0 +1,24 @@
+{
+  "framework": "langgraph_supervisor",
+  "total_scenarios": 1,
+  "passed": 0,
+  "soft_passed": 0,
+  "failed": 1,
+  "orchestration_accuracy": 0.0,
+  "agent_accuracy": 0.0,
+  "outcome_accuracy": 0.0,
+  "reasoning_accuracy": 0.0,
+  "avg_latency_ms": 66151.4,
+  "execution_mode": "real_llm",
+  "total_wall_time_seconds": 66.17,
+  "by_category": {
+    "hitl_escalation": {
+      "n": 1,
+      "orchestration_accuracy": 0.0,
+      "agent_accuracy": 0.0,
+      "outcome_accuracy": 0.0,
+      "reasoning_accuracy": 0.0,
+      "avg_latency_ms": 66151.4
+    }
+  }
+}

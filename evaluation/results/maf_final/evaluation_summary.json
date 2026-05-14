@@ -1,0 +1,19 @@
+{
+  "framework": "meta_agent_factory",
+  "total_scenarios": 60,
+  "passed": 57,
+  "hard_passed": 27,
+  "soft_passed": 30,
+  "failed": 3,
+  "pass_rate": 0.95,
+  "avg_latency_ms": 157754.93,
+  "execution_mode": "real_llm",
+  "estimator": "llm",
+  "note": "Consolidated from maf_rigor_v4 base + retry runs (kw_fix, hitl02_fix, retry, retry2) + targeted reruns of hitl_02 and b77_deleg_06 (2026-05-14). See METHODOLOGY_NOTES.md for retry rationale.",
+  "failed_scenarios": [
+    "b77_complaint_01",
+    "b77_complaint_02",
+    "b77_deleg_04"
+  ],
+  "compiled_at": "2026-05-14T14:45:27"
+}

@@ -1,0 +1,28 @@
+{
+  "framework": "autogen",
+  "total_scenarios": 60,
+  "passed": 47,
+  "hard_passed": 28,
+  "soft_passed": 19,
+  "failed": 13,
+  "pass_rate": 0.7833,
+  "avg_latency_ms": 163398.05,
+  "execution_mode": "real_llm",
+  "note": "Consolidated from autogen_rigor_v4 base + retry runs (kw_fix, hitl02_fix, retry, retry2). Differs from thesis Table 5.1 (29 hard + 26 soft + 5 fail = 55/60) due to soft-pass rule asymmetry: baseline harness requires correct agent routing for soft-pass; thesis applies a more permissive rule that accepts tool_missing as soft even with wrong agent. See METHODOLOGY_NOTES.md.",
+  "failed_scenarios": [
+    "b77_complaint_01",
+    "b77_deleg_02",
+    "b77_deleg_04",
+    "b77_deleg_05",
+    "b77_deleg_06",
+    "b77_deleg_07",
+    "deleg_01",
+    "deleg_06",
+    "deleg_07",
+    "deleg_08",
+    "deleg_09",
+    "deleg_10",
+    "deleg_11"
+  ],
+  "compiled_at": "2026-05-14T14:45:59"
+}

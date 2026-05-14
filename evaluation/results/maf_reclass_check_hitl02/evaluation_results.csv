@@ -1,0 +1,2 @@
+scenario_id,category,description,success,soft_pass,pattern_correct,agent_correct,outcome_correct,outcome_detail,answer_keywords_found,latency_ms,agent_calls,completeness_score,solvability_score,error
+hitl_02,hitl_escalation,Escalation: dispute with regulatory complaint threat (multi-intent),True,True,True,True,False,"pass=[response_present] fail=[escalation_mismatch:expected=True,got=False] [SOFT_PASS:tool_not_called_but_orchestration_ok]",True,196813.53,3,1.0,0.8,
