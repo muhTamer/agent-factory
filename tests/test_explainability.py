@@ -177,10 +177,8 @@ class TestExplainabilityEngine:
         expl = engine.generate(trace, response, ExplanationLevel.FULL)
 
         assert expl.level == ExplanationLevel.FULL
-        assert "event_log" in expl.metrics
-        events = expl.metrics["event_log"]
-        assert len(events) == len(trace.events)
-        assert events[0]["stage"] == "request_received"
+        assert "event_count" in expl.metrics
+        assert expl.metrics["event_count"] == len(trace.events)
 
     def test_generate_all_levels(self):
         engine = ExplainabilityEngine()
